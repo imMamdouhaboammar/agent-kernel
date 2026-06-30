@@ -1,6 +1,6 @@
 {
   "name": "@mamdouh-aboammar/agent-kernel",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Local-first governance kernel for AI coding agents \u2014 shared memory, rule distribution, approval inbox, episodic memory archive, MCP tools, and strict enforcement hooks.",
   "type": "module",
   "bin": {
@@ -63,9 +63,13 @@
   "publishConfig": {
     "access": "public",
     "tag": "latest",
-    "provenance": false
+    "provenance": true
   },
   "devDependencies": {
     "typescript": "^5.9.0"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/imMamdouhaboammar"
   }
 }

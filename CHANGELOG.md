@@ -3,6 +3,29 @@
 All notable changes to this project are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.0.7] — 2026-06-30
+
+### Changed — Cross-linking GitHub ↔ npm
+
+- Enabled npm Provenance (`publishConfig.provenance = true`) so the
+  npm package page shows the verified GitHub Actions build source.
+- Added `funding` field (GitHub Sponsors link).
+- Updated GitHub repo homepage URL to point at the npm package page.
+- Updated GitHub repo description to mention npm package name.
+- Added 6 GitHub topics for discoverability:
+  agentic-coding, claude-code, governance, mcp, memory, npm.
+
+### Verified (this release)
+
+- `agent-kernel` is in the user's npm profile (15 packages total).
+- `npm view @mamdouh-aboammar/agent-kernel` shows:
+  - `homepage` → GitHub repo
+  - `repository.url` → git+https://github.com/imMamdouhaboammar/agent-kernel.git
+  - `bugs.url` → GitHub issues
+  - `author.url` → GitHub profile
+  - `gitHead` → exact commit SHA at publish time
+- GitHub repo About section now links to npm package page.
+
 ## [0.0.6] — 2026-06-30
 
 ### Added — Standalone OSS release with full CI/CD infrastructure
