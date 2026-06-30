@@ -67,12 +67,24 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Verify published package
+      - name: Verify published package (with retry for CDN propagation)
         if: github.event.inputs.dry-run != 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -e
           PKG=$(node -p "require('./package.json').name")
           VER=$(node -p "require('./package.json').version")
           echo "  verifying: $PKG@$VER on registry.npmjs.org"
-          npm view "$PKG@$VER" version
-          echo "  ✓ npm view confirms $PKG@$VER is live"
+          echo "  (npm CDN metadata can take 1-5 min to propagate — retrying...)"
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            if npm view "$PKG@$VER" version 2>/dev/null; then
+              echo "  ✓ npm view confirms $PKG@$VER is live (after ${i} attempt(s))"
+              exit 0
+            fi
+            echo "    attempt $i: not yet visible, waiting 30s..."
+            sleep 30
+          done
+          echo "  ✗ npm view still 404 after 5 minutes — package may not be published"
+          echo "  check https://www.npmjs.com/package/${PKG} manually"
+          exit 1
