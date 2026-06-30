@@ -1,0 +1,29 @@
+---
+name: Question
+about: Ask how to do something — usage, integration, architecture
+title: "[question] "
+labels: question
+---
+
+## What are you trying to do?
+
+<!-- A short, specific sentence. -->
+
+## What have you tried?
+
+<!-- Commands you ran, docs you read, config files you edited. -->
+
+## What did you expect?
+
+<!-- What output / behaviour you thought would happen. -->
+
+## What happened instead?
+
+<!-- What you actually saw. Paste errors verbatim if any. -->
+
+## Environment
+
+- agent-kernel version: `agent-kernel --version`
+- OS: <!-- macOS / Ubuntu 22.04 / Windows / ... -->
+- Node.js: `node --version`
+- Agent: <!-- Claude Code / Codex / Cursor / Antigravity / Gemini CLI / none -->

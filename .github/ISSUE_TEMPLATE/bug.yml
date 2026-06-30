@@ -1,0 +1,47 @@
+---
+name: Bug report
+about: Something is broken — a command crashes, a hook misfires, or docs are wrong
+title: "[bug] "
+labels: bug
+assignees: imMamdouhaboammar
+---
+
+## What happened
+
+<!-- A clear, one-paragraph description of the bug. -->
+
+## Steps to reproduce
+
+```bash
+# Minimal command(s) that trigger the bug
+```
+
+## Expected
+
+<!-- What you expected to happen. -->
+
+## Actual
+
+<!-- What actually happened. Include any error output verbatim. -->
+
+```text
+PASTE OUTPUT HERE
+```
+
+## Environment
+
+- agent-kernel version: `agent-kernel --version`
+- OS: <!-- macOS / Ubuntu 22.04 / Windows / ... -->
+- Node.js: `node --version`
+- Agent: <!-- Claude Code / Codex / Cursor / Antigravity / Gemini CLI / none -->
+
+## Logs
+
+```bash
+# Relevant log files live under ~/.agent-kernel/logs/*.jsonl
+# Attach the last 50 lines of the relevant log file here
+```
+
+## Anything else?
+
+<!-- Screenshots, related issues, links to upstream — anything that helps reproduce. -->

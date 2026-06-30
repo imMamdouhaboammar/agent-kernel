@@ -1,0 +1,78 @@
+name: npm publish
+
+# Auto-publish to npm whenever a v* tag is pushed.
+# Runs alongside release.yml so the two flows stay independent.
+# Override: manual workflow_dispatch for dry-run testing.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Dry run only (do not publish)'
+        required: false
+        default: 'false'
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # Required for npm provenance (OIDC)
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Smoke test (no network side-effects beyond npm registry)
+        run: npm test
+
+      - name: Verify package version matches tag
+        id: verify-version
+        run: |
+          set -e
+          TAG="${GITHUB_REF_NAME}"          # e.g. v0.0.5
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          EXPECTED="${TAG#v}"
+          echo "  tag=$TAG  package.json.version=$PKG_VERSION  expected=$EXPECTED"
+          if [ "$PKG_VERSION" != "$EXPECTED" ]; then
+            echo "  ✗ package.json version ($PKG_VERSION) does not match tag ($TAG)"
+            exit 1
+          fi
+          echo "  ✓ version matches tag"
+
+      - name: Publish (dry-run)
+        if: github.event.inputs.dry-run == 'true'
+        run: npm publish --dry-run --access public
+
+      - name: Publish (real)
+        if: github.event.inputs.dry-run != 'true'
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Verify published package
+        if: github.event.inputs.dry-run != 'true'
+        run: |
+          set -e
+          PKG=$(node -p "require('./package.json').name")
+          VER=$(node -p "require('./package.json').version")
+          echo "  verifying: $PKG@$VER on registry.npmjs.org"
+          npm view "$PKG@$VER" version
+          echo "  ✓ npm view confirms $PKG@$VER is live"

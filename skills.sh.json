@@ -1,0 +1,43 @@
+{
+  "$schema": "https://skills.sh/schemas/skills.sh.schema.json",
+  "notGrouped": "bottom",
+  "groupings": [
+    {
+      "title": "Memory & governance",
+      "description": "Local-first memory layers, episodic recall, approval inboxes, and policy enforcement for AI coding agents.",
+      "skills": [
+        "agent-kernel"
+      ]
+    },
+    {
+      "title": "Cross-agent rule distribution",
+      "description": "Compile one JSON-first memory source into AGENTS.md / CLAUDE.md / .cursor/rules / GEMINI.md — every agent, same rules.",
+      "skills": [
+        "agent-kernel"
+      ]
+    }
+  ],
+  "featured": [
+    "agent-kernel"
+  ],
+  "metadata": {
+    "repository": "https://github.com/imMamdouhaboammar/agent-kernel",
+    "license": "MIT",
+    "homepage": "https://github.com/imMamdouhaboammar/agent-kernel",
+    "category": "developer-tools",
+    "tags": [
+      "agentic-coding",
+      "memory",
+      "governance",
+      "ai-coding",
+      "claude-code",
+      "codex",
+      "cursor",
+      "antigravity",
+      "gemini",
+      "mcp",
+      "episodic-memory",
+      "approval-inbox"
+    ]
+  }
+}

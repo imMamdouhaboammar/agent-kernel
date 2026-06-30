@@ -1,0 +1,43 @@
+---
+name: Feature request
+about: Suggest a new command, MCP tool, or policy primitive
+title: "[feat] "
+labels: enhancement
+assignees: imMamdouhaboammar
+---
+
+## Problem
+
+<!-- What problem does this solve? What workflow is currently painful? -->
+
+## Proposed solution
+
+<!-- One-paragraph description of the new feature. -->
+
+## Command shape (if applicable)
+
+```text
+agent-kernel <new-cmd> [args]
+```
+
+## MCP tool (if applicable)
+
+```json
+{
+  "name": "agent_kernel_<new_tool>",
+  "description": "...",
+  "inputSchema": { ... }
+}
+```
+
+## Memory layout impact
+
+<!-- Does this touch ~/.agent-kernel/source/memories/*.json? Episodes? Inbox? -->
+
+## Compatibility
+
+<!-- Does this break any existing command / layout / MCP client? -->
+
+## Alternatives considered
+
+<!-- What other approaches did you think about? Why this one? -->

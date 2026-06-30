@@ -1,0 +1,141 @@
+name: GitHub Release
+
+# Auto-create a GitHub Release when a v* tag is pushed.
+# Independent from npm-publish.yml so a publish failure doesn't block the release
+# and vice versa.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine tag + version
+        id: meta
+        run: |
+          set -e
+          TAG="${GITHUB_REF_NAME}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Determine baseline (previous tag)
+        id: baseline
+        run: |
+          set -e
+          CURRENT="${{ steps.meta.outputs.tag }}"
+          # Find the previous semver tag
+          PREV=$(git tag --sort=-version:refname | grep -E '^v[0-9]' | grep -v "^${CURRENT}$" | head -n 1 || true)
+          if [ -z "$PREV" ]; then
+            # First release — use the very first commit
+            BASELINE="$(git rev-list --max-parents=0 HEAD)"
+          else
+            BASELINE="$PREV"
+          fi
+          echo "baseline=$BASELINE" >> "$GITHUB_OUTPUT"
+          echo "  baseline for changelog: $BASELINE"
+
+      - name: Generate release notes
+        id: notes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = context.ref.replace('refs/tags/', '');
+            const baseline = '${{ steps.baseline.outputs.baseline }}';
+
+            // Try to pull structured changelog from CHANGELOG.md first
+            let structured = '';
+            try {
+              const fs = require('fs');
+              const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
+              const versionHeader = changelog.match(new RegExp('## \\[?' + tag.replace(/^v/, '') + '\\]?[^\n]*'));
+              if (versionHeader) {
+                const startIdx = changelog.indexOf(versionHeader[0]);
+                // Find the next ## header
+                const rest = changelog.substring(startIdx + versionHeader[0].length);
+                const nextHeader = rest.match(/^## /m);
+                const endIdx = nextHeader ? rest.indexOf(nextHeader[0]) : rest.length;
+                structured = versionHeader[0] + '\n' + rest.substring(0, endIdx).trim();
+              }
+            } catch (e) {
+              core.warning('Could not parse CHANGELOG.md: ' + e.message);
+            }
+
+            // Get auto-generated notes from GitHub
+            let autoNotes = '';
+            try {
+              const { data: notes } = await github.rest.repos.generateReleaseNotes({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag_name: tag,
+                previous_tag_name: baseline.startsWith('v') ? baseline : undefined
+              });
+              autoNotes = notes.body || '';
+            } catch (e) {
+              core.warning('Could not generate auto notes: ' + e.message);
+            }
+
+            const body = [
+              structured ? '### What changed (from CHANGELOG)\n\n' + structured : '',
+              autoNotes ? '### Commits\n\n' + autoNotes : ''
+            ].filter(Boolean).join('\n\n');
+
+            require('fs').writeFileSync('/tmp/release-body.md', body || 'Initial release.');
+            core.info('Release body written to /tmp/release-body.md');
+            core.info('Body length: ' + body.length + ' chars');
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: "${{ steps.meta.outputs.tag }}"
+          body_path: /tmp/release-body.md
+          draft: false
+          prerelease: ${{ contains(steps.meta.outputs.version, '-') }}
+          generate_release_notes: false
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build source tarball
+        run: |
+          set -e
+          TAG="${GITHUB_REF_NAME}"
+          VER="${TAG#v}"
+          ARCHIVE="agent-kernel-v${VER}.tar.gz"
+          git archive --prefix="agent-kernel-v${VER}/" --format=tar.gz -o "/tmp/${ARCHIVE}" "${TAG}"
+          echo "  built /tmp/${ARCHIVE}"
+          ls -la "/tmp/${ARCHIVE}"
+
+      - name: Attach source tarball to release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const tag = context.ref.replace('refs/tags/', '');
+            const ver = tag.replace(/^v/, '');
+            const archivePath = `/tmp/agent-kernel-v${ver}.tar.gz`;
+            if (!fs.existsSync(archivePath)) {
+              core.setFailed('Tarball not found: ' + archivePath);
+              return;
+            }
+            const stats = fs.statSync(archivePath);
+            core.info(`Uploading ${archivePath} (${stats.size} bytes)`);
+            await github.rest.repos.uploadReleaseAsset({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: context.payload.release.id,
+              name: `agent-kernel-v${ver}.tar.gz`,
+              data: fs.readFileSync(archivePath)
+            });
+            core.info('✓ Tarball attached');

@@ -1,0 +1,129 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  # ───────────────────────────────────────────────────────────────────────
+  # Build + smoke test (Node 18/20/22 matrix)
+  # ───────────────────────────────────────────────────────────────────────
+  build-and-test:
+    name: Build + smoke (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18.x, 20.x, 22.x]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci || npm install
+      - name: Build
+        run: npm run build
+      - name: Smoke test (init + validate + memory + episode + MCP)
+        run: npm test
+
+  # ───────────────────────────────────────────────────────────────────────
+  # Typecheck
+  # ───────────────────────────────────────────────────────────────────────
+  typecheck:
+    name: TypeScript typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+      - name: Install devDependencies
+        run: npm install --include=dev
+      - name: Typecheck
+        run: npm run typecheck
+
+  # ───────────────────────────────────────────────────────────────────────
+  # Manifest discipline: SKILL.md + .claude-plugin + skills.sh.json + package.json
+  # ───────────────────────────────────────────────────────────────────────
+  manifest-validate:
+    name: Manifest discipline (Skills.sh + Claude marketplace)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Root SKILL.md frontmatter check
+        run: |
+          test -f SKILL.md || { echo "root SKILL.md missing"; exit 1; }
+          head -1 SKILL.md | grep -q '^---$' || { echo "no frontmatter"; exit 1; }
+          grep -q '^name: agent-kernel' SKILL.md || { echo "name not agent-kernel"; exit 1; }
+          grep -q '^description:' SKILL.md || { echo "no description"; exit 1; }
+          echo "  ✓ SKILL.md frontmatter present + name + description"
+      - name: .claude-plugin/marketplace.json
+        run: |
+          test -f .claude-plugin/marketplace.json || { echo "missing marketplace.json"; exit 1; }
+          python3 -m json.tool < .claude-plugin/marketplace.json > /dev/null
+          python3 -c "import json; d=json.load(open('.claude-plugin/marketplace.json')); \
+              assert any(p['name']=='agent-kernel' for p in d['plugins']), 'kernel plugin missing'; \
+              print('  ✓ marketplace.json has agent-kernel plugin')"
+      - name: .claude-plugin/plugin.json
+        run: |
+          test -f .claude-plugin/plugin.json || { echo "missing plugin.json"; exit 1; }
+          python3 -m json.tool < .claude-plugin/plugin.json > /dev/null
+          echo "  ✓ plugin.json valid"
+      - name: skills.sh.json
+        run: |
+          test -f skills.sh.json || { echo "missing skills.sh.json"; exit 1; }
+          python3 -c "import json; d=json.load(open('skills.sh.json')); \
+              assert 'groupings' in d, 'no groupings'; \
+              all_skills = [s for g in d['groupings'] for s in g['skills']]; \
+              assert 'agent-kernel' in all_skills, 'agent-kernel not in any grouping'; \
+              print('  ✓ skills.sh.json includes agent-kernel')"
+      - name: package.json + dist dry-run
+        run: |
+          python3 -m json.tool < package.json > /dev/null
+          npm install --silent
+          npm run build
+          npm pack --dry-run
+          echo "  ✓ package.json + dist/cli.mjs pack clean"
+
+  # ───────────────────────────────────────────────────────────────────────
+  # Docs sanity (README, CHANGELOG, LICENSE present + non-empty)
+  # ───────────────────────────────────────────────────────────────────────
+  docs:
+    name: Docs sanity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: README.md exists + >= 1KB
+        run: |
+          test -s README.md || { echo "README.md missing or empty"; exit 1; }
+          SIZE=$(stat -c%s README.md 2>/dev/null || stat -f%z README.md)
+          if [ "$SIZE" -lt 1000 ]; then
+            echo "  ✗ README.md too small: $SIZE bytes"
+            exit 1
+          fi
+          echo "  ✓ README.md present ($SIZE bytes)"
+      - name: CHANGELOG.md exists
+        run: |
+          test -s CHANGELOG.md || { echo "CHANGELOG.md missing"; exit 1; }
+          head -1 CHANGELOG.md | grep -qi 'changelog' || { echo "missing # Changelog header"; exit 1; }
+          echo "  ✓ CHANGELOG.md present + has Changelog header"
+      - name: LICENSE exists (MIT)
+        run: |
+          test -s LICENSE || { echo "LICENSE missing"; exit 1; }
+          head -3 LICENSE | grep -qi 'mit' || { echo "not MIT license"; exit 1; }
+          echo "  ✓ LICENSE present + MIT"
+      - name: docs/*.md count
+        run: |
+          COUNT=$(find docs -name '*.md' | wc -l | tr -d ' ')
+          if [ "$COUNT" -lt 5 ]; then
+            echo "  ✗ docs/ has only $COUNT files (expected >= 5)"
+            exit 1
+          fi
+          echo "  ✓ docs/ has $COUNT markdown files"

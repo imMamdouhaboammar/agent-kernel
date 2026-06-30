@@ -1,0 +1,46 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "agent-kernel",
+  "version": "0.0.5",
+  "description": "Local-first governance kernel for AI coding agents — shared memory, rule distribution, approval inbox, episodic memory archive, MCP tools, and strict enforcement hooks.",
+  "owner": {
+    "name": "Mamdouh Aboammar",
+    "email": "mamdouhfces1997@gmail.com"
+  },
+  "homepage": "https://github.com/imMamdouhaboammar/agent-kernel",
+  "repository": "https://github.com/imMamdouhaboammar/agent-kernel",
+  "license": "MIT",
+  "keywords": [
+    "agentic-coding",
+    "ai-agents",
+    "memory",
+    "governance",
+    "claude-code",
+    "codex",
+    "cursor",
+    "antigravity",
+    "gemini",
+    "mcp"
+  ],
+  "plugins": [
+    {
+      "name": "agent-kernel",
+      "version": "0.0.5",
+      "description": "Main plugin — local-first governance kernel. Memory + rule distribution + approval inbox + episodic recall + MCP tools.",
+      "category": "development",
+      "homepage": "https://github.com/imMamdouhaboammar/agent-kernel",
+      "tags": [
+        "memory",
+        "governance",
+        "default",
+        "mcp",
+        "agent-rules"
+      ],
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./"
+      ]
+    }
+  ]
+}

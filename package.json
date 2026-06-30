@@ -1,0 +1,71 @@
+{
+  "name": "@mamdouh/agent-kernel",
+  "version": "0.0.5",
+  "description": "Local-first governance kernel for AI coding agents — shared memory, rule distribution, approval inbox, episodic memory archive, MCP tools, and strict enforcement hooks.",
+  "type": "module",
+  "bin": {
+    "agent-kernel": "./dist/cli.mjs",
+    "ak": "./dist/cli.mjs"
+  },
+  "files": [
+    "dist",
+    "docs",
+    "examples",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "node dist/cli.mjs",
+    "test": "node test/smoke.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "node scripts/lint.mjs",
+    "size": "npm pack --dry-run",
+    "publish:dry": "npm publish --dry-run --access public",
+    "prepack": "npm run build && npm test"
+  },
+  "keywords": [
+    "agentic-coding",
+    "ai-agents",
+    "claude-code",
+    "codex",
+    "cursor",
+    "antigravity",
+    "AGENTS.md",
+    "MCP",
+    "guardrails",
+    "memory",
+    "governance",
+    "local-first",
+    "episodic-memory",
+    "agent-rules",
+    "skills-sh",
+    "minimax",
+    "mavis"
+  ],
+  "author": {
+    "name": "Mamdouh Aboammar",
+    "email": "mamdouhfces1997@gmail.com",
+    "url": "https://github.com/imMamdouhaboammar"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.18.0"
+  },
+  "homepage": "https://github.com/imMamdouhaboammar/agent-kernel#readme",
+  "bugs": {
+    "url": "https://github.com/imMamdouhaboammar/agent-kernel/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/imMamdouhaboammar/agent-kernel.git"
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "latest",
+    "provenance": false
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0"
+  }
+}

@@ -1,0 +1,6 @@
+node_modules/
+.agent-kernel-runtime/
+.DS_Store
+*.log
+dist/*.map
+coverage/
