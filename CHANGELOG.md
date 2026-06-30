@@ -3,6 +3,56 @@
 All notable changes to this project are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.0.6] — 2026-06-30
+
+### Added — Standalone OSS release with full CI/CD infrastructure
+
+The agent-kernel project is now a standalone OSS package with auto-publish
+and auto-release workflows. The npm scope switched from the unowned
+`@mamdouh` to the user-owned `@mamdouh-aboammar` (the only npm scope
+this user has access to).
+
+**What changed since v0.0.5:**
+
+- Renamed npm package to `@mamdouh-aboammar/agent-kernel` (matches npm user)
+- Fixed `tsconfig.json` so `tsc --noEmit` finds the bundled .mjs source
+  (`include: ["src/**/*"]` + `allowJs: true`)
+- Added `scripts/lint.mjs` — sanity linter for command surface, MCP tool
+  names, secret patterns, deny commands, version consistency
+- Added `scripts.lint` + `scripts.size` + `scripts.publish:dry` + `scripts.prepack`
+  to `package.json`
+- Added comprehensive CI matrix:
+  - `build-and-test` (Node 18/20/22, smoke tests)
+  - `typecheck` (tsc --noEmit)
+  - `manifest-validate` (SKILL.md, marketplace.json, plugin.json, skills.sh.json)
+  - `docs` (README, CHANGELOG, LICENSE, docs/ count)
+- Added auto-publish workflow (`.github/workflows/npm-publish.yml`)
+  - Triggers on `v*` tag push
+  - Verifies package version matches tag
+  - Publishes to npm with provenance
+  - Manual `workflow_dispatch` for dry-run testing
+- Added auto-release workflow (`.github/workflows/release.yml`)
+  - Triggers on `v*` tag push
+  - Parses CHANGELOG.md for structured release notes
+  - Creates GitHub Release + attaches source tarball via `gh release upload`
+- Added `SKILL.md` at root for Skills.sh discovery
+- Added `.claude-plugin/marketplace.json` + `.claude-plugin/plugin.json`
+  for Claude Code marketplace
+- Added `skills.sh.json` for Skills.sh leaderboard groupings
+- Added issue templates (bug, feature, question) + PR template
+- Added `CONTRIBUTING.md` with tag-driven release flow
+- Added `SECURITY.md` with threat model + bypass reporting
+- Polished `README.md` with 4-section badge layout
+  (Install / Status / Quality / Ecosystem / Stack)
+- `publishConfig.provenance = false` (OIDC requires GH Actions only)
+
+**Verified:**
+
+- `npm run typecheck && npm test && npm run lint && npm run build` → all green
+- `@mamdouh-aboammar/agent-kernel@0.0.5` published manually (CDN propagation)
+- Both `agent-kernel` and `ak` binaries work after install
+- `agent-kernel doctor` runs and reports kernel state correctly
+
 ## [0.0.5] — 2026-06-30
 
 ### Added — Initial standalone OSS release

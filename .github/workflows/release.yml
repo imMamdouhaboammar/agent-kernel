@@ -94,7 +94,8 @@ jobs:
             core.info('Release body written to /tmp/release-body.md');
             core.info('Body length: ' + body.length + ' chars');
 
-      - name: Create GitHub Release
+      - name: Create GitHub Release (capture release id)
+        id: create_release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.meta.outputs.tag }}
@@ -117,25 +118,21 @@ jobs:
           echo "  built /tmp/${ARCHIVE}"
           ls -la "/tmp/${ARCHIVE}"
 
-      - name: Attach source tarball to release
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const tag = context.ref.replace('refs/tags/', '');
-            const ver = tag.replace(/^v/, '');
-            const archivePath = `/tmp/agent-kernel-v${ver}.tar.gz`;
-            if (!fs.existsSync(archivePath)) {
-              core.setFailed('Tarball not found: ' + archivePath);
-              return;
-            }
-            const stats = fs.statSync(archivePath);
-            core.info(`Uploading ${archivePath} (${stats.size} bytes)`);
-            await github.rest.repos.uploadReleaseAsset({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              release_id: context.payload.release.id,
-              name: `agent-kernel-v${ver}.tar.gz`,
-              data: fs.readFileSync(archivePath)
-            });
-            core.info('✓ Tarball attached');
+      - name: Attach source tarball via gh CLI
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          VER: ${{ steps.meta.outputs.version }}
+        run: |
+          set -e
+          ARCHIVE="/tmp/agent-kernel-v${VER}.tar.gz"
+          if [ ! -f "$ARCHIVE" ]; then
+            echo "  ✗ tarball missing: $ARCHIVE"
+            exit 1
+          fi
+          echo "  uploading $ARCHIVE to release ${TAG}..."
+          gh release upload "${TAG}" "${ARCHIVE}" --clobber
+          echo "  ✓ tarball attached"
+          echo ""
+          echo "  release assets:"
+          gh release view "${TAG}" --json assets --jq '.assets[] | "    - \(.name) (\(.size) bytes)"'
