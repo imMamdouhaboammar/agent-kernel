@@ -49,30 +49,32 @@ shared memory  ·  approval inbox  ·  episodic recall  ·  MCP tools  ·  deter
 
 </div>
 
-> **One problem, solved:** you should not have to repeat the same standards to every
-> coding agent in every session. `agent-kernel` gives every coding agent you use —
-> Claude Code, Codex, Cursor, Antigravity, Gemini CLI, and 60+ via Skills.sh — a shared
-> local memory, an approval inbox for new rules, episodic recall across sessions, MCP
-> tools, Claude + git hooks, and a deterministic policy guard. All local-first, all
-> JSON-first, all backward compatible.
+> **One problem, solved:** you should not have to repeat the same standards
+> to every coding agent in every session.
+>
+> `agent-kernel` gives every coding agent you use a shared local memory,
+> an approval inbox for new rules, episodic recall across sessions, MCP
+> tools, Claude + git hooks, and a deterministic policy guard.
+> All local-first, all JSON-first.
 
 ---
 
 ## ⚡ What is this?
 
-`agent-kernel` is the **memory + governance layer** for any agentic-coding workflow.
-Instead of repeating "use TypeScript strict mode" or "always run pnpm typecheck" in
-every prompt, save the rule once — every agent in every project uses it.
+`agent-kernel` is the **memory + governance layer** for any agentic-coding
+workflow. Instead of repeating "use TypeScript strict mode" or "always
+run pnpm typecheck" in every prompt, save the rule once — every agent
+in every project uses it.
 
-| Without agent-kernel | With agent-kernel |
-|---|---|
-| Standards repeated in every prompt | Standards live in `~/.agent-kernel/source/memories/*.json` and auto-attach |
-| Lost context after session end | Episodes saved locally; searchable later via `agent-kernel episode search` |
-| Agent writes whatever rule it wants | Proposal inbox; you approve before publish |
-| Manual `git commit` may leak secrets | Pre-commit hook + `agent-kernel guard --staged` blocks |
-| Different agents see different rules | One JSON-first source compiles to all platforms (AGENTS.md / CLAUDE.md / .cursor / GEMINI.md) |
+| Without agent-kernel                      | With agent-kernel                                                            |
+| ----------------------------------------- | --------------------------------------------------------------------------- |
+| Standards repeated in every prompt        | Standards live in `~/.agent-kernel/source/memories/*.json` and auto-attach   |
+| Lost context after session end            | Episodes saved locally; searchable via `agent-kernel episode search`        |
+| Agent writes whatever rule it wants       | Proposal inbox; you approve before publish                                  |
+| `git commit` may leak secrets              | Pre-commit hook + `agent-kernel guard --staged` blocks                      |
+| Different agents see different rules      | One JSON-first source compiles to all platforms (AGENTS.md, CLAUDE.md, etc.) |
 
-**Sounds good? Try it:**
+**Quick verify after install:**
 
 ```bash
 npm install -g @mamdouh-aboammar/agent-kernel
@@ -119,14 +121,19 @@ GEMINI.md                              # Read by Gemini CLI
 ### 3. Save your first rule
 
 ```bash
-agent-kernel remember "Never add local SQLite fallback to production Supabase apps." \
-    --type policy --level critical --tags supabase,database --publish
+agent-kernel remember \
+    "Never add local SQLite fallback to production Supabase apps." \
+    --type policy \
+    --level critical \
+    --tags supabase,database \
+    --publish
 ```
 
-The next time any agent in any project touches that code, the rule auto-attaches to its
-context.
+Once published, this rule will be included in every `agent-kernel compile`
+output — i.e. every agent that reads `AGENTS.md`, `CLAUDE.md`, or the
+other generated files will see it.
 
-### 4. Capture an episode
+### 4. Capture an episode (optional)
 
 ```bash
 agent-kernel episode add \
@@ -153,6 +160,8 @@ agent-kernel status
 
 ## 📚 Core commands
 
+The CLI exposes these top-level commands. Full reference: [`docs/`](./docs).
+
 ```text
 agent-kernel init [--sync] [--enforce]
 agent-kernel doctor
@@ -176,28 +185,29 @@ agent-kernel start <claude|codex|cursor|antigravity|gemini> [project]
 agent-kernel status
 ```
 
-Full reference: see [`docs/`](./docs).
-
 ---
 
 ## 🗂️ Memory layout
 
+The memory home is configurable via the `AGENT_KERNEL_HOME` env var
+(defaults to `~/.agent-kernel/`):
+
 ```text
-~/.agent-kernel/                              # Memory home (configurable via AGENT_KERNEL_HOME)
-  config.json                                 # User's settings (level, targets, etc.)
+~/.agent-kernel/
+  config.json                                 # User settings (level, targets, ...)
   source/
     memories/
       rules.json                              # Always-follow rules
-      preferences.json                        # Style preferences (e.g. "prefer tabs over spaces")
-      workflows.json                          # How-to steps ("to deploy, run X")
+      preferences.json                        # Style preferences
+      workflows.json                          # How-to steps
       project-notes.json                      # Per-project facts
       skills.json                             # Available skills
     schemas/                                  # JSON Schema for validation
     policies/policies.json                    # Policy pack arrays
   episodes/
-    archive/                                  # Past session snapshots (compact JSON)
+    archive/                                  # Past session snapshots
     index.json                                # Searchable index
-    sources.json                              # Where episodes were captured from
+    sources.json                              # Where episodes came from
   inbox/
     pending/                                  # Agent proposals waiting for approval
     approved/                                 # Approved (about to publish)
@@ -222,35 +232,45 @@ Full reference: see [`docs/`](./docs).
 
 ## 🔌 Compatibility
 
-| Agent | Memory source | Hook install | Compile target |
-|---|---|---|---|
-| Claude Code | ✅ | ✅ `~/.claude/hooks/` | `PreToolUse` + `PostToolUse` |
-| Codex | ✅ | n/a (read-only) | `AGENTS.md` |
-| Cursor | ✅ | n/a | `.mdc` rule |
-| OpenCode | ✅ | n/a | `AGENTS.md` |
-| Antigravity | ✅ | n/a | `.agents/` |
-| Gemini CLI | ✅ | n/a | `GEMINI.md` |
-| 60+ others | ✅ see Skills.sh index | depends on agent | via `AGENTS.md` |
+| Agent               | Memory source | Hook install           | Compile target           |
+| ------------------- | -------------- | ---------------------- | ------------------------ |
+| Claude Code         | ✅             | ✅ `~/.claude/hooks/`   | `PreToolUse` + `PostToolUse` |
+| Codex               | ✅             | n/a (read-only)        | `AGENTS.md`              |
+| Cursor              | ✅             | n/a                    | `.mdc` rule              |
+| OpenCode            | ✅             | n/a                    | `AGENTS.md`              |
+| Antigravity         | ✅             | n/a                    | `.agents/`               |
+| Gemini CLI          | ✅             | n/a                    | `GEMINI.md`              |
+| Skills.sh-registered agents | ✅ via `AGENTS.md` | depends on agent | `AGENTS.md`    |
 
-Memory layout is **fully backward compatible with v0.0.1** —
-`agent-kernel migrate json --publish` upgrades in place.
+Skills.sh discovery registers this repo as a plugin for any agent that
+supports the `npx skills add` flow. The actual integration depends on
+the consuming agent's plugin loader. See [Skills.sh](https://skills.sh/imMamdouhaboammar/agent-kernel).
+
+Memory layout is **backward compatible with v0.0.1** for projects
+that started with the older flat-file layout. Run
+`agent-kernel migrate json --publish` to upgrade in place.
 
 ---
 
 ## 🔒 Safety model
 
 - Agents may **propose** memories. Only `agent-kernel` **publishes** memories.
-- Generated markdown files are not treated as the only defense.
-- Critical rules should also be backed by **hooks**, **scanners**, **git hooks**, or **CI checks**.
+- Generated markdown files are **not** the only defense.
+  Critical rules should also be backed by **hooks**, **scanners**,
+  **git hooks**, or **CI checks**.
+- Pre-commit hooks are an **opt-in** (`agent-kernel enforce install`).
+  Out of the box, the kernel does not modify git hooks or Claude settings.
+- The guard scanner blocks well-known dangerous patterns. It is a
+  best-effort defense, not a complete sandbox.
 
-Built-in guards (override via policy packs):
+Built-in deny patterns (override via policy packs):
 
 ```text
-dangerous-rm       rm -rf / or rm -rf ~        — blocked
-curl-pipe-shell    curl ... | sh               — blocked
-chmod-777          chmod -R 777                — blocked
-force-push-main    git push --force main       — blocked
-delete-git         rm -rf .git                 — blocked
+dangerous-rm       rm -rf / or rm -rf ~           — blocked
+curl-pipe-shell    curl ... | sh                  — blocked
+chmod-777          chmod -R 777                   — blocked
+force-push-main    git push --force main          — blocked
+delete-git         rm -rf .git                    — blocked
 secret-leak        OPENAI/ANTHROPIC/SUPABASE/Google API keys — blocked
 ```
 
@@ -258,25 +278,30 @@ secret-leak        OPENAI/ANTHROPIC/SUPABASE/Google API keys — blocked
 
 ## 🧩 Integrations
 
-- **delegate-team** — bundled inside `delegate-team` v2.5.0+ at `agent-kernel/`.
+- **delegate-team** — bundled inside `delegate-team` v2.5.0+.
   See [integrations/agent-kernel.md](https://github.com/imMamdouhaboammar/delegate-team/blob/master/integrations/agent-kernel.md).
-- **MCP** — every command is also exposed as an MCP tool. See [`docs/MCP_SERVER.md`](./docs/MCP_SERVER.md).
+- **MCP** — a subset of commands is exposed as MCP tools
+  (`agent_kernel_propose_memory`, `agent_kernel_search_episodes`, etc.).
+  See [`docs/MCP_SERVER.md`](./docs/MCP_SERVER.md).
+  Note: not every CLI command is exposed as an MCP tool today.
 - **Skills.sh** — discoverable via `npx skills add imMamdouhaboammar/agent-kernel -a claude-code -g -y`.
 
 ---
 
 ## 🛠️ Development
 
+### Build, test, lint
+
 ```bash
 git clone https://github.com/imMamdouhaboammar/agent-kernel
 cd agent-kernel
 
 npm install              # Install devDependencies (typescript)
-npm run build            # Copy src/cli.mjs → dist/cli.mjs + chmod 755
-npm test                 # Run smoke tests (init + validate + memory + episode + MCP)
+npm run build            # Inject VERSION, copy src/cli.mjs → dist/cli.mjs
+npm test                 # check-version + smoke (init + validate + memory + episode + MCP)
+npm run lint             # 14 repository consistency checks
 npm run typecheck        # tsc --noEmit
-npm run lint             # Custom lint (MCP tool names + secret pattern sanity)
-npm run size             # npm pack --dry-run (preview published tarball)
+npm run size             # npm pack --dry-run (preview the published tarball)
 npm run publish:dry      # npm publish --dry-run
 ```
 
@@ -284,44 +309,56 @@ npm run publish:dry      # npm publish --dry-run
 
 ```text
 agent-kernel/
-├── src/cli.mjs              # Source CLI (single ESM file, ~85 KB)
-├── dist/cli.mjs             # Built CLI (copied from src via scripts/build.mjs)
+├── src/cli.mjs              # Single-file CLI implementation (~85 KB)
+├── dist/cli.mjs             # Built artifact (sync'd from src by scripts/build.mjs)
 ├── scripts/
-│   ├── build.mjs            # copyFileSync src → dist + chmod
-│   └── lint.mjs             # MCP tool name + secret pattern sanity
-├── test/smoke.mjs           # Integration smoke test (init + validate + memory + episode + MCP)
-├── docs/                    # 8 architecture + protocol docs
+│   ├── build.mjs            # VERSION injection + copy src → dist
+│   ├── check-version.mjs    # SSOT check (fails if package.json ≠ CLI version)
+│   └── lint.mjs             # 14 repo consistency checks
+├── test/
+│   └── smoke.mjs            # Smoke test (init + validate + memory + episode + MCP)
+├── docs/                    # 7 architecture + protocol docs
+│   ├── audits/              # Repository hardening audits
+│   └── ARCHITECTURE_NOW.md  # Current single-file design + migration plan
 ├── examples/                # CI guard workflow + sample memory rules + sample episode
-├── develpment/              # Roadmap (BACKLOG, EPICS, MILESTONES, SPRINT-PLAN, backlog.json)
+├── development/             # Canonical roadmap (BACKLOG, EPICS, MILESTONES, SPRINT-PLAN)
+├── develpment/              # Legacy alias — points to development/, kept for old agents
 ├── bin/install-local.sh     # Local non-npm install helper
-├── .github/workflows/       # CI + auto-publish + auto-release
-├── .claude-plugin/          # Claude Code marketplace manifest
+├── .github/workflows/       # ci.yml + npm-publish.yml + release.yml
+├── .claude-plugin/          # Claude Code marketplace manifest (marketplace.json + plugin.json)
+├── AGENTS.md                # Compact contributor + coding-agent guide
 ├── SKILL.md                 # Skills.sh + Claude marketplace discovery
-├── package.json             # npm metadata
-├── tsconfig.json            # TypeScript config (for src/**/*.ts — keep extensible)
+├── skills.sh.json           # Skills.sh leaderboard groupings
+├── package.json             # npm metadata + scripts
+├── tsconfig.json            # TypeScript config (allowJs; includes src/**/*)
 ├── CHANGELOG.md             # Version history
+├── SECURITY.md              # Threat model + reporting
+├── CONTRIBUTING.md          # Tag-driven release flow
 ├── LICENSE                  # MIT
 └── README.md                # This file
 ```
 
 ### Adding a new command
 
-The CLI is a single `src/cli.mjs` file (intentional — single-file ship keeps the npm
+The CLI is intentionally a single `src/cli.mjs` file (keeps the npm
 package < 100 KB). To add a new command:
 
-1. Edit `src/cli.mjs` — find the `dispatch(args)` function (or the relevant section).
-2. Add a case for your command, update `--help`, and update the readme + `docs/`.
-3. Add a smoke test to `test/smoke.mjs`.
-4. `npm run build && npm test`.
+1. Edit `src/cli.mjs` — find the relevant section.
+2. Update `--help` text near the top.
+3. Update `README.md` core-commands list.
+4. Add a smoke check to `test/smoke.mjs`.
+5. `npm run build && npm test && npm run lint`.
 
 ---
 
 ## 🤝 Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) (TBD). For now:
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for the tag-driven release flow.
+
+For other contributions:
 
 1. Fork & branch from `master`.
-2. Run `npm install && npm test` locally.
+2. Run `npm install && npm test && npm run lint` locally.
 3. Make focused commits (single command or single doc per commit).
 4. Open a PR with a clear description of what changed and why.
 
