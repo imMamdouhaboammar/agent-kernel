@@ -1,7 +1,7 @@
 {
-  "name": "@mamdouh/agent-kernel",
+  "name": "@mamdouh-aboammar/agent-kernel",
   "version": "0.0.5",
-  "description": "Local-first governance kernel for AI coding agents — shared memory, rule distribution, approval inbox, episodic memory archive, MCP tools, and strict enforcement hooks.",
+  "description": "Local-first governance kernel for AI coding agents \u2014 shared memory, rule distribution, approval inbox, episodic memory archive, MCP tools, and strict enforcement hooks.",
   "type": "module",
   "bin": {
     "agent-kernel": "./dist/cli.mjs",
