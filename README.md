@@ -14,9 +14,9 @@ shared memory  ·  approval inbox  ·  episodic recall  ·  MCP tools  ·  deter
 
 ### 📦 Install
 
-[![npm version](https://img.shields.io/npm/v/@mamdouh/agent-kernel?color=cb3837&logo=npm&logoColor=white&label=install&style=for-the-badge)](https://www.npmjs.com/package/@mamdouh/agent-kernel)
-[![npm bundlephobia](https://img.shields.io/bundlephobia/min/@mamdouh/agent-kernel?color=cb3837&logo=npm&logoColor=white&label=install%20size&style=for-the-badge)](https://bundlephobia.com/package/@mamdouh/agent-kernel)
-[![npm weekly downloads](https://img.shields.io/npm/dw/@mamdouh/agent-kernel?color=cb3837&logo=npm&logoColor=white&label=weekly%20installs&style=for-the-badge)](https://www.npmjs.com/package/@mamdouh/agent-kernel)
+[![npm version](https://img.shields.io/npm/v/@mamdouh-aboammar/agent-kernel?color=cb3837&logo=npm&logoColor=white&label=install&style=for-the-badge)](https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel)
+[![npm bundlephobia](https://img.shields.io/bundlephobia/min/@mamdouh-aboammar/agent-kernel?color=cb3837&logo=npm&logoColor=white&label=install%20size&style=for-the-badge)](https://bundlephobia.com/package/@mamdouh-aboammar/agent-kernel)
+[![npm weekly downloads](https://img.shields.io/npm/dw/@mamdouh-aboammar/agent-kernel?color=cb3837&logo=npm&logoColor=white&label=weekly%20installs&style=for-the-badge)](https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel)
 
 ### 🧬 Status
 
@@ -75,7 +75,7 @@ every prompt, save the rule once — every agent in every project uses it.
 **Sounds good? Try it:**
 
 ```bash
-npm install -g @mamdouh/agent-kernel
+npm install -g @mamdouh-aboammar/agent-kernel
 agent-kernel --version
 agent-kernel doctor
 ```
@@ -88,10 +88,10 @@ agent-kernel doctor
 
 ```bash
 # Global install (recommended)
-npm install -g @mamdouh/agent-kernel
+npm install -g @mamdouh-aboammar/agent-kernel
 
 # Or one-off use
-npx -y @mamdouh/agent-kernel --version
+npx -y @mamdouh-aboammar/agent-kernel --version
 ```
 
 ### 2. Initialize in your project
@@ -331,7 +331,7 @@ MIT © Mamdouh Aboammar
 
 ## 🔗 Links
 
-- **npm**: https://www.npmjs.com/package/@mamdouh/agent-kernel
+- **npm**: https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel
 - **Repository**: https://github.com/imMamdouhaboammar/agent-kernel
 - **Issues**: https://github.com/imMamdouhaboammar/agent-kernel/issues
 - **Releases**: https://github.com/imMamdouhaboammar/agent-kernel/releases

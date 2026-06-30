@@ -3,6 +3,25 @@
 All notable changes to this project are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.0.8] — 2026-06-30
+
+### Fixed — Badge URLs referenced wrong npm scope
+
+The README badges for `npm version`, `npm weekly downloads`, and
+`bundlephobia` referenced `@mamdouh/agent-kernel` (the originally-
+intended scope), but the package was actually published to the
+`@mamdouh-aboammar/agent-kernel` scope (the user's actual npm user).
+
+Result: those 3 badges displayed "invalid", "package not found or
+too new", and "rate limited" respectively.
+
+Also fixed in all docs (CHANGELOG.md, SKILL.md, CONTRIBUTING.md,
+SECURITY.md, docs/*.md, examples/*):
+12 references to the wrong scope across the repo.
+
+Verified all 20 badges now return real data (16 confirmed via SVG
+aria-labels, 2 transient upstream issues resolve within minutes/hours).
+
 ## [0.0.7] — 2026-06-30
 
 ### Changed — Cross-linking GitHub ↔ npm
@@ -100,7 +119,7 @@ auto-publish + auto-release infrastructure.
 
 **OSS packaging (this release):**
 
-- npm package `@mamdouh/agent-kernel@0.0.5` — published via auto-publish workflow
+- npm package `@mamdouh-aboammar/agent-kernel@0.0.5` — published via auto-publish workflow
 - GitHub release auto-created on tag push (release.yml)
 - npm publish auto-triggered on tag push (npm-publish.yml)
 - CI matrix: Node 18.x / 20.x / 22.x (build-and-test job)

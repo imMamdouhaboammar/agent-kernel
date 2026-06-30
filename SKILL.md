@@ -54,9 +54,9 @@ agent-kernel solves that with local-first memory + cross-agent rule distribution
 
 ```bash
 # Install
-npm install -g @mamdouh/agent-kernel
+npm install -g @mamdouh-aboammar/agent-kernel
 # or use npx without installing
-npx -y @mamdouh/agent-kernel --version
+npx -y @mamdouh-aboammar/agent-kernel --version
 
 # In any project, initialize
 cd ~/Projects/YourProject
@@ -164,8 +164,8 @@ via `agent-kernel migrate json --publish`.
 
 | Path | When |
 |---|---|
-| `npm install -g @mamdouh/agent-kernel` | Preferred — always the latest |
-| `npx -y @mamdouh/agent-kernel <cmd>` | One-off use, no install |
+| `npm install -g @mamdouh-aboammar/agent-kernel` | Preferred — always the latest |
+| `npx -y @mamdouh-aboammar/agent-kernel <cmd>` | One-off use, no install |
 | Bundled inside `delegate-team` | Already shipped with delegate-team v2.5.0+ |
 
 ## Documentation

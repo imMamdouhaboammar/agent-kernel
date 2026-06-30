@@ -103,7 +103,7 @@ git push origin v0.0.6
 
 # 4. Verify
 gh release view v0.0.6 --repo imMamdouhaboammar/agent-kernel
-npm view @mamdouh/agent-kernel@0.0.6
+npm view @mamdouh-aboammar/agent-kernel@0.0.6
 ```
 
 The tag push automatically:
