@@ -12,7 +12,14 @@
     "docs",
     "examples",
     "README.md",
-    "LICENSE"
+    "CHANGELOG.md",
+    "LICENSE",
+    "SECURITY.md",
+    "SKILL.md",
+    "skills.sh.json",
+    "AGENTS.md",
+    ".claude-plugin",
+    "bin/install-local.sh"
   ],
   "scripts": {
     "build": "node scripts/build.mjs",

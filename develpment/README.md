@@ -1,38 +1,22 @@
-# Agent Kernel Development Backlog
+# `develpment/` — LEGACY ALIAS
 
-This directory is intentionally named `develpment` because the project owner requested this exact path.
+**This folder is kept for backward compatibility only.**
+The canonical spelling is **`development/`** (one "p"), which is the
+folder new agents and contributors should use.
 
-The backlog tracks the path from the current experimental release to `v2.0`. It is designed around four product lines:
+## Why two folders?
 
-1. Memory Core
-2. Agent Adapters
-3. Enforcement
-4. Governance
+The original maintainer created this folder with a typo (`develpment/`)
+in `v0.0.4`. Older agents and tooling may have hard-coded this path.
+To avoid breaking them, both folders ship in the repo and contain
+identical content. The canonical folder is `development/`.
 
-## Files
+## See also
 
-- `BACKLOG.md`: full roadmap from `v0.1` to `v2.0`
-- `EPICS.md`: backlog grouped by product epic
-- `MILESTONES.md`: version by version release targets
-- `SPRINT-PLAN.md`: immediate execution plan for the next sprint
-- `RELEASE-GATES.md`: release quality gates and acceptance rules
-- `backlog.json`: machine-readable backlog for agents and automation
+- `../development/README.md` — canonical roadmap with the same files
+  plus the migration note.
 
-## Product North Star
+## Migration note
 
-Agent Kernel should become a local-first governance kernel for agentic coding.
-
-It should give all coding agents:
-
-- shared JSON memory
-- approved durable rules
-- project-aware context
-- MCP access
-- strict enforcement
-- audit trail
-- reusable skills
-- cross-agent consistency
-
-## v2.0 Goal
-
-Any coding agent working on the user's machine should operate under the same approved rules, not merely as prompt context, but as inspectable, enforceable, versioned policy.
+If you are writing a new agent, skill, or workflow that references
+this folder, use `../development/` instead.
