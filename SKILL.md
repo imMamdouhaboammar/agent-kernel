@@ -171,14 +171,34 @@ via `agent-kernel migrate json --publish`.
 ## Documentation
 
 - [README](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/README.md)
+- [AGENTS.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/AGENTS.md) — instructions for AI agents working on or with this repo
+- [CHANGELOG](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/CHANGELOG.md) — version history
+- [docs/ARCHITECTURE_NOW.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/ARCHITECTURE_NOW.md) — what the repo actually is today (read this first)
 - [docs/ARCHITECTURE.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/ARCHITECTURE.md)
 - [docs/MEMORY_PROTOCOL.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/MEMORY_PROTOCOL.md)
 - [docs/EPISODIC_MEMORY.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/EPISODIC_MEMORY.md)
 - [docs/MCP_SERVER.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/MCP_SERVER.md)
 - [docs/STRICT_MODE.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/STRICT_MODE.md)
 - [docs/JSON_FIRST_STORAGE.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/JSON_FIRST_STORAGE.md)
-- [develpment/BACKLOG.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/develpment/BACKLOG.md) — roadmap
-- [develpment/SPRINT-PLAN.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/develpment/SPRINT-PLAN.md) — current sprint
+- [docs/INTEGRATIONS.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/INTEGRATIONS.md)
+- [development/BACKLOG.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/development/BACKLOG.md) — roadmap
+- [development/SPRINT-PLAN.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/development/SPRINT-PLAN.md) — current sprint
+
+## Discovery (Skills.sh + Claude marketplace)
+
+- **Skills.sh** — `npx skills add imMamdouhaboammar/agent-kernel -a claude-code -g -y`
+  (or any of 70+ supported agents — Claude Code, Codex, Cursor,
+  Antigravity, Gemini CLI, Windsurf, OpenCode, Cline, GitHub Copilot,
+  etc.). Repo page: https://skills.sh/imMamdouhaboammar/agent-kernel
+- **Claude Code marketplace** —
+  `.claude-plugin/marketplace.json` + `.claude-plugin/plugin.json`.
+  Install via:
+  ```
+  /plugin marketplace add imMamdouhaboammar/agent-kernel
+  /plugin install agent-kernel@agent-kernel
+  ```
+- **npm** — `npm install -g @mamdouh-aboammar/agent-kernel` (or
+  `npx -y @mamdouh-aboammar/agent-kernel <cmd>`).
 
 ## License
 

@@ -1,5 +1,13 @@
 # Architecture (current state)
 
+> **v0.0.9 update** — added `AGENTS.md` at the repo root (repo-level
+> instructions for AI coding agents), expanded `scripts/lint.mjs`
+> from 8 to 15 checks (now includes a hardcoded-secret scan and
+> `package.json#files` whitelist validation), refactored
+> `test/smoke.mjs` into a per-module orchestrator, and aligned
+> `.claude-plugin/marketplace.json` + `plugin.json` with the
+> current Claude marketplace spec.
+
 This document describes what the repo **actually is** today, not what
 it aspires to be. It exists to prevent future contributors from
 mistaking placeholder folders for implemented modules.

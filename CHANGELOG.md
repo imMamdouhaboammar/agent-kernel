@@ -5,45 +5,108 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Added
-
-- `docs/audits/REPO-HARDENING-AUDIT.md` — baseline audit capturing package
-  name, version, files whitelist, source layout, CI workflows, and the
-  12 risks this hardening cycle addresses.
-- `scripts/check-version.mjs` — single-source-of-truth check that fails
-  if `package.json#version` differs from the `VERSION` constant in
-  `src/cli.mjs` or `dist/cli.mjs`. Run via `npm run check-version`.
-- `scripts/lint.mjs` — expanded from 8 to 14 repository consistency
-  checks. Now also covers README install name, npm/bundlephobia badge
-  scope, CHANGELOG latest header, `package.json#files` whitelist,
-  `develpment/` → `development/` compatibility pointer, and stale
-  `@mamdouh/agent-kernel` references in active docs.
-- `npm run lint` now also runs `check-version`.
-- `npm test` now also runs `check-version` (fails on future drift).
-
-### Changed
-
-- `package.json#files` whitelist expanded to include discovery and
-  governance metadata: `SKILL.md`, `skills.sh.json`, `.claude-plugin`,
-  `CHANGELOG.md`, `SECURITY.md`, `bin/install-local.sh`.
-- Created canonical `development/` folder with the roadmap documents;
-  kept `develpment/` as a legacy compatibility pointer.
-- `README.md` re-formatted for readability and re-written to soften
-  several overclaims (Skills.sh "60+", "every command is an MCP tool",
-  "fully backward compatible with v0.0.1", "rule auto-attaches").
-- README now includes a quick-verify section, security caveats, and
-  a complete project-layout tree.
-
-### Fixed
-
-- Several long paragraphs in `README.md` and `CHANGELOG.md` broken into
-  shorter lines for easier review.
-
 ### Planned
 
 - Modularize `src/cli.mjs` into `src/core/*` and `src/commands/*` (tracked
   in `development/BACKLOG.md`). The repo keeps a single-file CLI today
   because that fits the < 100 KB npm package budget.
+
+## [0.0.9] — 2026-07-01
+
+### Added
+
+- `AGENTS.md` at repo root — repo-level instructions for AI coding
+  agents. Covers the single-file CLI layout, hard rules (no real code
+  in `src/{adapters,commands,core,hooks}/`), version-bump discipline,
+  new-command runbook, release checklist, and Skills.sh + Claude
+  marketplace discovery pointers.
+- `docs/ARCHITECTURE_NOW.md` — explicit "what the repo actually is
+  today" doc to prevent future contributors from mistaking the
+  `src/{adapters,commands,core,hooks}/` placeholder folders for
+  implemented modules. Includes a runtime flow diagram, the migration
+  plan, and the deliberate single-file trade-off.
+- `docs/audits/REPO-HARDENING-AUDIT.md` — baseline audit capturing
+  package name, version, files whitelist, source layout, CI workflows,
+  and the 12 risks this hardening cycle addresses.
+- `scripts/check-version.mjs` — single-source-of-truth check that
+  fails if `package.json#version` differs from the `VERSION` constant
+  in `src/cli.mjs` or `dist/cli.mjs`. Wired into `npm run lint`,
+  `npm test`, and `npm run typecheck`.
+- `scripts/lint.mjs` — expanded from 8 to 15 repository consistency
+  checks. Now covers README install name, npm/bundlephobia badge
+  scope, CHANGELOG latest header, `package.json#files` whitelist,
+  `develpment/` → `development/` compatibility pointer, stale
+  `@mamdouh/agent-kernel` references, and the hardcoded-secret scan.
+- Hardened `test/smoke.mjs` — refactored into a per-module
+  orchestrator that runs each focused test in isolation and reports
+  a pass/fail summary. The test surface is now split into:
+  - `test/init.mjs`, `test/memory.mjs`, `test/episode.mjs`,
+    `test/guard.mjs`, `test/mcp.mjs`, `test/version.mjs`,
+    `test/package-files.mjs`, plus `test/_lib/helpers.mjs`.
+- New `CONTRIBUTING.md` content documenting manual release recovery
+  (the v0.0.6 → v0.0.7 npm CDN propagation retry pattern, and how to
+  re-publish if `npm-publish.yml` ever needs to be re-run).
+- Why Agent Kernel Exists section in README — frames the project
+  around the "every new session starts with the same problem" pain
+  point and the agent-proposes → you-approve → kernel-publishes
+  governance loop.
+
+### Changed
+
+- `.claude-plugin/marketplace.json` and `.claude-plugin/plugin.json`
+  bumped to version `0.0.8` and aligned with the current Claude
+  marketplace spec: `displayName: "Agent Kernel"`, expanded
+  per-plugin keywords, `homepage` / `repository` moved to the
+  per-plugin level (the current spec puts them there, not at
+  marketplace top level).
+- `SKILL.md` description expanded to surface the full skill surface
+  (shared memory, approval inbox, episodic recall, MCP tools,
+  hooks, deterministic guard) and to list the trigger phrases
+  agents use to invoke it.
+- `skills.sh.json` — groupings and `featured` field tuned so the
+  Skills.sh repo page surfaces agent-kernel in both the "Memory &
+  governance" and "Cross-agent rule distribution" groups.
+- `README.md` hero rewritten — capitalized `Agent Kernel` (was
+  lowercase `agent-kernel`), tagline swapped to "Shared memory,
+  rules, and safety for every AI coding agent on your machine.",
+  added an ASCII architecture diagram showing how agents → kernel
+  → project files, and a rule-flow diagram showing the
+  propose → approve → publish → attach loop.
+- `package.json#files` whitelist expanded to include discovery and
+  governance metadata: `SKILL.md`, `skills.sh.json`,
+  `.claude-plugin`, `CHANGELOG.md`, `SECURITY.md`,
+  `bin/install-local.sh`.
+- Created canonical `development/` folder with the roadmap
+  documents; kept `develpment/` as a legacy compatibility pointer.
+- `CONTRIBUTING.md` — added a Manual release recovery section
+  covering what to do if `npm-publish.yml` ever needs a re-run
+  (CDN propagation retry pattern from v0.0.6 → v0.0.7).
+- `.github/workflows/ci.yml` — aligned with the local quality
+  gates: now runs `npm run lint` (which includes `check-version`)
+  on every PR, not just the build job.
+
+### Fixed
+
+- Several long paragraphs in `README.md` and `CHANGELOG.md` broken
+  into shorter lines for easier review.
+- The placeholder READMEs under `src/{adapters,commands,core,hooks}/`
+  rewritten to clearly say "PLACEHOLDER (planned, not implemented)"
+  + "Adding files to this folder has no runtime effect" + a pointer
+  to `docs/ARCHITECTURE_NOW.md` and `development/BACKLOG.md`, so
+  contributors do not add real code there expecting it to be
+  picked up.
+
+### Verified (this release)
+
+- `npx skills add imMamdouhaboammar/agent-kernel --list` returns 1
+  skill ("Agent Kernel") with the full description rendered.
+- `npm run lint && npm test && npm run typecheck && npm run build`
+  all green locally before tag push.
+- All 4 JSON manifests (marketplace.json, plugin.json, skills.sh.json,
+  package.json) parse cleanly and pass the JSON schema lint.
+- README badge URLs (20 total) return real data via shields.io.
+- `package.json#version` and `src/cli.mjs` `VERSION` constant
+  agree (enforced by `scripts/check-version.mjs`).
 
 ## [0.0.8] — 2026-06-30
 

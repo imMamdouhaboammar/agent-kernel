@@ -2,7 +2,7 @@
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "agent-kernel",
   "displayName": "Agent Kernel",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "Local-first governance kernel for AI coding agents — shared memory, rule distribution, approval inbox, episodic memory archive, MCP tools, hooks, and a deterministic policy guard. Gives every coding agent persistent local memory across sessions.",
   "author": {
     "name": "Mamdouh Aboammar",

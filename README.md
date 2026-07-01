@@ -197,6 +197,47 @@ The flow of a rule, end to end:
 
 ---
 
+## ✨ What's new in v0.0.9
+
+The **discovery + governance hardening** release.
+
+- **New `AGENTS.md`** at the repo root — instructions for AI coding
+  agents working on or with this repo: source layout, hard rules,
+  release checklist, Skills.sh + Claude marketplace pointers.
+- **Wired Skills.sh + Claude marketplace** — `.claude-plugin/marketplace.json`
+  and `.claude-plugin/plugin.json` aligned with the current Claude
+  marketplace spec (v2.1.143+): `displayName`, per-plugin keywords,
+  `homepage` / `repository` at the plugin level. Verified discoverable
+  via `npx skills add imMamdouhaboammar/agent-kernel --list`.
+- **README hero rewritten** — capitalized `Agent Kernel` (was lowercase
+  `agent-kernel`), tagline "Shared memory, rules, and safety for every
+  AI coding agent on your machine.", added an ASCII architecture diagram
+  (agents → kernel → project files) and a rule-flow diagram
+  (propose → approve → publish → attach).
+- **`docs/ARCHITECTURE_NOW.md`** — explicit "what the repo actually is
+  today" doc to prevent future contributors from mistaking the
+  `src/{adapters,commands,core,hooks}/` placeholder folders for
+  implemented modules.
+- **`scripts/check-version.mjs`** — single-source-of-truth check that
+  fails if `package.json#version` differs from the `VERSION` constant
+  in `src/cli.mjs` or `dist/cli.mjs`. Wired into `npm run lint`,
+  `npm test`, and `npm run typecheck`.
+- **`scripts/lint.mjs`** expanded from 8 → 15 checks, now includes a
+  hardcoded-secret scan and `package.json#files` whitelist
+  validation.
+- **Test suite refactor** — `test/smoke.mjs` is now an orchestrator
+  that runs each focused test module (`init`, `memory`, `episode`,
+  `guard`, `mcp`, `version`, `package-files`) in isolation and reports
+  a pass/fail summary.
+- **`CONTRIBUTING.md`** — added a manual release recovery section
+  (the v0.0.6 → v0.0.7 npm CDN propagation retry pattern).
+
+No CLI behavior change. `npm install -g @mamdouh-aboammar/agent-kernel@latest`
+will pick up v0.0.9 on the next refresh. See the full notes in
+[`CHANGELOG.md`](./CHANGELOG.md).
+
+---
+
 ## ⚡ What is this?
 
 `agent-kernel` is the **memory + governance layer** for any agentic-coding workflow.
