@@ -182,8 +182,8 @@ The flow of a rule, end to end:
 
 ### 🌐 Ecosystem
 
-[![Skills.sh](https://img.shields.io/badge/Skills.sh-discovery-blueviolet?style=for-the-badge)](https://skills.sh/imMamdouhaboammar/agent-kernel)
-[![Claude Code plugin](https://img.shields.io/badge/Claude-Code%20plugin-D4A857?style=for-the-badge)](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/.claude-plugin/marketplace.json)
+[![skills.sh](https://img.shields.io/badge/skills.sh-agent--kernel-blueviolet?style=for-the-badge&logo=lightning&logoColor=white)](https://skills.sh/imMamdouhaboammar/agent-kernel)
+[![Claude Code plugin](https://img.shields.io/badge/Claude-Code%20plugin-D4A857?style=for-the-badge&logo=anthropic&logoColor=white)](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/.claude-plugin/marketplace.json)
 [![GitHub stars](https://img.shields.io/github/stars/imMamdouhaboammar/agent-kernel?style=for-the-badge&logo=github&color=gold)](https://github.com/imMamdouhaboammar/agent-kernel/stargazers)
 [![Issues](https://img.shields.io/github/issues/imMamdouhaboammar/agent-kernel?style=for-the-badge&logo=github)](https://github.com/imMamdouhaboammar/agent-kernel/issues)
 [![PRs](https://img.shields.io/github/issues-pr/imMamdouhaboammar/agent-kernel?style=for-the-badge&logo=github&color=lime)](https://github.com/imMamdouhaboammar/agent-kernel/pulls)

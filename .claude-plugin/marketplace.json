@@ -1,8 +1,8 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "agent-kernel",
-  "version": "0.0.5",
-  "description": "Local-first governance kernel for AI coding agents \u2014 shared memory, rule distribution, approval inbox, episodic memory archive, MCP tools, and strict enforcement hooks.",
+  "version": "0.0.8",
+  "description": "Local-first governance kernel for AI coding agents — shared memory, rule distribution, approval inbox, episodic memory archive, MCP tools, hooks, and a deterministic policy guard.",
   "owner": {
     "name": "Mamdouh Aboammar",
     "email": "mamdouhfces1997@gmail.com"
@@ -25,10 +25,31 @@
   "plugins": [
     {
       "name": "agent-kernel",
-      "version": "0.0.5",
-      "description": "Main plugin \u2014 local-first governance kernel. Memory + rule distribution + approval inbox + episodic recall + MCP tools.",
-      "category": "development",
+      "displayName": "Agent Kernel",
+      "version": "0.0.8",
+      "description": "Local-first governance kernel. Shared memory + cross-agent rule distribution + approval inbox + episodic recall + MCP tools + deterministic policy guard. Gives every coding agent persistent local memory across sessions.",
+      "author": {
+        "name": "Mamdouh Aboammar",
+        "email": "mamdouhfces1997@gmail.com"
+      },
       "homepage": "https://github.com/imMamdouhaboammar/agent-kernel",
+      "repository": "https://github.com/imMamdouhaboammar/agent-kernel",
+      "license": "MIT",
+      "keywords": [
+        "memory",
+        "governance",
+        "agent-rules",
+        "mcp",
+        "episodic-memory",
+        "approval-inbox",
+        "policy-guard",
+        "claude-code",
+        "codex",
+        "cursor",
+        "antigravity",
+        "gemini"
+      ],
+      "category": "development",
       "tags": [
         "memory",
         "governance",
