@@ -264,6 +264,54 @@ for (const f of findMarkdownFiles(root)) {
 }
 if (staleCount === 0) ok('no stale `@mamdouh/agent-kernel` references in active docs');
 
+// 15. No hardcoded secret patterns in repository files
+// (Outside the legitimate test fixtures, examples, and the guard's
+// own documented patterns.)
+const secretFilePatterns = [
+  /sk-[A-Za-z0-9]{20,}/g,
+  /AIza[0-9A-Za-z_-]{35}/g,
+  /ghp_[A-Za-z0-9]{20,}/g,
+  /xox[abposr]-[A-Za-z0-9-]{10,}/g
+];
+// Files where secrets are *legitimately* present (test fixtures, examples).
+const secretAllowList = new Set([
+  'test/guard.mjs',                 // contains an example token as test data
+  'examples/sample-episode.json'    // may include example content
+]);
+let secretLeaks = 0;
+for (const f of findMarkdownFiles(root)) {
+  // also scan .mjs, .json, .yml, .yaml source files
+}
+function findSourceFiles(dir) {
+  let results = [];
+  try {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
+        if (entry.name === 'docs' || entry.name === 'test' || entry.name === 'examples') continue;
+        results = results.concat(findSourceFiles(full));
+      } else if (/\.(mjs|js|json|yml|yaml)$/.test(entry.name)) {
+        results.push(full);
+      }
+    }
+  } catch {}
+  return results;
+}
+for (const f of findSourceFiles(root)) {
+  const rel = f.replace(root + '/', '');
+  if (secretAllowList.has(rel)) continue;
+  const text = readFileSync(f, 'utf8');
+  for (const pattern of secretFilePatterns) {
+    const matches = text.match(pattern);
+    if (matches) {
+      err(`possible hardcoded secret in ${rel}: ${matches[0].slice(0, 12)}...`);
+      secretLeaks++;
+    }
+  }
+}
+if (secretLeaks === 0) ok('no hardcoded secrets in source files');
+
 console.log();
 if (failed > 0) {
   console.log(`❌ ${failed} lint check(s) failed`);

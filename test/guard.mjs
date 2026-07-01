@@ -43,7 +43,7 @@ export async function run() {
 
   // 1. guard --file on a file containing a secret → BLOCKED.
   const secretFile = join(homeDir, 'leaky.js');
-  writeFileSync(secretFile, "const x = 'sk-1234567890abcdefghij';\n");
+  writeFileSync(secretFile, "const x = 'sk-EXAMPLE1234567890ABCDEF';\n");
   const { stdout: blockedOut, status: blockedStatus } = runCliTolerateFailure(env, 'guard', '--file', secretFile);
   if (blockedStatus === 0) {
     throw new Error('guard exited 0 on a file with a secret — it should exit non-zero');
