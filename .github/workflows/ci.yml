@@ -28,7 +28,9 @@ jobs:
         run: npm ci || npm install
       - name: Build
         run: npm run build
-      - name: Smoke test (init + validate + memory + episode + MCP)
+      - name: Lint (consistency + version)
+        run: npm run lint
+      - name: Smoke test (init + validate + memory + episode + MCP + package-files)
         run: npm test
 
   # ───────────────────────────────────────────────────────────────────────

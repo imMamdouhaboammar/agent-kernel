@@ -40,6 +40,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Lint (consistency + version)
+        run: npm run lint
+
       - name: Smoke test (no network side-effects beyond npm registry)
         run: npm test
 

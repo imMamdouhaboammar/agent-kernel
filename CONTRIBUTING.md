@@ -93,7 +93,7 @@ agent-kernel uses tag-driven auto-release:
 ```bash
 # 1. Bump version in package.json + CHANGELOG.md + commit
 # 2. Push commit to master
-git add package.json CHANGELOG.md src/cli.mjs dist/cli.mjs
+git add package.json CHANGELOG.md
 git commit -m "release: v0.0.6 — <tagline>"
 git push origin master
 
@@ -111,6 +111,43 @@ The tag push automatically:
 - Runs `npm-publish.yml` → publishes to npm with provenance
 - Runs `release.yml` → creates GitHub Release with CHANGELOG excerpt + tarball asset
 - Skills.sh reindexes the repo (1-5 min delay)
+
+### Manual recovery
+
+If the auto-publish or auto-release workflow fails:
+
+```bash
+# 1. Manual publish to npm (uses your local ~/.npmrc token)
+npm publish --access public
+
+# 2. Re-attach the tarball to the existing release
+# First build the tarball
+git archive --prefix=agent-kernel-vX.Y.Z/ \
+    --format=tar.gz \
+    -o /tmp/agent-kernel-vX.Y.Z.tar.gz vX.Y.Z
+
+# Then upload via the gh CLI
+gh release upload vX.Y.Z /tmp/agent-kernel-vX.Y.Z.tar.gz --clobber
+
+# 3. Verify
+npm view @mamdouh-aboammar/agent-kernel@X.Y.Z
+gh release view vX.Y.Z --repo imMamdouhaboammar/agent-kernel
+```
+
+### Pre-flight checklist (also runs in CI)
+
+Before tagging a release, locally run:
+
+```bash
+npm install
+npm run build
+npm run lint
+npm run typecheck
+npm test
+```
+
+All five must be green. CI runs the same set on every push to
+`master` (and on every `v*` tag for npm-publish.yml).
 
 ## License
 
