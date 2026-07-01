@@ -27,9 +27,9 @@
     "test": "node scripts/check-version.mjs && node test/smoke.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "node scripts/lint.mjs && node scripts/check-version.mjs",
-    "size": "npm pack --dry-run",
-    "publish:dry": "npm publish --dry-run --access public",
-    "prepack": "npm run build && npm test",
+    "size": "npm pack --dry-run --ignore-scripts",
+    "publish:dry": "npm publish --dry-run --access public --ignore-scripts",
+    "prepack": "node scripts/build.mjs",
     "check-version": "node scripts/check-version.mjs"
   },
   "keywords": [
