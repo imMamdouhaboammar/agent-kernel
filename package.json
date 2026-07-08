@@ -8,7 +8,9 @@
     "ak": "./dist/cli.mjs",
     "agent-kernel-safe-link": "./bin/agent-kernel-safe-link.mjs",
     "agent-kernel-safe-git-hook": "./bin/agent-kernel-safe-git-hook.mjs",
-    "agent-kernel-agent-propose": "./bin/agent-kernel-agent-propose.mjs"
+    "agent-kernel-agent-propose": "./bin/agent-kernel-agent-propose.mjs",
+    "agent-kernel-mode": "./bin/agent-kernel-mode.mjs",
+    "agent-kernel-agent-write": "./bin/agent-kernel-agent-write.mjs"
   },
   "files": [
     "dist",
