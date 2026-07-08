@@ -1,0 +1,8 @@
+{
+  "agentWriteMode": "bypass",
+  "memoryWritePolicy": {
+    "mode": "bypass",
+    "default": "approved",
+    "bypassRequiresExplicitMode": true
+  }
+}
