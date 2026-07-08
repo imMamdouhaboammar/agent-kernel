@@ -1,11 +1,12 @@
 {
   "name": "@mamdouh-aboammar/agent-kernel",
   "version": "0.0.9",
-  "description": "Local-first governance kernel for AI coding agents \u2014 shared memory, rule distribution, approval inbox, episodic memory archive, MCP tools, and strict enforcement hooks.",
+  "description": "Local-first governance kernel for AI coding agents — shared memory, rule distribution, approval inbox, episodic memory archive, MCP tools, and strict enforcement hooks.",
   "type": "module",
   "bin": {
     "agent-kernel": "./dist/cli.mjs",
-    "ak": "./dist/cli.mjs"
+    "ak": "./dist/cli.mjs",
+    "agent-kernel-safe-link": "./bin/agent-kernel-safe-link.mjs"
   },
   "files": [
     "dist",
@@ -19,7 +20,7 @@
     "skills.sh.json",
     "AGENTS.md",
     ".claude-plugin",
-    "bin/install-local.sh"
+    "bin"
   ],
   "scripts": {
     "build": "node scripts/build.mjs",
