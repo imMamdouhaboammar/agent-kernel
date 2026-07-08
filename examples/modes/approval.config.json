@@ -1,0 +1,8 @@
+{
+  "agentWriteMode": "approval",
+  "memoryWritePolicy": {
+    "mode": "approval",
+    "default": "pending",
+    "bypassRequiresExplicitMode": true
+  }
+}
