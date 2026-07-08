@@ -14,6 +14,7 @@ import { run as runMemory } from './memory.mjs';
 import { run as runEpisode } from './episode.mjs';
 import { run as runGuard } from './guard.mjs';
 import { run as runMcp } from './mcp.mjs';
+import { run as runSafeLink } from './safe-link.mjs';
 import { run as runPackageFiles } from './package-files.mjs';
 
 const tests = [
@@ -23,6 +24,7 @@ const tests = [
   ['episode', runEpisode],
   ['guard', runGuard],
   ['mcp', runMcp],
+  ['safe-link', runSafeLink],
   ['package-files', runPackageFiles]
 ];
 
