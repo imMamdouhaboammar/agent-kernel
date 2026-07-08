@@ -62,20 +62,34 @@ function gitRoot(projectPath) {
   }
 }
 
+function escapeRegex(text) {
+  return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function markedBlockRegex() {
+  return new RegExp(
+    `(?:\\r?\\n){0,2}${escapeRegex(MARKER_START)}[\\s\\S]*?${escapeRegex(MARKER_END)}(?:\\r?\\n){0,2}`,
+    'g'
+  );
+}
+
 function wrapGenerated(content) {
   const trimmed = String(content || '').trimEnd();
   return `${MARKER_START}\n${trimmed}\n${MARKER_END}\n`;
 }
 
+function stripMarkedBlocks(existing) {
+  return String(existing || '').replace(markedBlockRegex(), '\n').replace(/\n{3,}/g, '\n\n').trimEnd();
+}
+
+function hasMarkedBlock(existing) {
+  return markedBlockRegex().test(String(existing || ''));
+}
+
 function replaceMarkedBlock(existing, generatedBlock) {
-  const start = existing.indexOf(MARKER_START);
-  const end = existing.indexOf(MARKER_END);
-  if (start >= 0 && end > start) {
-    const afterEnd = end + MARKER_END.length;
-    return `${existing.slice(0, start)}${generatedBlock}${existing.slice(afterEnd).replace(/^\n/, '')}`;
-  }
-  const separator = existing.trim() ? '\n\n' : '';
-  return `${existing.trimEnd()}${separator}${generatedBlock}`;
+  const preserved = stripMarkedBlocks(existing);
+  const separator = preserved.trim() ? '\n\n' : '';
+  return `${preserved}${separator}${generatedBlock}`;
 }
 
 function backupExisting(targetPath, root) {
@@ -97,7 +111,7 @@ function planTarget(root, relativePath, sourcePath) {
   const generatedBlock = wrapGenerated(sourceText);
   const next = replaceMarkedBlock(existing, generatedBlock);
   const action = exists(targetPath)
-    ? (existing.includes(MARKER_START) ? 'replace-marked-block' : 'append-marked-block')
+    ? (hasMarkedBlock(existing) ? 'replace-marked-block' : 'append-marked-block')
     : 'create';
   return { relativePath, targetPath, sourcePath, action, existing, next };
 }
