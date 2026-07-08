@@ -16,6 +16,8 @@ import { run as runGuard } from './guard.mjs';
 import { run as runMcp } from './mcp.mjs';
 import { run as runSafeLink } from './safe-link.mjs';
 import { run as runSafeGitHook } from './safe-git-hook.mjs';
+import { run as runPublicCliSafeLink } from './public-cli-safe-link.mjs';
+import { run as runPublicCliSafeGitHook } from './public-cli-safe-git-hook.mjs';
 import { run as runAgentPropose } from './agent-propose.mjs';
 import { run as runModeConfig } from './mode-config.mjs';
 import { run as runAgentWriteModes } from './agent-write-modes.mjs';
@@ -30,6 +32,8 @@ const tests = [
   ['mcp', runMcp],
   ['safe-link', runSafeLink],
   ['safe-git-hook', runSafeGitHook],
+  ['public-cli-safe-link', runPublicCliSafeLink],
+  ['public-cli-safe-git-hook', runPublicCliSafeGitHook],
   ['agent-propose', runAgentPropose],
   ['mode-config', runModeConfig],
   ['agent-write-modes', runAgentWriteModes],
