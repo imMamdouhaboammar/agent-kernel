@@ -16,6 +16,7 @@ import { run as runGuard } from './guard.mjs';
 import { run as runMcp } from './mcp.mjs';
 import { run as runSafeLink } from './safe-link.mjs';
 import { run as runSafeGitHook } from './safe-git-hook.mjs';
+import { run as runAgentPropose } from './agent-propose.mjs';
 import { run as runPackageFiles } from './package-files.mjs';
 
 const tests = [
@@ -27,6 +28,7 @@ const tests = [
   ['mcp', runMcp],
   ['safe-link', runSafeLink],
   ['safe-git-hook', runSafeGitHook],
+  ['agent-propose', runAgentPropose],
   ['package-files', runPackageFiles]
 ];
 
