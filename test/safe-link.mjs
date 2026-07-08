@@ -5,6 +5,7 @@
 //   2. Existing project files are preserved outside the Agent Kernel marked block.
 //   3. Existing project files get backups before write.
 //   4. Re-running safe-link replaces the marked block instead of duplicating it.
+//   5. Existing duplicate Agent Kernel blocks are collapsed to one block.
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
@@ -59,6 +60,16 @@ export async function run() {
   const afterSecondRun = readFileSync(agentsPath, 'utf8');
   if (countMarkers(afterSecondRun) !== 1) {
     throw new Error('safe-link duplicated the marked block on a second run');
+  }
+
+  writeFileSync(agentsPath, `${afterSecondRun}\n<!-- agent-kernel:start -->\nstale duplicate block\n<!-- agent-kernel:end -->\n`);
+  runSafeLink(env, project);
+  const afterDuplicateRepair = readFileSync(agentsPath, 'utf8');
+  if (countMarkers(afterDuplicateRepair) !== 1) {
+    throw new Error('safe-link did not collapse pre-existing duplicate marked blocks');
+  }
+  if (afterDuplicateRepair.includes('stale duplicate block')) {
+    throw new Error('safe-link did not remove stale duplicate marked block content');
   }
 }
 
