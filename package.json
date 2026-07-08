@@ -6,7 +6,8 @@
   "bin": {
     "agent-kernel": "./dist/cli.mjs",
     "ak": "./dist/cli.mjs",
-    "agent-kernel-safe-link": "./bin/agent-kernel-safe-link.mjs"
+    "agent-kernel-safe-link": "./bin/agent-kernel-safe-link.mjs",
+    "agent-kernel-safe-git-hook": "./bin/agent-kernel-safe-git-hook.mjs"
   },
   "files": [
     "dist",
