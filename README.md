@@ -4,25 +4,48 @@
 [![npm downloads](https://img.shields.io/npm/dw/@mamdouh-aboammar/agent-kernel)](https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel)
 [![bundle size](https://img.shields.io/bundlephobia/min/@mamdouh-aboammar/agent-kernel)](https://bundlephobia.com/package/@mamdouh-aboammar/agent-kernel)
 
-Local-first memory, rules, Failure Lessons, hooks, MCP tools, and safety checks for AI coding agents.
+**Local-first governance, memory, and safety for AI coding agents.**
 
-Agent Kernel gives Claude Code, Codex, Cursor, Antigravity, Gemini CLI, OpenCode, and other coding agents one shared source of truth for project rules, preferences, workflows, notes, debugging lessons, and guard policies.
+Agent Kernel gives Claude Code, Codex, Cursor, OpenCode, Antigravity, Gemini CLI, and AGENTS.md-compatible tools one shared source of truth for project rules, user preferences, workflows, debugging lessons, guard policies, and generated agent instructions.
 
-It is designed for one recurring problem: every new agent session starts with missing context, repeated rules, and the same old mistakes. Agent Kernel keeps the durable knowledge local, reviewable, and reusable.
+It is built for a recurring failure mode in AI-assisted coding: every new agent session starts without enough context, repeats old mistakes, and needs the same standards explained again. Agent Kernel turns that context into local, reviewable, reusable system memory.
 
 ---
 
-## What it does
+## What you get
 
-| Problem | Agent Kernel answer |
+| Capability | What it gives you |
 |---|---|
-| You repeat the same standards in every prompt | Store durable rules in `~/.agent-kernel/source/memories/*.json` |
-| Agents forget previous debugging work | Save searchable episodes and Failure Lessons |
-| The same error gets solved again and again | Capture, dedupe, search, and promote known fixes |
-| Agents silently invent new rules | Use a proposal inbox before publishing memory |
-| Generated instruction files drift from reality | Keep JSON source canonical and regenerate outputs |
-| Hooks become invisible automation | Keep hooks narrow, auditable, and event-specific |
-| Different tools read different instructions | Compile one source into Claude, Codex, Cursor, Gemini, Antigravity, and AGENTS.md surfaces |
+| Shared memory | Durable rules, preferences, workflows, project notes, and skill triggers in JSON-first local storage |
+| Approval workflow | Agents can propose memory, but the user controls what gets approved and published |
+| Failure Lessons | Repeated build, test, edit, and command failures become searchable lessons and reviewable rules |
+| Episodic recall | Session notes, investigations, decisions, and debugging history stay searchable across projects |
+| Safe project linking | Generated guidance is injected into project files without overwriting hand-written instructions |
+| Agent integrations | One memory source compiles to Claude, Codex, Cursor, OpenCode, Antigravity, Gemini, and AGENTS.md surfaces |
+| Hooks and guards | Narrow lifecycle hooks, git hooks, deterministic command guards, and secret-pattern checks |
+| MCP tools | Local MCP access for status, memory search, proposal creation, guard checks, and episodes |
+
+---
+
+## When to use it
+
+Use Agent Kernel when you want agents to stop operating like stateless assistants and start following persistent project rules.
+
+Good fits:
+
+- You repeat the same coding standards in every prompt.
+- Multiple agents work on the same repo and drift in behavior.
+- A bug or build failure has already been solved before.
+- You want agents to propose rules without silently changing long-term memory.
+- You need Claude, Codex, Cursor, Gemini, and AGENTS-compatible agents to read the same instructions.
+- You want local-first memory without handing project governance to a hosted service.
+
+Not the right tool for:
+
+- Replacing your test suite.
+- Letting hooks approve or publish memory automatically.
+- Storing secrets or private credentials in repo-local config.
+- Treating generated markdown as the source of truth.
 
 ---
 
@@ -34,19 +57,19 @@ agent-kernel --version
 agent-kernel doctor
 ```
 
-You can also run it through npm without a global install:
+Run without global install:
 
 ```bash
 npx -y @mamdouh-aboammar/agent-kernel --version
 ```
 
-Agent Kernel requires Node.js `>=18.18.0`.
+Requires Node.js `>=18.18.0`.
 
 ---
 
 ## Fastest correct setup
 
-For a new or existing project, use the safe path first. It preserves existing project instructions and writes Agent Kernel content only inside marked blocks.
+For a new or existing project, use the safe adoption path first. It preserves existing project instructions and writes Agent Kernel content only inside marked blocks.
 
 ```bash
 cd ~/Projects/YourProject
@@ -63,7 +86,7 @@ agent-kernel doctor
 Typical project-local outputs:
 
 ```text
-AGENTS.md                              # Claude Code / Codex / Cursor / OpenCode fallback guidance
+AGENTS.md                              # Claude Code, Codex, Cursor, OpenCode fallback guidance
 CLAUDE.md                              # Claude Code guidance
 .cursor/rules/00-agent-kernel.mdc      # Cursor rule
 .agents/agents.md                      # Antigravity-style guidance
@@ -72,32 +95,36 @@ GEMINI.md                              # Gemini CLI guidance
 .git/hooks/pre-commit                  # Runs Agent Kernel guard checks when installed
 ```
 
-Use the direct command when you intentionally want the main CLI linker:
+For existing repositories with hand-written `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, Cursor rules, or `.agents` guidance, prefer safe-link first.
+
+Direct linker path:
 
 ```bash
 agent-kernel link . --hooks
 ```
 
-For existing repositories with hand-written `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, Cursor rules, or `.agents` guidance, prefer `agent-kernel-safe-link` first.
+Use the direct path only when you intentionally want the main CLI linker behavior in a clean or controlled project.
 
 ---
 
-## The operating loop
+## Operating model
 
 ```text
-agent notices durable rule or repeated failure
-  -> agent proposes or captures evidence
+agent sees durable rule or repeated failure
+  -> agent proposes memory or captures evidence
   -> user reviews inbox or lesson
   -> user approves useful memory
   -> Agent Kernel publishes compiled guidance
-  -> agents receive the updated rules next run
+  -> agents receive updated rules next run
 ```
 
-This keeps agents useful without giving them permission to rewrite your long-term standards without review.
+This keeps agents useful without giving them permission to silently rewrite your long-term standards.
 
 ---
 
-## Save a durable rule
+## Common workflows
+
+### Save a durable rule
 
 ```bash
 agent-kernel remember "Never add local SQLite fallback to production Supabase apps." \
@@ -107,7 +134,7 @@ agent-kernel remember "Never add local SQLite fallback to production Supabase ap
   --publish
 ```
 
-Use `--publish` when you are writing memory directly as the user. When an agent wants to add memory, it should create a proposal instead:
+Use `--publish` when you are acting as the user. When an agent wants to add memory, it should create a proposal instead:
 
 ```bash
 agent-kernel propose \
@@ -119,9 +146,7 @@ agent-kernel inbox
 agent-kernel approve <proposal-id> --publish
 ```
 
----
-
-## Capture a Failure Lesson
+### Capture a Failure Lesson
 
 ```bash
 agent-kernel failure capture \
@@ -152,9 +177,7 @@ Repeated captures of the same `project + command + errorSignature` update the ex
 
 For Claude Code automatic capture, see [`docs/hooks/FAILURE_LESSONS_HOOK.md`](./docs/hooks/FAILURE_LESSONS_HOOK.md). The recommended event is `PostToolUseFailure` with exec-form command hooks.
 
----
-
-## Capture an episode
+### Capture an episode
 
 ```bash
 agent-kernel episode add \
@@ -174,7 +197,9 @@ Episodes are useful for project history, investigation notes, decisions, and deb
 
 ---
 
-## Core commands
+## Command surface
+
+### Core CLI
 
 ```text
 agent-kernel init [--sync] [--enforce]
@@ -201,7 +226,7 @@ agent-kernel start <claude|codex|cursor|antigravity|gemini> [project]
 agent-kernel status
 ```
 
-Helper binaries exposed by the package:
+### Helper binaries
 
 ```text
 agent-kernel-safe-link
@@ -262,7 +287,7 @@ Generated files in `dist/` are disposable. Source JSON, proposals, episodes, pol
 
 ---
 
-## Integrations
+## Agent integrations
 
 | Agent or surface | Output or integration |
 |---|---|
@@ -274,7 +299,7 @@ Generated files in `dist/` are disposable. Source JSON, proposals, episodes, pol
 | Gemini CLI | `GEMINI.md` |
 | Skills.sh | `SKILL.md`, `skills.sh.json` |
 
-The repo also includes an ECC bundle for Claude Code and Codex:
+Repo-local ECC scaffolds:
 
 ```text
 .claude/ecc-tools.json
@@ -293,27 +318,6 @@ Keep credentials and private MCP details in user-level config, not in repo-local
 
 ---
 
-## Documentation map
-
-Start with [`docs/README.md`](./docs/README.md).
-
-| Need | Read |
-|---|---|
-| Install and connect agents | [`docs/INSTALL_AND_AGENT_SETUP.md`](./docs/INSTALL_AND_AGENT_SETUP.md) |
-| Understand the operating model | [`docs/OPERATING_MODEL.md`](./docs/OPERATING_MODEL.md) |
-| Current architecture | [`docs/ARCHITECTURE_NOW.md`](./docs/ARCHITECTURE_NOW.md) |
-| Memory and approval protocol | [`docs/MEMORY_PROTOCOL.md`](./docs/MEMORY_PROTOCOL.md) |
-| Failure Lessons | [`docs/FAILURE_LESSONS_PROTOCOL.md`](./docs/FAILURE_LESSONS_PROTOCOL.md) |
-| Safe project linking | [`docs/SAFE_LINKING.md`](./docs/SAFE_LINKING.md) |
-| Claude failure hook | [`docs/hooks/FAILURE_LESSONS_HOOK.md`](./docs/hooks/FAILURE_LESSONS_HOOK.md) |
-| Claude hook best practices | [`docs/hooks/CLAUDE_HOOKS_BEST_PRACTICES.md`](./docs/hooks/CLAUDE_HOOKS_BEST_PRACTICES.md) |
-| MCP server | [`docs/MCP_SERVER.md`](./docs/MCP_SERVER.md) |
-| Agent integrations | [`docs/INTEGRATIONS.md`](./docs/INTEGRATIONS.md) |
-| Guard/strict mode | [`docs/STRICT_MODE.md`](./docs/STRICT_MODE.md) |
-| JSON-first storage | [`docs/JSON_FIRST_STORAGE.md`](./docs/JSON_FIRST_STORAGE.md) |
-
----
-
 ## Safety model
 
 - Agents may propose memories. Only Agent Kernel publishes approved memories.
@@ -323,6 +327,29 @@ Start with [`docs/README.md`](./docs/README.md).
 - Repo-local configs are reviewable execution surfaces. Keep them minimal and credential-free.
 
 Built-in guards include dangerous `rm -rf`, `curl | sh`, recursive `chmod 777`, force-push to main, `.git` deletion, and common secret patterns.
+
+---
+
+## Documentation map
+
+Start with [`docs/README.md`](./docs/README.md).
+
+| Need | Read |
+|---|---|
+| Install and connect agents | [`docs/INSTALL_AND_AGENT_SETUP.md`](./docs/INSTALL_AND_AGENT_SETUP.md) |
+| Understand the operating model | [`docs/OPERATING_MODEL.md`](./docs/OPERATING_MODEL.md) |
+| Current architecture | [`docs/ARCHITECTURE_NOW.md`](./docs/ARCHITECTURE_NOW.md) |
+| Troubleshoot setup or runtime issues | [`docs/TROUBLESHOOTING.md`](./docs/TROUBLESHOOTING.md) |
+| AI agent contributor runbook | [`docs/AGENT_RUNBOOK.md`](./docs/AGENT_RUNBOOK.md) |
+| Memory and approval protocol | [`docs/MEMORY_PROTOCOL.md`](./docs/MEMORY_PROTOCOL.md) |
+| Failure Lessons | [`docs/FAILURE_LESSONS_PROTOCOL.md`](./docs/FAILURE_LESSONS_PROTOCOL.md) |
+| Safe project linking | [`docs/SAFE_LINKING.md`](./docs/SAFE_LINKING.md) |
+| Claude failure hook | [`docs/hooks/FAILURE_LESSONS_HOOK.md`](./docs/hooks/FAILURE_LESSONS_HOOK.md) |
+| Claude hook best practices | [`docs/hooks/CLAUDE_HOOKS_BEST_PRACTICES.md`](./docs/hooks/CLAUDE_HOOKS_BEST_PRACTICES.md) |
+| MCP server | [`docs/MCP_SERVER.md`](./docs/MCP_SERVER.md) |
+| Agent integrations | [`docs/INTEGRATIONS.md`](./docs/INTEGRATIONS.md) |
+| Guard/strict mode | [`docs/STRICT_MODE.md`](./docs/STRICT_MODE.md) |
+| JSON-first storage | [`docs/JSON_FIRST_STORAGE.md`](./docs/JSON_FIRST_STORAGE.md) |
 
 ---
 
@@ -364,7 +391,7 @@ agent-kernel/
 ├── tsconfig.json            # TypeScript config
 ├── CHANGELOG.md             # Version history
 ├── LICENSE                  # MIT
-└── README.md                # This file
+└── README.md
 ```
 
 ### Adding a command or integration
@@ -385,9 +412,7 @@ See [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 3. Keep code, tests, docs, and discovery metadata aligned.
 4. Open a PR with a clear description of what changed and why.
 
-## License
-
-MIT © Mamdouh Aboammar
+---
 
 ## Links
 
@@ -397,6 +422,10 @@ MIT © Mamdouh Aboammar
 - Releases: https://github.com/imMamdouhaboammar/agent-kernel/releases
 - Skills.sh: https://skills.sh/imMamdouhaboammar/agent-kernel
 - delegate-team integration: https://github.com/imMamdouhaboammar/delegate-team/blob/master/integrations/agent-kernel.md
+
+## License
+
+MIT © Mamdouh Aboammar
 
 ---
 
