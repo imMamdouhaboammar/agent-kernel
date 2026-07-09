@@ -5,6 +5,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `docs/README.md` — canonical documentation map with reading order, ownership rules, and docs-update checklist.
+- Deep documentation refresh for current runtime behavior after Failure Lessons, hook hardening, and ECC bundle merges.
+
+### Changed
+
+- `README.md` now explains current command surfaces, Failure Lessons, hook best practices, MCP, integrations, ECC bundle files, and the documentation map.
+- `docs/ARCHITECTURE_NOW.md` now reflects the actual post-merge architecture: single-file core CLI, helper binaries, Failure Lessons, modular tests, Claude hooks, MCP, and repo-local ECC artifacts.
+- `docs/MEMORY_PROTOCOL.md` now clearly separates approved memory, pending proposals, Failure Lessons evidence, generated files, and direct-edit policy.
+- `docs/MCP_SERVER.md` now documents the current MCP trust model, approval boundary, tool categories, episode tools, and troubleshooting path.
+- `docs/INTEGRATIONS.md` now covers Claude Code, Codex, Cursor, OpenCode, Antigravity, Gemini CLI, Skills.sh, marketplace metadata, and ECC scaffolds.
+- `AGENTS.md` now gives agents updated contributor instructions for the current repo layout, Failure Lessons protocol, hook protocol, MCP protocol, release discipline, and docs alignment.
+
 ### Planned
 
 - Modularize `src/cli.mjs` into `src/core/*` and `src/commands/*` (tracked

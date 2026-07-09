@@ -4,25 +4,24 @@
 [![npm downloads](https://img.shields.io/npm/dw/@mamdouh-aboammar/agent-kernel)](https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel)
 [![bundle size](https://img.shields.io/bundlephobia/min/@mamdouh-aboammar/agent-kernel)](https://bundlephobia.com/package/@mamdouh-aboammar/agent-kernel)
 
-Shared memory, rules, and safety for every AI coding agent on your machine.
+Shared memory, rules, failure lessons, hooks, MCP, and safety for AI coding agents.
 
-Agent Kernel is a local-first governance layer for Claude Code, Codex, Cursor, Antigravity, Gemini CLI, OpenCode, and other coding agents. It gives them one shared source of truth for rules, preferences, workflows, project notes, episodes, policy guards, and reusable failure lessons.
+Agent Kernel is a local-first governance layer for Claude Code, Codex, Cursor, Antigravity, Gemini CLI, OpenCode, and other coding agents. It gives them one shared source of truth for rules, preferences, workflows, project notes, episodes, policy guards, and reusable Failure Lessons.
 
 ---
 
 ## What is this?
 
-`agent-kernel` is the memory + governance layer for any agentic-coding workflow.
-Instead of repeating "use TypeScript strict mode" or "always run pnpm typecheck" in every prompt, save the rule once and every agent in every project can use it.
+`agent-kernel` is the memory + governance layer for agentic coding workflows.
 
-| Without agent-kernel | With agent-kernel |
+| Without Agent Kernel | With Agent Kernel |
 |---|---|
 | Standards repeated in every prompt | Standards live in `~/.agent-kernel/source/memories/*.json` and auto-attach |
-| Lost context after session end | Episodes saved locally; searchable later via `agent-kernel episode search` |
-| Same build/test error solved repeatedly | Failure Lessons capture the error, dedupe it, and let you promote it to a rule/workflow/skill |
-| Agent writes whatever rule it wants | Proposal inbox; you approve before publish |
-| Manual `git commit` may leak secrets | Pre-commit hook + `agent-kernel guard --staged` blocks |
-| Different agents see different rules | One JSON-first source compiles to all platforms |
+| Lost context after session end | Episodes are stored locally and searchable later |
+| Same build/test error solved repeatedly | Failure Lessons capture, dedupe, and preserve the known fix path |
+| Agents silently invent new rules | Proposal inbox; the user approves before publish |
+| Generated files become source of truth | JSON source is canonical; generated files are disposable outputs |
+| Hooks become hidden agents | Hooks stay narrow, auditable lifecycle adapters |
 
 Try it:
 
@@ -43,7 +42,7 @@ npm install -g @mamdouh-aboammar/agent-kernel
 npx -y @mamdouh-aboammar/agent-kernel --version
 ```
 
-### 2. Initialize in your project
+### 2. Initialize in a project
 
 ```bash
 cd ~/Projects/YourProject
@@ -51,27 +50,28 @@ agent-kernel init --sync --enforce
 agent-kernel link . --hooks
 ```
 
-This drops these files into your project:
+Typical project-local outputs:
 
 ```text
-AGENTS.md                              # Read by Claude Code / Codex / Cursor / OpenCode
-CLAUDE.md                              # Read by Claude Code
-.cursor/rules/00-agent-kernel.mdc     # Read by Cursor
-.agents/agents.md                      # Read by Antigravity
-GEMINI.md                              # Read by Gemini CLI
-.git/hooks/pre-commit                  # Runs `agent-kernel guard --staged` on every commit
+AGENTS.md                              # Claude Code / Codex / Cursor / OpenCode fallback guidance
+CLAUDE.md                              # Claude Code guidance
+.cursor/rules/00-agent-kernel.mdc      # Cursor rule
+.agents/agents.md                      # Antigravity-style guidance
+GEMINI.md                              # Gemini CLI guidance
+.git/hooks/pre-commit                  # Runs `agent-kernel guard --staged`
 ```
 
-### 3. Save your first rule
+### 3. Save a durable rule
 
 ```bash
 agent-kernel remember "Never add local SQLite fallback to production Supabase apps." \
-    --type policy --level critical --tags supabase,database --publish
+  --type policy \
+  --level critical \
+  --tags supabase,database \
+  --publish
 ```
 
-The next time any agent in any project touches that code, the rule auto-attaches to its context.
-
-### 4. Capture a failure lesson
+### 4. Capture a Failure Lesson
 
 ```bash
 agent-kernel failure capture \
@@ -84,16 +84,21 @@ agent-kernel failure capture \
   --fix "Add the explicit .js extension to the relative import."
 ```
 
-Later:
+Before retrying a similar failure:
 
 ```bash
 agent-kernel failure search "ERR_MODULE_NOT_FOUND"
+```
+
+Promote a useful lesson into reviewable memory:
+
+```bash
 agent-kernel failure propose <failure-lesson-id> --as rule
 agent-kernel inbox
 agent-kernel approve <proposal-id> --publish
 ```
 
-Repeated captures of the same project + command + error signature update the existing lesson and increment `occurrences` instead of creating noisy duplicates.
+Repeated captures of the same `project + command + errorSignature` update the existing lesson and increment `occurrences` instead of creating noisy duplicates.
 
 For Claude Code automatic capture, see [`docs/hooks/FAILURE_LESSONS_HOOK.md`](./docs/hooks/FAILURE_LESSONS_HOOK.md). The recommended event is `PostToolUseFailure` with exec-form command hooks.
 
@@ -101,9 +106,9 @@ For Claude Code automatic capture, see [`docs/hooks/FAILURE_LESSONS_HOOK.md`](./
 
 ```bash
 agent-kernel episode add \
-    --title "Stripe webhook bug fix" \
-    --tags stripe,webhook,bug \
-    --text "Root cause: missing signature verification on /api/stripe webhook. Fix: verify signature via stripe.webhooks.constructEvent()."
+  --title "Stripe webhook bug fix" \
+  --tags stripe,webhook,bug \
+  --text "Root cause: missing signature verification on /api/stripe webhook. Fix: verify signature via stripe.webhooks.constructEvent()."
 ```
 
 Later:
@@ -111,13 +116,6 @@ Later:
 ```bash
 agent-kernel episode search "stripe webhook"
 agent-kernel episode show <episode-id>
-```
-
-### 6. Health check
-
-```bash
-agent-kernel doctor
-agent-kernel status
 ```
 
 ---
@@ -144,39 +142,39 @@ agent-kernel failure capture|learn|list|search|show|propose|promote|validate
 agent-kernel enforce install
 agent-kernel guard [--staged|--file path]
 agent-kernel git-hook install [project]
+agent-kernel mcp serve|config|install
 agent-kernel start <claude|codex|cursor|antigravity|gemini> [project]
 agent-kernel status
 ```
-
-Full reference: see [`docs/`](./docs).
 
 ---
 
 ## Memory layout
 
 ```text
-~/.agent-kernel/                              # Memory home (configurable via AGENT_KERNEL_HOME)
-  config.json                                 # User's settings (level, targets, etc.)
+~/.agent-kernel/
+  config.json
   source/
     memories/
-      rules.json                              # Always-follow rules
-      preferences.json                        # Style preferences
-      workflows.json                          # How-to steps
-      project-notes.json                      # Per-project facts
-      skills.json                             # Available skills
+      rules.json
+      preferences.json
+      workflows.json
+      project-notes.json
+      skills.json
     failures/
-      failure-lessons.json                    # Captured coding failures and fix recipes
-    schemas/                                  # JSON Schema for validation
-    policies/policies.json                    # Policy pack arrays
+      failure-lessons.json
+    policies/
+      policies.json
+    schemas/
   episodes/
-    archive/                                  # Past session snapshots
-    index.json                                # Searchable index
-    sources.json                              # Where episodes were captured from
+    archive/
+    index.json
+    sources.json
   inbox/
-    pending/                                  # Agent proposals waiting for approval
-    approved/                                 # Approved audit copies
-    rejected/                                 # Rejected audit copies
-  dist/                                       # Compiled instruction files
+    pending/
+    approved/
+    rejected/
+  dist/
     AGENTS.md
     CLAUDE.md
     cursor-rule.mdc
@@ -184,7 +182,7 @@ Full reference: see [`docs/`](./docs).
     GEMINI.md
     SKILLS.md
     policy.json
-  logs/                                       # Append-only JSONL event logs
+  logs/
     compile.jsonl
     sync.jsonl
     proposals.jsonl
@@ -193,49 +191,68 @@ Full reference: see [`docs/`](./docs).
     failures.jsonl
 ```
 
----
-
-## Compatibility
-
-| Agent | Memory source | Hook install | Compile target |
-|---|---|---|---|
-| Claude Code | yes | yes `~/.claude/hooks/` | `PreToolUse` + `PostToolUseFailure` |
-| Codex | yes | n/a | `AGENTS.md` |
-| Cursor | yes | n/a | `.mdc` rule |
-| OpenCode | yes | n/a | `AGENTS.md` |
-| Antigravity | yes | n/a | `.agents/` |
-| Gemini CLI | yes | n/a | `GEMINI.md` |
-| 60+ others | yes via Skills.sh index | depends on agent | via `AGENTS.md` |
-
-Memory layout is backward compatible with v0.0.1. `agent-kernel migrate json --publish` upgrades in place.
-
----
-
-## Safety model
-
-- Agents may propose memories. Only `agent-kernel` publishes memories.
-- Failure Lessons capture locally first. Promotion creates a pending proposal, not approved memory.
-- Generated markdown files are not treated as the only defense.
-- Critical rules should also be backed by hooks, scanners, git hooks, or CI checks.
-
-Built-in guards:
-
-```text
-dangerous-rm       rm -rf / or rm -rf ~        blocked
-curl-pipe-shell    curl ... | sh               blocked
-chmod-777          chmod -R 777                blocked
-force-push-main    git push --force main       blocked
-delete-git         rm -rf .git                 blocked
-secret-leak        OPENAI/ANTHROPIC/SUPABASE/Google API keys blocked
-```
+Generated files in `dist/` are disposable. Source JSON, proposals, episodes, and Failure Lessons are canonical.
 
 ---
 
 ## Integrations
 
-- delegate-team: bundled inside `delegate-team` v2.5.0+ at `agent-kernel/`.
-- MCP: every core command is exposed as an MCP tool. See [`docs/MCP_SERVER.md`](./docs/MCP_SERVER.md).
-- Skills.sh: discoverable via `npx skills add imMamdouhaboammar/agent-kernel -a claude-code -g -y`.
+| Agent/surface | Output or integration |
+|---|---|
+| Claude Code | `CLAUDE.md`, hooks, MCP config, marketplace plugin metadata |
+| Codex | `AGENTS.md`, `.codex/AGENTS.md`, `.codex/config.toml`, repo-local skills |
+| Cursor | `.cursor/rules/00-agent-kernel.mdc` |
+| OpenCode / AGENTS-compatible agents | `AGENTS.md` |
+| Antigravity | `.agents/agents.md`, `.agents/skills/*` |
+| Gemini CLI | `GEMINI.md` |
+| Skills.sh | `SKILL.md`, `skills.sh.json` |
+
+The repo also includes an ECC bundle for Claude Code and Codex:
+
+```text
+.claude/ecc-tools.json
+.claude/skills/agent-kernel/SKILL.md
+.claude/commands/*.md
+.claude/identity.json
+.claude/homunculus/instincts/inherited/agent-kernel-instincts.yaml
+.codex/AGENTS.md
+.codex/config.toml
+.codex/agents/*.toml
+.agents/skills/agent-kernel/SKILL.md
+.agents/skills/agent-kernel/agents/openai.yaml
+```
+
+Keep credentials and private MCP details in user-level config, not in repo-local ECC files.
+
+---
+
+## Documentation map
+
+Start with [`docs/README.md`](./docs/README.md).
+
+| Need | Read |
+|---|---|
+| Current architecture | [`docs/ARCHITECTURE_NOW.md`](./docs/ARCHITECTURE_NOW.md) |
+| Memory and approval protocol | [`docs/MEMORY_PROTOCOL.md`](./docs/MEMORY_PROTOCOL.md) |
+| Failure Lessons | [`docs/FAILURE_LESSONS_PROTOCOL.md`](./docs/FAILURE_LESSONS_PROTOCOL.md) |
+| Claude failure hook | [`docs/hooks/FAILURE_LESSONS_HOOK.md`](./docs/hooks/FAILURE_LESSONS_HOOK.md) |
+| Claude hook best practices | [`docs/hooks/CLAUDE_HOOKS_BEST_PRACTICES.md`](./docs/hooks/CLAUDE_HOOKS_BEST_PRACTICES.md) |
+| MCP server | [`docs/MCP_SERVER.md`](./docs/MCP_SERVER.md) |
+| Agent integrations | [`docs/INTEGRATIONS.md`](./docs/INTEGRATIONS.md) |
+| Guard/strict mode | [`docs/STRICT_MODE.md`](./docs/STRICT_MODE.md) |
+| JSON-first storage | [`docs/JSON_FIRST_STORAGE.md`](./docs/JSON_FIRST_STORAGE.md) |
+
+---
+
+## Safety model
+
+- Agents may propose memories. Only Agent Kernel publishes approved memories.
+- Failure Lessons capture evidence first. Promotion creates a pending proposal, not approved memory.
+- Hooks are lifecycle adapters, not hidden agents.
+- Critical rules should also be backed by permissions, guard checks, git hooks, or CI.
+- Repo-local configs are reviewable execution surfaces. Keep them minimal and credential-free.
+
+Built-in guards include dangerous `rm -rf`, `curl | sh`, recursive `chmod 777`, force-push to main, `.git` deletion, and common secret patterns.
 
 ---
 
@@ -248,8 +265,8 @@ cd agent-kernel
 npm install
 npm run build
 npm test
-npm run typecheck
 npm run lint
+npm run typecheck
 npm run size
 npm run publish:dry
 ```
@@ -258,17 +275,21 @@ npm run publish:dry
 
 ```text
 agent-kernel/
-├── src/cli.mjs              # Source CLI (single ESM file)
-├── dist/cli.mjs             # Built CLI (copied from src via scripts/build.mjs)
+├── src/cli.mjs              # Core CLI source — single ESM file
+├── dist/cli.mjs             # Built CLI copied from src by scripts/build.mjs
 ├── bin/                     # Public wrappers and helper binaries
 ├── scripts/                 # Build, lint, version checks
-├── test/                    # Focused smoke test modules
+├── test/                    # Smoke orchestrator + focused test modules
 ├── docs/                    # Architecture + protocol docs
 ├── examples/                # CI guard workflow + samples
 ├── development/             # Roadmap
+├── .claude/                 # Repo-local ECC artifacts and Claude workflow commands
+├── .codex/                  # Repo-local Codex baseline and role configs
+├── .agents/skills/          # Codex-facing generated repo skill
 ├── .github/workflows/       # CI + release automation
 ├── .claude-plugin/          # Claude Code marketplace manifest
 ├── SKILL.md                 # Skills.sh + Claude marketplace discovery
+├── skills.sh.json           # Skills.sh grouping metadata
 ├── package.json             # npm metadata
 ├── tsconfig.json            # TypeScript config
 ├── CHANGELOG.md             # Version history
@@ -276,24 +297,22 @@ agent-kernel/
 └── README.md                # This file
 ```
 
-### Adding a new command
+### Adding a command or integration
 
-The core CLI is a single `src/cli.mjs` file. Thin helpers in `bin/` may route focused standalone behavior when it is intentionally outside the current single-file runtime.
-
-1. Edit the relevant CLI/helper file.
-2. Update help output, README, and docs.
-3. Add or update a focused smoke test.
-4. Run `npm run build && npm test`.
+1. Edit the current runtime surface: `src/cli.mjs` for core commands or a focused `bin/` helper for intentionally standalone behavior.
+2. Update help output, README, `docs/ARCHITECTURE_NOW.md`, and the relevant protocol doc.
+3. Add or update a focused smoke test and wire it through `test/smoke.mjs`.
+4. Run `npm run build && npm test && npm run lint && npm run typecheck`.
 
 ---
 
 ## Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md). For now:
+See [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
-1. Fork and branch from `master`.
-2. Run `npm install && npm test` locally.
-3. Make focused commits.
+1. Branch from `master`.
+2. Make focused commits.
+3. Keep code, tests, docs, and discovery metadata aligned.
 4. Open a PR with a clear description of what changed and why.
 
 ## License
