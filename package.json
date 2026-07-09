@@ -9,6 +9,8 @@
     "agent-kernel-safe-link": "./bin/agent-kernel-safe-link.mjs",
     "agent-kernel-safe-git-hook": "./bin/agent-kernel-safe-git-hook.mjs",
     "agent-kernel-agent-propose": "./bin/agent-kernel-agent-propose.mjs",
+    "agent-kernel-failure": "./bin/agent-kernel-failure.mjs",
+    "agent-kernel-failure-hook": "./bin/agent-kernel-failure-hook.mjs",
     "agent-kernel-mode": "./bin/agent-kernel-mode.mjs",
     "agent-kernel-agent-write": "./bin/agent-kernel-agent-write.mjs"
   },
@@ -29,7 +31,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "dev": "node dist/cli.mjs",
-    "test": "node scripts/check-version.mjs && node test/smoke.mjs",
+    "test": "node scripts/check-version.mjs && node test/smoke.mjs && node test/failure-lessons.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "node scripts/lint.mjs && node scripts/lint-bins.mjs && node scripts/lint-modes.mjs && node scripts/check-version.mjs",
     "size": "npm pack --dry-run --ignore-scripts",
@@ -51,6 +53,8 @@
     "governance",
     "local-first",
     "episodic-memory",
+    "failure-lessons",
+    "error-to-skill",
     "agent-rules",
     "skills-sh",
     "minimax",

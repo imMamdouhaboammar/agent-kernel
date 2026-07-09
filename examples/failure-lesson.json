@@ -1,0 +1,34 @@
+{
+  "id": "failure_lesson_example_esm_import",
+  "status": "captured",
+  "scope": "global",
+  "project": "example-node-cli",
+  "agent": "claude",
+  "failureType": "test-failure",
+  "errorSignature": "ERR_MODULE_NOT_FOUND",
+  "symptoms": [
+    "npm test failed",
+    "Error [ERR_MODULE_NOT_FOUND]: Cannot find module ./core"
+  ],
+  "rootCause": "Node ESM requires explicit file extensions for relative local imports.",
+  "fixRecipe": [
+    "Inspect the failing import path.",
+    "Confirm the actual file extension in the repo.",
+    "Add the explicit .js extension to the relative import.",
+    "Run the same test command again."
+  ],
+  "preventionRule": "In Node ESM projects, local relative imports must include explicit file extensions.",
+  "evidence": {
+    "command": "npm test",
+    "exitCode": 1,
+    "cwd": "/repo/example-node-cli",
+    "filesTouched": ["src/cli.mjs"],
+    "outputExcerpt": "Error [ERR_MODULE_NOT_FOUND]: Cannot find module ./core"
+  },
+  "promoteTo": ["rule", "skill"],
+  "targets": ["all"],
+  "tags": ["node", "esm", "test-failure"],
+  "createdAt": "2026-07-09T00:00:00.000Z",
+  "updatedAt": "2026-07-09T00:00:00.000Z",
+  "version": 1
+}

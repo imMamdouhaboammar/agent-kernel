@@ -7,6 +7,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const cliPath = path.resolve(here, '..', 'dist', 'cli.mjs');
 const safeLinkPath = path.resolve(here, 'agent-kernel-safe-link.mjs');
 const safeGitHookPath = path.resolve(here, 'agent-kernel-safe-git-hook.mjs');
+const failurePath = path.resolve(here, 'agent-kernel-failure.mjs');
 
 function runNode(scriptPath, args) {
   const result = childProcess.spawnSync(process.execPath, [scriptPath, ...args], {
@@ -49,6 +50,10 @@ function main() {
     if (linkResult.status !== 0) process.exit(linkResult.status ?? 1);
     if (installHooks) runNode(safeGitHookPath, linkArgs.filter(arg => !arg.startsWith('--')));
     process.exit(0);
+  }
+
+  if (command === 'failure') {
+    runNode(failurePath, args.slice(1));
   }
 
   if (command === 'git-hook' && subcommand === 'install') {
