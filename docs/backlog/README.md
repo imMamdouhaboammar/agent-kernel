@@ -4,6 +4,16 @@ This backlog translates the strongest ideas from `rohitg00/agentmemory` into an 
 
 Agent Kernel should not become a hosted memory platform, a required daemon, a database service, or an autonomous approval system. The backlog below adds optional live context where it helps agents work better, while keeping durable memory under user control.
 
+## Current implementation status
+
+The first runtime slice has started:
+
+- `agent-kernel-daemon` helper binary exists
+- `agent-kernel daemon start|stop|status` is routed through the public wrapper
+- the daemon is optional and local-only by default
+- first endpoints exist for health, status, observation capture, context, and sessions
+- a public CLI smoke test covers the daemon route and local evidence capture
+
 ## Product principle
 
 Agent Kernel must remain:
