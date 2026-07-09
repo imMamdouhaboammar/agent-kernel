@@ -1,12 +1,15 @@
 {
   "hooks": {
-    "PostToolUse": [
+    "PostToolUseFailure": [
       {
         "matcher": "Bash|Write|Edit|MultiEdit",
         "hooks": [
           {
             "type": "command",
-            "command": "agent-kernel-failure-hook"
+            "command": "agent-kernel-failure-hook",
+            "args": [],
+            "timeout": 5,
+            "statusMessage": "Capturing Agent Kernel failure lesson"
           }
         ]
       }
