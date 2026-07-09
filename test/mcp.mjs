@@ -15,6 +15,13 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { assertContains, assertNotContains, makeEnv, repo, runCli } from './_lib/helpers.mjs';
 
+function parseMcpTextResponse(output) {
+  const rpc = JSON.parse(String(output).trim());
+  const text = rpc?.result?.content?.[0]?.text;
+  if (!text) throw new Error(`MCP response did not contain text content: ${output}`);
+  return JSON.parse(text);
+}
+
 export async function run() {
   const { env, kernelHome } = makeEnv();
   runCli(env, 'init', '--sync');
@@ -74,10 +81,9 @@ export async function run() {
       encoding: 'utf8'
     }
   );
-  assertContains(captureOut, '"ok": true', 'mcp episode capture did not succeed');
-  const episodeId = captureOut.match(/episode_[0-9a-f]+/)?.[0];
-  if (!episodeId) throw new Error('could not extract MCP episode id');
-  const persisted = readFileSync(join(kernelHome, 'episodes', 'archive', `${episodeId}.json`), 'utf8');
+  const capture = parseMcpTextResponse(captureOut);
+  if (!capture.ok || !capture.id) throw new Error(`mcp episode capture did not succeed: ${captureOut}`);
+  const persisted = readFileSync(join(kernelHome, 'episodes', 'archive', `${capture.id}.json`), 'utf8');
   if (persisted.includes(mcpSecret)) throw new Error('MCP episode capture persisted a raw GitHub token');
   assertContains(persisted, '[REDACTED_SECRET]', 'MCP episode archive did not include redaction marker');
 
