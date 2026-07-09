@@ -1,61 +1,146 @@
 ---
 name: agent-kernel
 description: |
-  Local-first governance kernel for AI coding agents. Gives Claude Code, Codex, Cursor,
-  Antigravity, Gemini CLI, OpenCode, and AGENTS.md-compatible agents shared memory,
-  approval inbox, generated guidance, Claude + git hooks, MCP tools, deterministic guard,
-  episodic memory, and Failure Lessons for turning repeated build/test/edit errors into
-  reviewable rules, workflows, policies, or skill triggers. Use when the user asks to remember
-  a rule, save a workflow, search past episodes, capture a coding failure, learn from an error,
-  propose a new rule, inspect the repo docs, or make agents follow standards automatically.
-  Triggers on: agent kernel, ak, remember this, save this rule, memory tool, episodic memory,
-  failure lesson, error-to-skill, approval inbox, guard policy, rule inbox, agent hooks.
+  Local-first governance, memory, and safety layer for AI coding agents. Use Agent Kernel
+  when the user wants Claude Code, Codex, Cursor, OpenCode, Antigravity, Gemini CLI, or
+  AGENTS.md-compatible agents to share persistent project rules, preferences, workflows,
+  Failure Lessons, episodic memory, approval inbox proposals, generated guidance files,
+  MCP tools, hooks, and deterministic guardrails. Best triggers include: remember this rule,
+  save this workflow, propose memory, search past episodes, capture this failure, learn from
+  this error, turn this bug into a reusable lesson, install agent guidance, safe-link this repo,
+  set up Claude or Codex instructions, audit agent rules, configure MCP, add a guard policy,
+  or make multiple coding agents follow the same standards without repeating context.
 ---
 
-# agent-kernel: local-first governance + memory layer
+# Agent Kernel
 
-One CLI for shared agent memory, approval workflow, episodic recall, Failure Lessons, MCP tools, hooks, deterministic guardrails, and repo-local agent scaffolds.
+Agent Kernel is a local-first governance kernel for AI coding agents.
 
-## What this skill is
+It gives agents one shared source of truth for durable rules, project preferences, workflows, notes, debugging lessons, generated instruction files, hooks, MCP tools, and safety checks.
 
-A Node.js CLI (`agent-kernel` / `ak`) that gives coding agents:
+Use this skill when the user wants to make AI coding agents more consistent, safer, and less stateless across projects and sessions.
 
-1. Shared local memory at `~/.agent-kernel/source/memories/*.json`
-2. Episodic memory archive at `~/.agent-kernel/episodes/`
-3. Failure Lessons at `~/.agent-kernel/source/failures/failure-lessons.json`
-4. Approval inbox so agents can propose memory but only the user/kernel approval path publishes it
-5. Generated instruction files for Claude Code, Codex, Cursor, OpenCode, Antigravity, and Gemini CLI
-6. Claude hooks using `PreToolUse` for guard behavior and `PostToolUseFailure` for failure capture
-7. MCP tools for status, memory, proposals, guard checks, and episodes
-8. Deterministic policy guard blocking dangerous commands and common secret leaks
-9. Repo-local ECC scaffolding for Claude Code and Codex under `.claude/`, `.codex/`, and `.agents/skills/`
+---
 
-## Why this exists
+## What this skill provides
 
-You should not have to repeat the same standards, fixes, and debugging lessons to every coding agent in every session.
+Agent Kernel provides:
 
-| Without agent-kernel | With agent-kernel |
-|---|---|
-| Standards repeated in every prompt | Standards live in `~/.agent-kernel/source/memories/*.json` and auto-attach |
-| Lost context after session end | Episodes are stored locally and searchable later |
-| Same coding failure solved repeatedly | Failure Lessons dedupe the error and preserve the known fix path |
-| Agents silently invent rules | Proposal inbox; user approves before publish |
-| Hooks become hidden agents | Hooks stay narrow, auditable lifecycle adapters |
-| Different agents see different rules | One JSON-first source compiles to all platforms |
+1. Shared JSON-first memory at `~/.agent-kernel/source/memories/*.json`.
+2. Approval inbox where agents can propose memory but the user decides what gets published.
+3. Failure Lessons for turning repeated build, test, edit, and command failures into searchable lessons.
+4. Episodic memory for session history, debugging context, decisions, and investigations.
+5. Generated guidance for Claude Code, Codex, Cursor, OpenCode, Antigravity, Gemini CLI, and AGENTS.md-compatible agents.
+6. Safe project linking that preserves existing project instructions outside Agent Kernel marked blocks.
+7. Claude hooks, git hooks, MCP tools, and deterministic command guards.
+8. Repo-local ECC scaffolding for Claude Code and Codex.
 
-## Quick start
+---
+
+## When to activate this skill
+
+Activate when the user says or implies:
+
+- remember this rule
+- save this as a workflow
+- make all agents follow this standard
+- stop the agent from repeating this mistake
+- capture this error as a lesson
+- search previous debugging history
+- set up shared memory for agents
+- connect Claude, Codex, Cursor, Gemini, OpenCode, or Antigravity
+- install AGENTS.md, CLAUDE.md, Cursor rules, or Gemini guidance
+- add hooks, guardrails, or MCP support
+- audit or repair Agent Kernel docs, memory, hooks, or generated guidance
+- propose a rule but do not approve it automatically
+
+Do not activate it for generic coding tasks unless the user needs persistent memory, governance, rules, hooks, MCP, Failure Lessons, or cross-agent guidance.
+
+---
+
+## Mental model
+
+```text
+user rule, workflow, or failure
+  -> agent captures evidence or proposes memory
+  -> user reviews inbox or lesson
+  -> Agent Kernel publishes approved source memory
+  -> generated guidance is compiled and linked into projects
+  -> future agents inherit the same rules and lessons
+```
+
+Important boundary: agents may propose and capture. Agents should not silently approve or publish durable memory.
+
+---
+
+## Fast setup
+
+Use the safe path first, especially in repositories that already have hand-written guidance files.
 
 ```bash
 npm install -g @mamdouh-aboammar/agent-kernel
-npx -y @mamdouh-aboammar/agent-kernel --version
+agent-kernel --version
+agent-kernel doctor
 
 cd ~/Projects/YourProject
 agent-kernel init --sync --enforce
+agent-kernel compile
+agent-kernel-safe-link . --dry-run
+agent-kernel-safe-link .
+agent-kernel-safe-git-hook . --dry-run
+agent-kernel-safe-git-hook .
+agent-kernel doctor
+```
+
+Typical generated project outputs:
+
+```text
+AGENTS.md
+CLAUDE.md
+.cursor/rules/00-agent-kernel.mdc
+.agents/agents.md
+.agents/skills/README.md
+GEMINI.md
+.git/hooks/pre-commit
+```
+
+Use direct linking only when the user intentionally wants main CLI linker behavior in a clean or controlled project:
+
+```bash
 agent-kernel link . --hooks
+```
 
+---
+
+## Core workflows
+
+### Save a user-approved durable rule
+
+```bash
 agent-kernel remember "Never add local SQLite fallback to production Supabase apps." \
-  --type policy --level critical --tags supabase,database --publish
+  --type policy \
+  --level critical \
+  --tags supabase,database \
+  --publish
+```
 
+### Propose memory as an agent
+
+```bash
+agent-kernel propose \
+  --from claude \
+  --text "Use pnpm in this repository." \
+  --reason "User corrected the package manager during setup."
+
+agent-kernel inbox
+agent-kernel approve <proposal-id> --publish
+```
+
+Agents should stop at proposal creation unless the user explicitly asks for approval and publishing.
+
+### Capture a Failure Lesson
+
+```bash
 agent-kernel failure capture \
   --from claude \
   --type test-failure \
@@ -64,16 +149,36 @@ agent-kernel failure capture \
   --text "ERR_MODULE_NOT_FOUND ..." \
   --root-cause "Node ESM import path missed its explicit extension." \
   --fix "Add the explicit .js extension to the relative import."
-
-agent-kernel failure search "ERR_MODULE_NOT_FOUND"
-agent-kernel failure propose <failure-lesson-id> --as rule
-
-agent-kernel episode search "SQLite fallback Supabase"
-agent-kernel doctor
-agent-kernel status
 ```
 
-## Core commands
+Search before retrying:
+
+```bash
+agent-kernel failure search "ERR_MODULE_NOT_FOUND"
+```
+
+Promote only reusable lessons:
+
+```bash
+agent-kernel failure propose <failure-lesson-id> --as rule
+agent-kernel inbox
+agent-kernel approve <proposal-id> --publish
+```
+
+### Capture an episode
+
+```bash
+agent-kernel episode add \
+  --title "Stripe webhook bug fix" \
+  --tags stripe,webhook,bug \
+  --text "Root cause: missing signature verification. Fix: verify signature with stripe.webhooks.constructEvent()."
+
+agent-kernel episode search "stripe webhook"
+```
+
+---
+
+## Command surface
 
 ```text
 agent-kernel init [--sync] [--enforce]
@@ -100,11 +205,26 @@ agent-kernel start <claude|codex|cursor|antigravity|gemini> [project]
 agent-kernel status
 ```
 
+Helper binaries:
+
+```text
+agent-kernel-safe-link
+agent-kernel-safe-git-hook
+agent-kernel-agent-propose
+agent-kernel-failure
+agent-kernel-failure-hook
+agent-kernel-mode
+agent-kernel-agent-write
+ak
+```
+
+---
+
 ## Failure Lessons behavior
 
 Failure capture deduplicates by `project + command + errorSignature` by default. Repeated captures increment `occurrences` and update `lastSeenAt` instead of creating duplicate records.
 
-Promotion is intentionally review-first:
+Promotion is review-first:
 
 ```bash
 agent-kernel failure propose <failure-lesson-id> --as rule
@@ -112,16 +232,50 @@ agent-kernel inbox
 agent-kernel approve <proposal-id> --publish
 ```
 
+Valid promotion targets include:
+
+```text
+rule
+policy
+workflow
+skill
+note
+```
+
 Agents may capture and propose. They must not silently approve or publish.
+
+---
 
 ## Hook behavior
 
-Claude failure capture should use `PostToolUseFailure`, narrow matchers, exec-form command hooks with `args`, short timeouts, and structured JSON output with `additionalContext`.
+Claude failure capture should use:
 
-See:
+- `PostToolUseFailure`
+- narrow matchers such as `Bash|Write|Edit|MultiEdit`
+- exec-form command hooks with `command` and `args`
+- short timeouts
+- structured JSON output with `hookSpecificOutput.additionalContext`
 
-- [docs/hooks/FAILURE_LESSONS_HOOK.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/hooks/FAILURE_LESSONS_HOOK.md)
-- [docs/hooks/CLAUDE_HOOKS_BEST_PRACTICES.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/hooks/CLAUDE_HOOKS_BEST_PRACTICES.md)
+Hooks are lifecycle adapters, not hidden agents. They should not approve memory, publish memory, run broad autonomous workflows, or leak credentials.
+
+---
+
+## MCP behavior
+
+MCP should help agents inspect and propose, not silently govern.
+
+Safe MCP uses:
+
+- inspect status
+- search memory
+- propose memory
+- list pending proposals
+- run guard checks
+- work with episodes where supported
+
+Approval through MCP is disabled by default unless the user explicitly asks for a trusted local workflow.
+
+---
 
 ## Memory layout
 
@@ -138,47 +292,78 @@ See:
   logs/
 ```
 
-## Compatibility
+Generated files in `dist/` are disposable outputs. Source JSON, proposals, episodes, policies, and Failure Lessons are canonical.
 
-| Agent | Memory source | Hook install | Compile target |
-|---|---|---|---|
-| Claude Code | yes | yes `~/.claude/hooks/` | `PreToolUse` + `PostToolUseFailure` |
-| Codex | yes | n/a | `AGENTS.md`, `.codex/AGENTS.md` |
-| Cursor | yes | n/a | `.cursor/rules/*.mdc` |
-| OpenCode | yes | n/a | `AGENTS.md` |
-| Antigravity | yes | n/a | `.agents/` |
-| Gemini CLI | yes | n/a | `GEMINI.md` |
-| 60+ others | yes via Skills.sh index | depends on agent | `AGENTS.md` |
+---
 
-## Safety model
+## Agent compatibility
 
-- Agents may propose memories. Only agent-kernel publishes approved memories.
-- Failure Lessons capture locally first. Promotion creates a pending proposal.
-- Generated markdown files are disposable outputs, not the source of truth.
-- Hooks are lifecycle adapters, not hidden agents.
-- Critical rules should also be backed by permissions, hooks, guard checks, or CI.
+| Agent | Memory source | Main output or integration |
+|---|---|---|
+| Claude Code | yes | `CLAUDE.md`, hooks, MCP config, marketplace metadata |
+| Codex | yes | `AGENTS.md`, `.codex/AGENTS.md`, `.codex/config.toml` |
+| Cursor | yes | `.cursor/rules/00-agent-kernel.mdc` |
+| OpenCode | yes | `AGENTS.md` |
+| Antigravity | yes | `.agents/agents.md`, `.agents/skills/*` |
+| Gemini CLI | yes | `GEMINI.md` |
+| AGENTS.md-compatible tools | yes | `AGENTS.md` |
+| Skills.sh surfaces | yes | `SKILL.md`, `skills.sh.json` |
+
+---
+
+## Safety rules for agents
+
+- Do not approve or publish memory unless the user explicitly asks.
+- Do not edit generated guidance as the durable source of truth.
+- Do not store secrets, `.env` values, MCP credentials, or local auth files in repo-local config.
+- Search Failure Lessons before repeating the same failing command.
+- Use safe-link before modifying existing project guidance files.
+- Treat hooks as narrow, auditable lifecycle adapters.
+- When behavior changes, update README, relevant docs, tests, and discovery metadata together.
+
+---
 
 ## Documentation
 
 Start with:
 
 - [docs/README.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/README.md)
+- [docs/OPERATING_MODEL.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/OPERATING_MODEL.md)
 - [docs/ARCHITECTURE_NOW.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/ARCHITECTURE_NOW.md)
+- [docs/TROUBLESHOOTING.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/TROUBLESHOOTING.md)
+- [docs/AGENT_RUNBOOK.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/AGENT_RUNBOOK.md)
 - [docs/MEMORY_PROTOCOL.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/MEMORY_PROTOCOL.md)
 - [docs/FAILURE_LESSONS_PROTOCOL.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/FAILURE_LESSONS_PROTOCOL.md)
 - [docs/MCP_SERVER.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/MCP_SERVER.md)
+- [docs/SAFE_LINKING.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/SAFE_LINKING.md)
 - [docs/INTEGRATIONS.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/INTEGRATIONS.md)
 
-## Discovery
+---
 
-- Skills.sh: `npx skills add imMamdouhaboammar/agent-kernel -a claude-code -g -y`
-- Claude Code marketplace: `.claude-plugin/marketplace.json` + `.claude-plugin/plugin.json`
-- npm: `npm install -g @mamdouh-aboammar/agent-kernel`
+## Discovery and install surfaces
 
-## License
+```bash
+npx skills add imMamdouhaboammar/agent-kernel -a claude-code -g -y
+npm install -g @mamdouh-aboammar/agent-kernel
+```
 
-MIT © Mamdouh Aboammar
+Discovery files:
+
+```text
+SKILL.md
+skills.sh.json
+.claude-plugin/marketplace.json
+.claude-plugin/plugin.json
+.claude/skills/agent-kernel/SKILL.md
+.agents/skills/agent-kernel/SKILL.md
+```
+
+---
 
 ## Repository
 
 https://github.com/imMamdouhaboammar/agent-kernel
+
+## License
+
+MIT © Mamdouh Aboammar
