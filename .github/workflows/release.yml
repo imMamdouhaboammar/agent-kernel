@@ -20,7 +20,7 @@ jobs:
   release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -50,6 +50,22 @@ jobs:
             exit 1
           fi
 
+      - name: Verify npm package is published
+        run: |
+          pkg=$(node -p "require('./package.json').name")
+          version="${{ steps.meta.outputs.version }}"
+          echo "waiting for npm package: $pkg@$version"
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            if npm view "$pkg@$version" version 2>/dev/null; then
+              echo "npm package is visible after attempt $attempt"
+              exit 0
+            fi
+            echo "attempt $attempt: package is not visible yet"
+            sleep 30
+          done
+          echo "npm package $pkg@$version is not visible; refusing to create GitHub Release"
+          exit 1
+
       - name: Determine previous tag
         id: baseline
         run: |
@@ -77,7 +93,7 @@ jobs:
             try {
               const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
               const escaped = version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-              const versionHeader = changelog.match(new RegExp(`^## \\[[v]?${escaped}\\].*$|^## [v]?${escaped}.*$`, 'm'));
+              const versionHeader = changelog.match(new RegExp(`^## \\[?[v]?${escaped}\\]?.*$|^## [v]?${escaped}.*$`, 'm'));
               if (versionHeader) {
                 const startIdx = changelog.indexOf(versionHeader[0]);
                 const rest = changelog.substring(startIdx + versionHeader[0].length);
