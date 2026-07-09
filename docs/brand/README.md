@@ -28,12 +28,24 @@ When adding or changing vendor marks:
 
 The README points to `agent-strip-icons.svg` rather than the original `agent-strip.svg` path so GitHub does not keep serving a previously cached render of the old strip.
 
+## Visual identity
+
+| Token | Value | Use |
+|---|---|---|
+| Primary background | `#050505` | outer SVG base |
+| Panel background | `#0B0B0B` | chips and content panels |
+| Quiet border | `#2A2A2A` | panel borders and grid |
+| Primary text | `#F4F4F1` | readable off-white text |
+| Secondary text | `#8E8E88` | descriptions and notes |
+| Signal accent | `#F8F46A` | kernel signal and connectors |
+
 ## Visual direction
 
 - dark technical base
-- compact rounded chips
+- compact panels with lower radius
 - JetBrains Mono / monospace typography
-- thin text weight
+- thin text weight for README visuals
 - original icon marks where available
+- no clipped strokes at SVG edges
 - minimal copy
 - readable inside GitHub dark and light modes
