@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>agent-kernel — local governance for AI coding agents</title>
+<meta name="description" content="One memory source, six agents, zero hosted service. agent-kernel compiles approved rules into Claude Code, Codex, Cursor, OpenCode, Antigravity, and Gemini." />
+<meta name="theme-color" content="#050505" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%23F8F46A'/%3E%3Cpath d='M7 7v10h2V7H7zm4 0v10h2V7h-2zm4 0v10h2V7h-2z' fill='%23050505'/%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!--
+  single source nav. brand mark left, sections center, install right.
+  no animation on the nav. ambient glow is in CSS only.
+-->
+<header class="nav" role="banner">
+  <div class="nav-inner">
+    <a class="brand" href="#" aria-label="agent-kernel home">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="18" height="18">
+          <rect width="24" height="24" rx="4" fill="#F8F46A"/>
+          <path d="M7 7v10h2V7H7zm4 0v10h2V7h-2zm4 0v10h2V7h-2z" fill="#050505"/>
+        </svg>
+      </span>
+      <span class="brand-text">agent-kernel</span>
+    </a>
+    <nav class="nav-sections" aria-label="primary">
+      <a href="#how">How it works</a>
+      <a href="#install">Install</a>
+      <a href="#agents">Agents</a>
+      <a href="https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/README.md" rel="noopener" target="_blank">Docs</a>
+    </nav>
+    <div class="nav-cta">
+      <a class="gh-link" href="https://github.com/imMamdouhaboammar/agent-kernel" rel="noopener" target="_blank" aria-label="GitHub">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M12 0c6.63 0 12 5.276 12 11.79-.001 5.067-3.29 9.567-8.175 11.187-.6.118-.825-.25-.825-.56 0-.398.015-1.665.015-3.242 0-1.105-.375-1.813-.81-2.181 2.67-.295 5.475-1.297 5.475-5.822 0-1.297-.465-2.344-1.23-3.169.12-.295.54-1.503-.12-3.125 0 0-1.005-.324-3.3 1.209a11.32 11.32 0 0 0-3-.398c-1.02 0-2.04.133-3 .398-2.295-1.518-3.3-1.209-3.3-1.209-.66 1.622-.24 2.83-.12 3.125-.765.825-1.23 1.887-1.23 3.169 0 4.51 2.79 5.527 5.46 5.822-.345.294-.66.81-.765 1.577-.69.31-2.415.81-3.495-.973-.225-.354-.9-1.223-1.845-1.209-1.005.015-.405.56.015.781.51.28 1.095 1.327 1.23 1.666.24.663 1.02 1.93 4.035 1.385 0 .988.015 1.916.015 2.196 0 .31-.225.664-.825.56C3.303 21.374-.003 16.867 0 11.791 0 5.276 5.37 0 12 0z"/></svg>
+      </a>
+      <a class="btn-primary" href="#install">Install</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- hero: large display type, centered, generous rhythm — like kilo.ai -->
+  <section class="hero">
+    <div class="hero-inner">
+      <h1 class="hero-title">
+        <span class="line">One kernel.</span>
+        <span class="line">Six agents.</span>
+        <span class="line acc">Zero hosted service.</span>
+      </h1>
+
+      <p class="hero-sub">
+        Local-first governance for AI coding agents. Approve rules once — Claude Code, Codex, Cursor, OpenCode, Antigravity, and Gemini all compile from the same JSON.
+      </p>
+
+      <!-- single install bar, centered, like kilo.ai's extension picker -->
+      <div class="install-bar" aria-label="install command">
+        <div class="install-bar-tabs">
+          <button class="install-tab is-active" type="button" data-tab="cli">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 17 6-6-6-6"/><path d="M12 19h8"/></svg>
+            CLI
+          </button>
+          <button class="install-tab" type="button" data-tab="npx">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            npx
+          </button>
+          <button class="install-tab" type="button" data-tab="source">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></svg>
+            Source
+          </button>
+        </div>
+        <div class="install-bar-body">
+          <span class="ib-pr">$</span>
+          <code class="ib-cmd" data-cmd="cli">npm install -g @mamdouh-aboammar/agent-kernel</code>
+          <code class="ib-cmd" data-cmd="npx" hidden>npx -y @mamdouh-aboammar/agent-kernel --version</code>
+          <code class="ib-cmd" data-cmd="source" hidden>git clone https://github.com/imMamdouhaboammar/agent-kernel</code>
+        </div>
+      </div>
+
+      <div class="hero-actions">
+        <a class="btn-primary" href="#install">Get started</a>
+      </div>
+
+      <p class="hero-foot-note">
+        Already have <code>AGENTS.md</code> or <code>CLAUDE.md</code>?
+        <a href="https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/SAFE_LINKING.md" rel="noopener" target="_blank">Safe-link it →</a>
+      </p>
+
+      <!-- "works with" — real logos, gray by default, full color on hover -->
+      <div class="works">
+        <span class="works-label">compiles into</span>
+        <ul class="works-list" role="list">
+          <li><img src="assets/claudecode-color.svg" alt="Claude Code" width="20" height="20" /><span>Claude Code</span></li>
+          <li><img src="assets/codex-color.svg" alt="Codex" width="20" height="20" /><span>Codex</span></li>
+          <li><img src="assets/cursor.svg" alt="Cursor" width="20" height="20" /><span>Cursor</span></li>
+          <li><img src="assets/opencode.svg" alt="OpenCode" width="20" height="20" /><span>OpenCode</span></li>
+          <li><img src="assets/antigravity-color.svg" alt="Antigravity" width="20" height="20" /><span>Antigravity</span></li>
+          <li><img src="assets/geminicli-color.svg" alt="Gemini CLI" width="20" height="20" /><span>Gemini CLI</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- problem → solution. numbers > adjectives. -->
+  <section class="section section-narrow" id="how">
+    <header class="section-head">
+      <span class="kicker">01 · the failure mode</span>
+      <h2 class="h2">
+        Each new agent session restarts<br />
+        with <span class="acc">zero</span> of your context.
+      </h2>
+      <p class="lede">
+        You paste the same standards into every prompt. The same build error gets solved twice.
+        An agent quietly rewrites a rule and you don't notice for a week. None of that is necessary.
+      </p>
+    </header>
+
+    <div class="grid-3">
+      <article class="card">
+        <div class="card-tag mono">memory</div>
+        <h3>One folder of JSON. Six targets.</h3>
+        <p>
+          Rules, preferences, workflows, Failure Lessons, and project notes live at
+          <code>~/.agent-kernel/source/</code>. Compile emits per-agent files. No SaaS, no sync, no telemetry.
+        </p>
+      </article>
+      <article class="card">
+        <div class="card-tag mono">approval</div>
+        <h3>Agents propose. You approve.</h3>
+        <p>
+          An agent can capture a failure or propose a rule — that lands in <code>inbox/pending</code>.
+          Nothing reaches <code>dist/</code> until you run <code>ak approve</code>. Hooks never publish.
+        </p>
+      </article>
+      <article class="card">
+        <div class="card-tag mono">failure lessons</div>
+        <h3>Build error #247 won't repeat.</h3>
+        <p>
+          When <code>npm test</code> fails with the same signature twice, the kernel dedupes by
+          project + command + error and tracks <code>occurrences</code>. Promote it once into a rule.
+        </p>
+      </article>
+    </div>
+  </section>
+
+  <!-- operating model: how the loop works, not why it matters. -->
+  <section class="section">
+    <header class="section-head">
+      <span class="kicker">02 · operating model</span>
+      <h2 class="h2">
+        Evidence in. Pending in.<br />
+        <span class="acc">Approved in.</span> Compiled out.
+      </h2>
+    </header>
+
+    <div class="loop">
+      <ol class="loop-steps" role="list">
+        <li class="loop-step">
+          <span class="step-num mono">01</span>
+          <div>
+            <h4>Capture</h4>
+            <p>A Claude hook or <code>ak failure capture</code> records the failure evidence — command, exit code, output excerpt, fix recipe.</p>
+          </div>
+        </li>
+        <li class="loop-step">
+          <span class="step-num mono">02</span>
+          <div>
+            <h4>Propose</h4>
+            <p>Promotion creates a pending record in <code>inbox/pending</code>. The agent cannot approve its own work.</p>
+          </div>
+        </li>
+        <li class="loop-step">
+          <span class="step-num mono">03</span>
+          <div>
+            <h4>Approve</h4>
+            <p>You run <code>ak inbox</code>, read the diff, then <code>ak approve &lt;id&gt; --publish</code>.</p>
+          </div>
+        </li>
+        <li class="loop-step">
+          <span class="step-num mono">04</span>
+          <div>
+            <h4>Compile</h4>
+            <p>The kernel regenerates <code>CLAUDE.md</code>, <code>AGENTS.md</code>, Cursor rules, Gemini guidance. Next agent inherits.</p>
+          </div>
+        </li>
+      </ol>
+
+      <aside class="loop-aside">
+        <div class="aside-label mono">built-in guards</div>
+        <ul class="aside-list" role="list">
+          <li><code>rm -rf /</code> · <code>/</code> · recursive <code>chmod 777</code></li>
+          <li><code>curl | sh</code> · piped installers</li>
+          <li>force push to default branch</li>
+          <li>secret patterns (API keys, tokens)</li>
+          <li>untracked <code>.env</code> at commit time</li>
+        </ul>
+        <p class="aside-foot">
+          Hooks capture. Critical rules back by <em>permissions</em>, <em>guards</em>, and <em>CI</em> — not vibes.
+        </p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- install: just the commands. nothing else. -->
+  <section class="section section-narrow" id="install">
+    <header class="section-head">
+      <span class="kicker">03 · install</span>
+      <h2 class="h2">Two commands. <span class="acc">Done.</span></h2>
+      <p class="lede">
+        Node 18.18+. Works on macOS, Linux, Windows. The kernel stores everything under
+        <code>~/.agent-kernel</code> and compiles in milliseconds.
+      </p>
+    </header>
+
+    <div class="install">
+      <div class="install-card">
+        <div class="install-label mono">01 — install</div>
+        <pre class="code"><code><span class="p-pr">$</span> npm install -g @mamdouh-aboammar/agent-kernel
+<span class="p-pr">$</span> agent-kernel --version
+<span class="p-out">0.7.2</span></code></pre>
+      </div>
+      <div class="install-card">
+        <div class="install-label mono">02 — adopt in a project</div>
+        <pre class="code"><code><span class="p-pr">$</span> cd ~/Projects/your-app
+<span class="p-pr">$</span> agent-kernel init --sync --enforce
+<span class="p-pr">$</span> agent-kernel-safe-link .
+<span class="p-pr">$</span> agent-kernel-safe-git-hook .
+<span class="p-pr">$</span> agent-kernel doctor</code></pre>
+      </div>
+    </div>
+
+    <p class="install-note">
+      Already have hand-written <code>AGENTS.md</code> / <code>CLAUDE.md</code>? Run with <code>--dry-run</code> first.
+      Safe-link writes only inside marked blocks and leaves your existing files intact.
+    </p>
+  </section>
+
+  <!-- agents: per-agent output surface, factual. -->
+  <section class="section" id="agents">
+    <header class="section-head">
+      <span class="kicker">04 · agent coverage</span>
+      <h2 class="h2">One compile. <span class="acc">Six outputs.</span></h2>
+      <p class="lede">
+        The kernel doesn't fork your memory per agent. It compiles the same approved JSON into
+        each agent's native format. Add a memory item once — every agent sees it next run.
+      </p>
+    </header>
+
+    <div class="agents-grid">
+      <article class="agent-cell">
+        <div class="agent-cell-head">
+          <img src="assets/claudecode-color.svg" alt="" width="22" height="22" />
+          <h3>Claude Code</h3>
+        </div>
+        <ul class="agent-outputs mono">
+          <li>CLAUDE.md</li>
+          <li>.claude/settings.json (hooks)</li>
+          <li>marketplace plugin</li>
+        </ul>
+      </article>
+      <article class="agent-cell">
+        <div class="agent-cell-head">
+          <img src="assets/codex-color.svg" alt="" width="22" height="22" />
+          <h3>Codex</h3>
+        </div>
+        <ul class="agent-outputs mono">
+          <li>AGENTS.md</li>
+          <li>.codex/AGENTS.md</li>
+          <li>.codex/config.toml</li>
+        </ul>
+      </article>
+      <article class="agent-cell">
+        <div class="agent-cell-head">
+          <img src="assets/cursor.svg" alt="" width="22" height="22" />
+          <h3>Cursor</h3>
+        </div>
+        <ul class="agent-outputs mono">
+          <li>.cursor/rules/00-agent-kernel.mdc</li>
+        </ul>
+      </article>
+      <article class="agent-cell">
+        <div class="agent-cell-head">
+          <img src="assets/opencode.svg" alt="" width="22" height="22" />
+          <h3>OpenCode</h3>
+        </div>
+        <ul class="agent-outputs mono">
+          <li>AGENTS.md</li>
+        </ul>
+      </article>
+      <article class="agent-cell">
+        <div class="agent-cell-head">
+          <img src="assets/antigravity-color.svg" alt="" width="22" height="22" />
+          <h3>Antigravity</h3>
+        </div>
+        <ul class="agent-outputs mono">
+          <li>.agents/agents.md</li>
+          <li>.agents/skills/*</li>
+        </ul>
+      </article>
+      <article class="agent-cell">
+        <div class="agent-cell-head">
+          <img src="assets/geminicli-color.svg" alt="" width="22" height="22" />
+          <h3>Gemini CLI</h3>
+        </div>
+        <ul class="agent-outputs mono">
+          <li>GEMINI.md</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <!-- docs: links, not content. -->
+  <section class="section section-narrow" id="docs">
+    <header class="section-head">
+      <span class="kicker">05 · documentation</span>
+      <h2 class="h2">Read before you <span class="acc">wire it up.</span></h2>
+    </header>
+    <ul class="docs-list" role="list">
+      <li><a href="https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/AGENT_RUNBOOK.md" rel="noopener" target="_blank"><span>AGENT_RUNBOOK</span><span class="arrow" aria-hidden="true">↗</span></a><p>How agents should approach work in this repo.</p></li>
+      <li><a href="https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/ARCHITECTURE_NOW.md" rel="noopener" target="_blank"><span>ARCHITECTURE_NOW</span><span class="arrow" aria-hidden="true">↗</span></a><p>Current runtime shape and the modularization target.</p></li>
+      <li><a href="https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/MEMORY_PROTOCOL.md" rel="noopener" target="_blank"><span>MEMORY_PROTOCOL</span><span class="arrow" aria-hidden="true">↗</span></a><p>Propose → review → approve → publish. The only path.</p></li>
+      <li><a href="https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/MCP_SERVER.md" rel="noopener" target="_blank"><span>MCP_SERVER</span><span class="arrow" aria-hidden="true">↗</span></a><p>Local stdio MCP for status, memory search, proposals.</p></li>
+      <li><a href="https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/hooks/CLAUDE_HOOKS_BEST_PRACTICES.md" rel="noopener" target="_blank"><span>CLAUDE_HOOKS_BEST_PRACTICES</span><span class="arrow" aria-hidden="true">↗</span></a><p>Event selection, exec form, narrow matchers, JSON output.</p></li>
+      <li><a href="https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/SAFE_LINKING.md" rel="noopener" target="_blank"><span>SAFE_LINKING</span><span class="arrow" aria-hidden="true">↗</span></a><p>Adopt in repos with hand-written guidance files.</p></li>
+    </ul>
+  </section>
+
+  <!-- final: short. don't ask them to subscribe to anything. -->
+  <section class="section section-narrow section-final">
+    <h2 class="h2">
+      Built by someone tired of<br />
+      explaining the same <span class="acc">rules</span> every morning.
+    </h2>
+    <p class="lede">
+      MIT licensed. npm-published. v0.7.2. If your agent doesn't follow it, the guard blocks the commit.
+    </p>
+    <div class="final-actions">
+      <a class="btn-primary" href="#install">Install agent-kernel</a>
+      <a class="btn-text" href="https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel" rel="noopener" target="_blank">npm →</a>
+      <a class="btn-text" href="https://github.com/imMamdouhaboammar/agent-kernel" rel="noopener" target="_blank">github →</a>
+    </div>
+  </section>
+</main>
+
+<footer class="foot" role="contentinfo">
+  <div class="foot-inner">
+    <div class="foot-col">
+      <span class="foot-brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="16" height="16">
+            <rect width="24" height="24" rx="4" fill="#F8F46A"/>
+            <path d="M7 7v10h2V7H7zm4 0v10h2V7h-2zm4 0v10h2V7h-2z" fill="#050505"/>
+          </svg>
+        </span>
+        agent-kernel
+      </span>
+      <span class="foot-tag mono">local-first governance for AI coding agents</span>
+    </div>
+    <nav class="foot-col foot-nav" aria-label="footer">
+      <a href="https://github.com/imMamdouhaboammar/agent-kernel" rel="noopener" target="_blank">GitHub</a>
+      <a href="https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel" rel="noopener" target="_blank">npm</a>
+      <a href="https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/README.md" rel="noopener" target="_blank">Docs</a>
+      <a href="https://github.com/imMamdouhaboammar/agent-kernel/issues" rel="noopener" target="_blank">Issues</a>
+    </nav>
+    <div class="foot-col foot-meta">
+      <span class="mono">MIT · v0.7.2</span>
+      <span class="foot-credit">© Mamdouh Aboammar</span>
+    </div>
+  </div>
+</footer>
+
+<script src="script.js" defer></script>
+</body>
+</html>
