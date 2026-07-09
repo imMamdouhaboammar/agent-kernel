@@ -5,10 +5,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Planned
+
+- Modularize `src/cli.mjs` into `src/core/*` and `src/commands/*` (tracked
+  in `development/BACKLOG.md`). The repo keeps a single-file CLI today
+  because that fits the < 100 KB npm package budget.
+
+## [1.0.0] — 2026-07-09
+
+First stable release. Local-first governance kernel for AI coding agents is now considered production-ready: shared memory, rule distribution, approval inbox, episodic recall, Failure Lessons, MCP tools, Claude + git hooks, deterministic guard, and a single-file CLI under the 100 KB npm budget.
+
 ### Added
 
 - `docs/README.md` — canonical documentation map with reading order, ownership rules, and docs-update checklist.
 - Deep documentation refresh for current runtime behavior after Failure Lessons, hook hardening, and ECC bundle merges.
+- Failure Lessons loop — capture build/test/edit errors with `agent-kernel failure capture`, search before retry with `agent-kernel failure search`, and promote recurring lessons to rules, policies, workflows, skills, or notes via the approval inbox.
+- `safe-link` regression coverage — re-running `agent-kernel-safe-link` now replaces the marked Agent Kernel block instead of duplicating it, and pre-existing duplicate marked blocks are collapsed to a single canonical block.
+- Per-module smoke orchestrator (`test/smoke.mjs`) — 16 focused test modules with isolated tempdirs and a clear pass/fail summary.
+- Final-gate release checklists for package contents, helper continuity, public routing idempotency, public routing backups, public hook safety, public link safety, public bin targets, wrapper delegation, and `ak` alias safety.
 
 ### Changed
 
@@ -19,11 +33,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `docs/INTEGRATIONS.md` now covers Claude Code, Codex, Cursor, OpenCode, Antigravity, Gemini CLI, Skills.sh, marketplace metadata, and ECC scaffolds.
 - `AGENTS.md` now gives agents updated contributor instructions for the current repo layout, Failure Lessons protocol, hook protocol, MCP protocol, release discipline, and docs alignment.
 
-### Planned
+### Fixed
 
-- Modularize `src/cli.mjs` into `src/core/*` and `src/commands/*` (tracked
-  in `development/BACKLOG.md`). The repo keeps a single-file CLI today
-  because that fits the < 100 KB npm package budget.
+- `agent-kernel-safe-link` no longer duplicates the Agent Kernel marked block when a project's `AGENTS.md` already starts with the block, and pre-existing duplicate blocks are collapsed on the next run.
 
 ## [0.0.9] — 2026-07-01
 

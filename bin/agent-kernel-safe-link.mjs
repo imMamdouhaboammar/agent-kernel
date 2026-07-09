@@ -73,8 +73,15 @@ function markedBlockRegex() {
   );
 }
 
+function stripOuterMarkers(content) {
+  let text = String(content || '');
+  text = text.replace(/^\s*<!--\s*agent-kernel:start\s*-->\s*\r?\n?/, '');
+  text = text.replace(/\r?\n?\s*<!--\s*agent-kernel:end\s*-->\s*$/, '');
+  return text;
+}
+
 function wrapGenerated(content) {
-  const trimmed = String(content || '').trimEnd();
+  const trimmed = stripOuterMarkers(content).replace(/\n{3,}/g, '\n\n').trimEnd();
   return `${MARKER_START}\n${trimmed}\n${MARKER_END}\n`;
 }
 

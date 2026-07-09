@@ -26,7 +26,8 @@ export async function run() {
   runCli(env, 'init', '--sync');
 
   const versionOut = runWrapper(env, repo.root, '--version');
-  assertContains(versionOut.trim(), '0.0.9', 'wrapper should delegate --version to dist CLI');
+  const cliVersion = runCli(env, '--version').trim();
+  assertContains(versionOut.trim(), cliVersion, 'wrapper should delegate --version to dist CLI');
 
   const project = join(homeDir, 'wrapper-routing-project');
   mkdirSync(project, { recursive: true });
