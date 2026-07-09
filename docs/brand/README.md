@@ -7,15 +7,17 @@ This folder contains lightweight SVG assets for the Agent Kernel README and mark
 | File | Purpose |
 |---|---|
 | `agent-kernel-logo.svg` | Minimal repo logo for README, cards, and package pages |
-| `agent-kernel-hero.svg` | README hero explaining the local memory flow |
-| `agent-strip-icons.svg` | README-supported agent surface strip using thin typography and embedded icon marks |
-| `agent-strip.svg` | Legacy strip path kept for compatibility with older README renders and caches |
+| `agent-kernel-wordmark.svg` | README wordmark lockup |
+| `agent-kernel-readme-lockup.svg` | Current README hero slot. It now mirrors the supported-agent stack strip |
+| `agent-kernel-hero.svg` | Architecture hero explaining the local memory flow |
+| `agent-strip.svg` | Supported-agent stack strip with uploaded agent marks and balanced padding |
+| `agent-strip-icons.svg` | Legacy cache-busted strip path kept for compatibility with older README renders |
 
 ## Icon source and trademark boundary
 
-`agent-strip-icons.svg` uses the uploaded LobeHub icon SVGs for the supported agent surfaces shown in the README. The visual treatment is repo-owned, but the vendor names and marks are not.
+`agent-strip.svg` and the current README lockup use marks adapted from the uploaded SVG icon set for the supported agent surfaces shown in the README.
 
-Names and marks such as Claude Code, Codex, Cursor, Gemini CLI, OpenCode, and related AI tooling brands belong to their respective owners.
+Names and marks such as Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity, Kiro, Kilo Code, MiniMax, OpenClaw, OpenAI, and related AI tooling brands belong to their respective owners.
 
 When adding or changing vendor marks:
 
@@ -24,9 +26,9 @@ When adding or changing vendor marks:
 3. keep the trademark note visible in the SVG
 4. do not imply official partnership, endorsement, or certification
 
-## Cache note
+## README slot note
 
-The README points to `agent-strip-icons.svg` rather than the original `agent-strip.svg` path so GitHub does not keep serving a previously cached render of the old strip.
+The README still uses `agent-kernel-readme-lockup.svg` as the stable hero slot, but that file now contains the same supported-agent strip visual as `agent-strip.svg`. This avoids breaking the README layout while replacing the previous command-line hero visual.
 
 ## Visual identity
 
@@ -42,10 +44,11 @@ The README points to `agent-strip-icons.svg` rather than the original `agent-str
 ## Visual direction
 
 - dark technical base
-- compact panels with lower radius
+- compact panels with controlled radius
+- clear outer padding and safe inner chip margins
 - JetBrains Mono / monospace typography
 - thin text weight for README visuals
-- original icon marks where available
+- uploaded agent marks where available
 - no clipped strokes at SVG edges
 - minimal copy
 - readable inside GitHub dark and light modes
