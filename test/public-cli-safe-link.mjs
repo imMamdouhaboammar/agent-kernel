@@ -7,9 +7,10 @@
 //   4. generated Agent Kernel content is injected inside markers
 //   5. repeated link runs do not duplicate marked blocks
 //   6. public link repairs pre-existing duplicate marked blocks
+//   7. `agent-kernel link --dry-run --hooks` writes no project files and no git hook
 
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { assertContains, makeEnv, repo, runCli } from './_lib/helpers.mjs';
 
@@ -29,6 +30,21 @@ function countMarkers(text) {
 export async function run() {
   const { env, homeDir } = makeEnv();
   runCli(env, 'init', '--sync');
+
+  const dryRunProject = join(homeDir, 'public-cli-link-dry-run-project');
+  mkdirSync(dryRunProject, { recursive: true });
+  execFileSync('git', ['init'], { cwd: dryRunProject, env, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+  const dryRunOut = runPublic(env, 'link', dryRunProject, '--dry-run', '--hooks');
+  assertContains(dryRunOut, 'dry run', 'public link dry-run should identify itself');
+  if (existsSync(join(dryRunProject, 'AGENTS.md'))) {
+    throw new Error('public link --dry-run wrote AGENTS.md');
+  }
+  if (existsSync(join(dryRunProject, '.git', 'hooks', 'pre-commit'))) {
+    const hookText = readFileSync(join(dryRunProject, '.git', 'hooks', 'pre-commit'), 'utf8');
+    if (hookText.includes('agent-kernel guard')) {
+      throw new Error('public link --dry-run --hooks installed Agent Kernel pre-commit hook');
+    }
+  }
 
   const project = join(homeDir, 'public-cli-link-project');
   mkdirSync(project, { recursive: true });
