@@ -74,6 +74,10 @@ function markedBlockRegex() {
 }
 
 function stripOuterMarkers(content) {
+  // Remove a single leading start marker and a single trailing end marker from
+  // the source, leaving any inner content intact. Used when wrapping a
+  // generated dist file (which is itself a marked block) so we do not produce
+  // nested duplicates in the project target.
   let text = String(content || '');
   text = text.replace(/^\s*<!--\s*agent-kernel:start\s*-->\s*\r?\n?/, '');
   text = text.replace(/\r?\n?\s*<!--\s*agent-kernel:end\s*-->\s*$/, '');
@@ -142,7 +146,9 @@ function main() {
 
   const targets = [
     ['AGENTS.md', path.join(dist, 'AGENTS.md')],
-    ['CLAUDE.md', path.join(dist, 'CLAUDE.md')],
+    // CLAUDE.md inherits the shared Agent Kernel constitution so the
+    // Claude Code file in the project carries the same rules as AGENTS.md.
+    ['CLAUDE.md', path.join(dist, 'AGENTS.md')],
     ['GEMINI.md', path.join(dist, 'GEMINI.md')],
     ['.cursor/rules/00-agent-kernel.mdc', path.join(dist, 'cursor-rule.mdc')],
     ['.agents/agents.md', path.join(dist, 'antigravity-agents.md')],

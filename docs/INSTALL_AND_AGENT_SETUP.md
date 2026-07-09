@@ -83,6 +83,15 @@ Codex should read `AGENTS.md`. For memory writes, instruct Codex to call:
 agent-kernel-agent-propose --from codex --reason "<reason>" --text "<memory>"
 ```
 
+To wire the live MCP server into Codex (allows Codex to search memory, propose
+rules, and recall episodes from inside the session), append a
+`[mcp_servers.agent-kernel-memory]` block to `~/.codex/config.toml`. The
+bootstrap script does this for you and is idempotent:
+
+```bash
+./examples/scripts/install-agent-mcp.sh
+```
+
 ### Cursor
 
 ```bash
@@ -122,7 +131,38 @@ agent-kernel sync
 agent-kernel-safe-link .
 ```
 
-Gemini should read `GEMINI.md`.
+Gemini should read `GEMINI.md`. To wire the live MCP server into Gemini CLI,
+add an `mcpServers.agent-kernel-memory` block to `~/.gemini/settings.json`.
+The bootstrap script does this for you:
+
+```bash
+./examples/scripts/install-agent-mcp.sh
+```
+
+### Continue
+
+Continue reads `~/.continue/config.json`. To register the Agent Kernel MCP
+server (memory search, propose, episode recall), add an entry to the
+`mcpServers` array. The bootstrap script handles the JSON patching:
+
+```bash
+./examples/scripts/install-agent-mcp.sh
+```
+
+### Cursor, Antigravity, Trae, Kiro (file-based only)
+
+These agents do not consume the MCP protocol from Agent Kernel today, but
+they do read a global `AGENTS.md` from their home directory. Drop a short
+pointer that references the full constitution into each home:
+
+```bash
+./examples/scripts/install-agent-pointers.sh
+```
+
+The pointer is marked with `<!-- agent-kernel:start -->` / `<!-- agent-kernel:end -->`
+so re-running the script replaces the block instead of duplicating it. Each
+pointer also lists the `agent-kernel` CLI commands the agent should call to
+propose memory or capture failure lessons through its host shell.
 
 ## Skills.sh discovery
 
