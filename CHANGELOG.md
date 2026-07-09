@@ -5,6 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `docs/OPERATING_MODEL.md` to explain the day-to-day Agent Kernel governance loop: propose, approve, publish, capture, search, and promote.
+
+### Changed
+
+- `README.md` now gives a clearer install path, safe project adoption flow, operating loop, command map, and documentation map.
+- `docs/README.md` now separates first-time setup, runtime docs, integration docs, schema docs, development docs, and ownership rules.
+- `docs/INTEGRATIONS.md` now recommends `agent-kernel-safe-link` and `agent-kernel-safe-git-hook` as the default adoption path for existing projects.
+- `docs/SAFE_LINKING.md` now documents idempotency, duplicate marked-block cleanup, backup behavior, direct-link comparison, and what agents should not edit.
+
 ### Planned
 
 - Modularize `src/cli.mjs` into `src/core/*` and `src/commands/*` (tracked
