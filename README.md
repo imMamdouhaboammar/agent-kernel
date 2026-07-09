@@ -167,6 +167,14 @@ agent-kernel daemon status
 agent-kernel daemon stop
 ```
 
+Runtime diagnostics are separate from the default doctor output:
+
+```bash
+agent-kernel status --runtime
+agent-kernel doctor --runtime
+agent-kernel doctor --runtime --json
+```
+
 The first runtime surface exposes local-only health, observation, context, and session endpoints:
 
 ```text
@@ -258,7 +266,7 @@ See [`docs/BUNDLE_KB.md`](./docs/BUNDLE_KB.md).
 
 ```text
 agent-kernel init [--sync] [--enforce]
-agent-kernel doctor
+agent-kernel doctor [--runtime]
 agent-kernel compile
 agent-kernel sync
 agent-kernel link [project] [--hooks]
@@ -273,13 +281,13 @@ agent-kernel migrate json [--publish]
 agent-kernel memory list|search|show
 agent-kernel episode add|sync|search|show|stats|reindex
 agent-kernel failure capture|learn|list|search|show|propose|promote|validate
-agent-kernel daemon start|stop|status
+agent-kernel daemon start|stop|restart|status
 agent-kernel enforce install
 agent-kernel guard [--staged|--file path]
 agent-kernel git-hook install [project]
 agent-kernel mcp serve|config|install
 agent-kernel start <claude|codex|cursor|antigravity|gemini> [project]
-agent-kernel status
+agent-kernel status [--runtime]
 ```
 
 Helper binaries:
@@ -291,6 +299,7 @@ agent-kernel-agent-propose
 agent-kernel-failure
 agent-kernel-failure-hook
 agent-kernel-daemon
+agent-kernel-runtime-doctor
 agent-kernel-mode
 agent-kernel-agent-write
 ak
