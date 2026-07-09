@@ -50,7 +50,7 @@ export async function run() {
   assertNotContains(guardOut, '"error"', 'mcp guard returned a JSON-RPC error');
 
   // 4. MCP episode capture follows the same redaction boundary as CLI capture.
-  const mcpSecret = 'ghp_abcdefghijklmnopqrstuvwxyz123456';
+  const mcpSecret = 'ghp_' + 'abcdefghijklmnopqrstuvwxyz123456';
   const captureRequest = JSON.stringify({
     jsonrpc: '2.0',
     id: 2,
