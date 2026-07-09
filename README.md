@@ -167,6 +167,15 @@ agent-kernel daemon status
 agent-kernel daemon stop
 ```
 
+Runtime sessions can also be managed directly without starting the daemon:
+
+```bash
+agent-kernel session start --agent claude-code --project .
+agent-kernel session list
+agent-kernel session show <session-id>
+agent-kernel session end <session-id>
+```
+
 Runtime diagnostics are separate from the default doctor output:
 
 ```bash
@@ -282,6 +291,7 @@ agent-kernel memory list|search|show
 agent-kernel episode add|sync|search|show|stats|reindex
 agent-kernel failure capture|learn|list|search|show|propose|promote|validate
 agent-kernel daemon start|stop|restart|status
+agent-kernel session start|end|list|show
 agent-kernel enforce install
 agent-kernel guard [--staged|--file path]
 agent-kernel git-hook install [project]
@@ -300,6 +310,7 @@ agent-kernel-failure
 agent-kernel-failure-hook
 agent-kernel-daemon
 agent-kernel-runtime-doctor
+agent-kernel-session
 agent-kernel-mode
 agent-kernel-agent-write
 ak
