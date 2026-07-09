@@ -1,0 +1,29 @@
+{
+  "brand": "Agent Kernel",
+  "mood": "minimal, terminal-native, local-first, restrained, open-source",
+  "colors": {
+    "black": "#050505",
+    "panel": "#0B0B0B",
+    "line": "#2A2A2A",
+    "text": "#F4F4F1",
+    "muted": "#8E8E88",
+    "acid": "#F8F46A",
+    "dim": "#A6A6A0"
+  },
+  "type": {
+    "primary": "JetBrains Mono",
+    "fallback": "SFMono-Regular, Consolas, Liberation Mono, monospace",
+    "weight_preferred": "400-600"
+  },
+  "shape": {
+    "radius_icon": 24,
+    "radius_panels": 12,
+    "stroke": "1-3px",
+    "pixel_grid": "crispEdges"
+  },
+  "usage": {
+    "github_avatar": "agent-kernel-logo.svg",
+    "readme_header": "agent-kernel-wordmark.svg or agent-kernel-readme-lockup.svg",
+    "favicon": "agent-kernel-logo.svg"
+  }
+}
