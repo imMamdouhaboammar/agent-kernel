@@ -6,7 +6,8 @@
 //   3. `daemon start` starts a local-only runtime on an ephemeral port.
 //   4. `/ak/observe` stores append-only local evidence, not approved memory.
 //   5. `/ak/context` responds with a compact local context payload.
-//   6. `daemon stop` tears the runtime down.
+//   6. `daemon status` reports uptime, active sessions, and last observation.
+//   7. `daemon stop` tears the runtime down.
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
@@ -51,6 +52,9 @@ export async function run() {
     if (!status.running || !status.port || status.host !== '127.0.0.1') {
       throw new Error(`daemon did not report local running status: ${JSON.stringify(status)}`);
     }
+    if (typeof status.uptimeMs !== 'number' || typeof status.activeSessions !== 'number' || typeof status.sessionCount !== 'number') {
+      throw new Error(`daemon status did not include runtime metrics: ${JSON.stringify(status)}`);
+    }
 
     const baseUrl = `http://${status.host}:${status.port}`;
     const health = await (await fetch(`${baseUrl}/ak/health`)).json();
@@ -76,6 +80,11 @@ export async function run() {
     const sessionJsonl = join(kernelHome, 'runtime', 'sessions', 'session_smoke.jsonl');
     if (!existsSync(sessionJsonl)) throw new Error('observe did not write session JSONL evidence');
     assertContains(readFileSync(sessionJsonl, 'utf8'), 'safe-link duplicated marked block', 'observation text missing from JSONL');
+
+    const observedStatus = JSON.parse(runPublic(env, 'daemon', 'status', '--json'));
+    if (observedStatus.activeSessions !== 1 || observedStatus.sessionCount !== 1 || !observedStatus.lastObservationAt) {
+      throw new Error(`daemon status did not reflect observed session: ${JSON.stringify(observedStatus)}`);
+    }
 
     const context = await postJson(`${baseUrl}/ak/context`, {
       sessionId: 'session_smoke',
