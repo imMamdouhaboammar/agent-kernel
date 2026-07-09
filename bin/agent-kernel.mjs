@@ -12,6 +12,7 @@ const safeGitHookPath = path.resolve(here, 'agent-kernel-safe-git-hook.mjs');
 const failurePath = path.resolve(here, 'agent-kernel-failure.mjs');
 const daemonPath = path.resolve(here, 'agent-kernel-daemon.mjs');
 const runtimeDoctorPath = path.resolve(here, 'agent-kernel-runtime-doctor.mjs');
+const sessionPath = path.resolve(here, 'agent-kernel-session.mjs');
 
 const DEFAULT_DENY_WRITE_PATHS = [
   '.env',
@@ -315,6 +316,10 @@ function main() {
 
   if (command === 'daemon') {
     runNode(daemonPath, args.slice(1));
+  }
+
+  if (command === 'session') {
+    runNode(sessionPath, args.slice(1));
   }
 
   if (command === 'failure') {
