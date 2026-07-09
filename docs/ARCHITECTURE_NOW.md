@@ -1,148 +1,187 @@
-# Architecture (current state)
+# Architecture Now
 
-> **v0.0.9 update** — added `AGENTS.md` at the repo root (repo-level
-> instructions for AI coding agents), expanded `scripts/lint.mjs`
-> from 8 to 15 checks (now includes a hardcoded-secret scan and
-> `package.json#files` whitelist validation), refactored
-> `test/smoke.mjs` into a per-module orchestrator, and aligned
-> `.claude-plugin/marketplace.json` + `plugin.json` with the
-> current Claude marketplace spec.
+This document describes what the repository actually is today. It is intentionally practical: when the code and roadmap disagree, this file follows the code.
 
-This document describes what the repo **actually is** today, not what
-it aspires to be. It exists to prevent future contributors from
-mistaking placeholder folders for implemented modules.
+## Current shape
 
-## TL;DR
-
-`agent-kernel` is intentionally a **single-file CLI** (`src/cli.mjs`,
-~85 kB) that gets copied to `dist/cli.mjs` at build time. The
-`src/{adapters,commands,core,hooks}/` folders are aspirational
-placeholders — they are not yet wired into the runtime.
-
-This is a deliberate trade-off:
-
-- **Pro**: single-file ship keeps the npm package < 100 kB, easy to
-  audit, no internal API surface to maintain, no import-resolution
-  cost.
-- **Con**: harder to navigate than a modular layout. Lines can run
-  long when one logical section touches multiple concerns.
-
-When the project grows beyond a comfortable single-file size, the
-modularization is tracked in `development/BACKLOG.md` (item: "Modular
-extraction of `src/cli.mjs`").
-
-## Runtime flow
+Agent Kernel is a local-first governance kernel for coding agents. The core runtime is still a single-file CLI:
 
 ```text
-src/cli.mjs  ── (scripts/build.mjs: VERSION injection)  ──>  dist/cli.mjs
-                                                              │
-                                                              ▼
-                                                `agent-kernel` binary on PATH
-                                                              │
-                                                              ▼
-                                              ~/.agent-kernel/  (memory home)
-                                                  │
-                                                  ├── config.json
-                                                  ├── source/memories/*.json
-                                                  ├── episodes/
-                                                  ├── inbox/{pending,approved,rejected}/
-                                                  ├── dist/  (compiled AGENTS.md, etc.)
-                                                  └── logs/  (JSONL event log)
+src/cli.mjs  ->  scripts/build.mjs  ->  dist/cli.mjs
 ```
 
-The CLI does five broad things:
+The npm executable is exposed through `bin/agent-kernel.mjs`, which routes to `dist/cli.mjs` after build. Focused helper binaries live in `bin/` when the behavior is intentionally outside the current single-file runtime.
 
-1. **Manage memory** (`memory` command): `remember`, `list`, `search`,
-   `show`, validate. Reads/writes `source/memories/*.json`.
-2. **Approve workflow** (`propose`, `inbox`, `approve`, `reject`,
-   `publish`): agents write to `inbox/pending/*.json`, the user
-   reviews via `inbox` and moves them to `source/memories/`.
-3. **Capture episodes** (`episode` command): `add`, `sync`, `search`,
-   `show`, `stats`, `reindex`. Reads/writes `episodes/index.json` and
-   `episodes/archive/*.json`.
-4. **Compile instructions** (`compile`, `sync`, `link`): reads
-   `source/memories/*.json` and writes the agent-specific
-   instruction files (`AGENTS.md`, `CLAUDE.md`, `.cursor/rules/*.mdc`,
-   etc.) into `dist/`.
-5. **Guard** (`guard` command + `DEFAULT_DENY_COMMANDS` +
-   `DEFAULT_SECRET_PATTERNS`): pattern-matches commands and file
-   contents against a small deny list.
+That means there are two command surfaces today:
+
+| Surface | Location | Purpose |
+|---|---|---|
+| Core CLI | `src/cli.mjs` / `dist/cli.mjs` | Memory, proposals, compile/sync/link, episodes, guard, MCP, status |
+| Helper binaries | `bin/*.mjs` | Safe link/git hook helpers, agent proposal wrapper, mode/write helpers, Failure Lessons capture/hook |
+
+The `src/{adapters,commands,core,hooks}/` folders are still placeholders. They document the future modular layout, but files placed there are not imported by the runtime today.
+
+## Runtime data flow
+
+```text
+agent command
+  |
+  v
+agent-kernel / ak
+  |
+  +--> core memory:       ~/.agent-kernel/source/memories/*.json
+  +--> failure lessons:   ~/.agent-kernel/source/failures/failure-lessons.json
+  +--> policies:          ~/.agent-kernel/source/policies/policies.json
+  +--> proposals:         ~/.agent-kernel/inbox/{pending,approved,rejected}/
+  +--> episodes:          ~/.agent-kernel/episodes/{archive,index.json,sources.json}
+  +--> compiled output:   ~/.agent-kernel/dist/{AGENTS.md,CLAUDE.md,cursor-rule.mdc,...}
+  +--> append-only logs:  ~/.agent-kernel/logs/*.jsonl
+```
+
+Generated files in `~/.agent-kernel/dist/` are disposable outputs. The source of truth is the JSON under `~/.agent-kernel/source/`, the proposal inbox, and the episode/failure archives.
+
+## What the CLI does
+
+| Area | Commands | Source of truth |
+|---|---|---|
+| Memory | `remember`, `memory list/search/show`, `validate` | `source/memories/*.json` |
+| Approval workflow | `propose`, `inbox`, `approve`, `reject`, `publish` | `inbox/*`, then `source/memories/*` after approval |
+| Episodes | `episode add/sync/search/show/stats/reindex` | `episodes/archive/*.json`, `episodes/index.json` |
+| Failure Lessons | `failure capture/learn/list/search/show/propose/promote/validate` | `source/failures/failure-lessons.json` |
+| Agent output | `compile`, `sync`, `link` | `dist/*`, project-local agent files |
+| Enforcement | `guard`, `enforce install`, `git-hook install` | deny patterns, secret patterns, hook configs |
+| MCP | `mcp serve/config/install` | stdio MCP server over the local kernel state |
+| Diagnostics | `doctor`, `status` | current filesystem and config state |
 
 ## Files that matter
 
 | Path | Purpose |
-| --- | --- |
-| `src/cli.mjs` | The whole CLI. ~85 kB. |
-| `dist/cli.mjs` | Identical to `src/cli.mjs` after a `VERSION` token swap. |
-| `scripts/build.mjs` | Injects `package.json#version` into both `src/cli.mjs` and `dist/cli.mjs`. |
-| `scripts/check-version.mjs` | SSOT check (fails CI on drift). |
-| `scripts/lint.mjs` | 14 repo consistency checks (scope, version, files, secrets). |
-| `test/smoke.mjs` | Smoke test exercising the top-level commands end-to-end. |
-| `docs/*.md` | Architecture + protocol docs. |
-| `examples/*` | CI guard workflow, sample memory rules, sample episode. |
+|---|---|
+| `src/cli.mjs` | Core single-file CLI source. Edit this for core runtime commands. |
+| `dist/cli.mjs` | Built CLI copied from `src/cli.mjs` by `scripts/build.mjs`. Do not hand-edit. |
+| `bin/agent-kernel.mjs` | Public wrapper for `agent-kernel` and `ak`. |
+| `bin/agent-kernel-failure.mjs` | Failure Lessons CLI helper. |
+| `bin/agent-kernel-failure-hook.mjs` | Claude hook adapter for failed tool payloads. |
+| `bin/agent-kernel-agent-propose.mjs` | Safe agent proposal wrapper. |
+| `scripts/build.mjs` | Version injection and dist copy. |
+| `scripts/lint.mjs` | Repository consistency checks and secret-pattern sanity. |
+| `scripts/lint-bins.mjs` | Helper binary sanity checks. |
+| `scripts/lint-modes.mjs` | Mode/write helper sanity checks. |
+| `scripts/check-version.mjs` | Version single-source-of-truth check. |
+| `test/smoke.mjs` | Test orchestrator that imports focused test modules. |
+| `test/*.mjs` | Focused smoke modules for init, memory, episodes, MCP, safe-link, modes, Failure Lessons, etc. |
+| `docs/` | Architecture, memory, MCP, hooks, Failure Lessons, integration docs. |
+| `.claude/` | Repo-local ECC artifacts and Claude workflow scaffolds. |
+| `.codex/` | Repo-local Codex baseline and role configs. |
+| `.agents/skills/` | Codex-facing generated repository skill. |
+| `.claude-plugin/` | Claude Code marketplace metadata. |
+| `SKILL.md` | Root Skills.sh / Claude skill discovery file. |
+| `skills.sh.json` | Skills.sh grouping metadata. |
 
-## Files that look real but are not (placeholders)
+## Placeholder folders
 
-The following directories exist in `src/` but contain **only a single
-README each** explaining the future layout. **Do not edit them expecting
-a runtime effect** — they are not imported by `src/cli.mjs` today.
-
-```text
-src/adapters/    (placeholder — future agent-specific adapters)
-src/commands/    (placeholder — future per-command modules)
-src/core/        (placeholder — future core utilities)
-src/hooks/       (placeholder — future Claude hook scripts)
-```
-
-If you intend to add a new command or helper today, edit `src/cli.mjs`
-directly and follow the existing dispatch pattern. Adding a file to
-`src/commands/foo.mjs` will not wire it into the runtime — it will be
-ignored.
-
-## Migration plan to a modular layout
-
-When the maintainer decides the file is large enough to split, the
-target layout is:
+The following folders are not runtime modules today:
 
 ```text
-src/core/paths.mjs        — path helpers, home dir, AGENT_KERNEL_HOME
-src/core/json.mjs         — JSON read/write, pretty/compact toggle
-src/core/memory-store.mjs — rules/preferences/workflows JSON store
-src/core/episodes.mjs     — episode archive + index
-src/core/policies.mjs     — policy pack arrays
-src/core/compile.mjs      — memory → AGENTS.md / CLAUDE.md / .cursor
-src/core/guard.mjs        — deny patterns + secret scanner
-src/core/mcp.mjs          — MCP tool registry + handler
-src/commands/init.mjs     — `init` command
-src/commands/memory.mjs   — `memory` subcommand
-src/commands/episode.mjs  — `episode` subcommand
-src/commands/mcp.mjs      — `mcp` subcommand
-src/commands/guard.mjs    — `guard` command
-src/commands/status.mjs   — `doctor`, `status`, `validate`, `compile`
-src/cli.mjs               — entry point + dispatch
+src/adapters/
+src/commands/
+src/core/
+src/hooks/
 ```
 
-Until this lands, the placeholder folders above will remain empty
-placeholders and editing them is a no-op.
+They exist to reserve the future architecture. Do not add production code there unless the modularization work also wires them into `src/cli.mjs`, the build process, and the test suite.
 
-## Tests
+## Testing model
 
-The smoke test (`test/smoke.mjs`) currently exercises the top-level
-commands in one file with a shared `AGENT_KERNEL_HOME` tempdir. A
-hardening pass splits this into focused test files (see Phase 7 in
-the hardening audit).
+`npm test` runs:
+
+```bash
+node scripts/check-version.mjs && node test/smoke.mjs
+```
+
+`test/smoke.mjs` is an orchestrator. It imports focused modules such as `test/init.mjs`, `test/memory.mjs`, `test/episode.mjs`, `test/mcp.mjs`, `test/failure-lessons.mjs`, and package-file checks.
+
+A new feature should add or update a focused test module, then wire it through `test/smoke.mjs`.
+
+## Hook model
+
+Claude hooks are integration adapters, not hidden agents.
+
+Current guidance:
+
+- use `PreToolUse` for blocking dangerous commands before execution
+- use `PostToolUseFailure` for Failure Lessons capture
+- prefer exec-form hook commands with `command` + `args`
+- return structured JSON with `additionalContext` where Claude should receive context
+- never approve or publish memory from a hook
+
+See:
+
+- `docs/hooks/FAILURE_LESSONS_HOOK.md`
+- `docs/hooks/CLAUDE_HOOKS_BEST_PRACTICES.md`
+
+## MCP model
+
+The local MCP server exposes the kernel to agents over stdio. Agents should use MCP to inspect status, search memories, propose memories, inspect pending items, guard commands, and work with episodes where supported.
+
+Approval through MCP remains disabled by default. The safer workflow is:
+
+```text
+agent proposes -> user reviews inbox -> user approves -> kernel publishes
+```
+
+## ECC bundle
+
+The repository now includes repo-local ECC artifacts for Claude Code and Codex:
+
+```text
+.claude/ecc-tools.json
+.claude/skills/agent-kernel/SKILL.md
+.claude/commands/*.md
+.claude/identity.json
+.claude/homunculus/instincts/inherited/agent-kernel-instincts.yaml
+.codex/AGENTS.md
+.codex/config.toml
+.codex/agents/*.toml
+.agents/skills/agent-kernel/SKILL.md
+.agents/skills/agent-kernel/agents/openai.yaml
+```
+
+Treat these as repo-local workflow scaffolds and generated skills. Keep secrets, personal tokens, and private MCP server credentials in the user-level config, not in this repository.
+
+## Modularization plan
+
+The planned target layout remains:
+
+```text
+src/core/paths.mjs
+src/core/json.mjs
+src/core/memory-store.mjs
+src/core/episodes.mjs
+src/core/failure-lessons.mjs
+src/core/policies.mjs
+src/core/compile.mjs
+src/core/guard.mjs
+src/core/mcp.mjs
+src/commands/init.mjs
+src/commands/memory.mjs
+src/commands/episode.mjs
+src/commands/failure.mjs
+src/commands/mcp.mjs
+src/commands/guard.mjs
+src/commands/status.mjs
+src/cli.mjs
+```
+
+Until that extraction lands, edit the current runtime surface, not the aspirational folders.
 
 ## CI
 
-Three GitHub Actions workflows:
+The CI workflow currently covers:
 
-- `ci.yml` — build + test + typecheck + manifest + docs on every push to `master`.
-- `npm-publish.yml` — publishes to npm on every `v*` tag push, with retry-aware verify.
-- `release.yml` — creates a GitHub Release with CHANGELOG excerpt + source tarball on every `v*` tag push.
+- build + lint + smoke on Node 18/20/22
+- TypeScript typecheck
+- manifest validation for Skills.sh and Claude marketplace files
+- docs sanity checks
 
-`NPM_TOKEN` secret is configured on the repo.
-
-## Repository layout (full)
-
-See `README.md#project-layout` for the canonical layout including
-`development/` (canonical roadmap) and `develpment/` (legacy alias).
+Release workflows publish from version tags and create GitHub releases from `CHANGELOG.md` excerpts.
