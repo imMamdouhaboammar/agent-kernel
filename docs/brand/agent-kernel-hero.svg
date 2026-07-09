@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
+  <title id="title">Agent Kernel architecture hero</title>
+  <desc id="desc">A local knowledge kernel compiles approved memory into agent guidance files.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="520" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0b1020"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="300" y1="80" x2="900" y2="430" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7dd3fc"/>
+      <stop offset="0.55" stop-color="#a78bfa"/>
+      <stop offset="1" stop-color="#22c55e"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="20" stdDeviation="22" flood-color="#020617" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="520" rx="42" fill="url(#bg)"/>
+  <g opacity="0.18" stroke="#94a3b8" stroke-width="1">
+    <path d="M120 110h960M120 190h960M120 270h960M120 350h960M120 430h960"/>
+    <path d="M180 70v380M300 70v380M420 70v380M540 70v380M660 70v380M780 70v380M900 70v380M1020 70v380"/>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="420" y="96" width="360" height="328" rx="36" fill="#0f172a" stroke="url(#accent)" stroke-width="3"/>
+    <circle cx="600" cy="210" r="66" fill="none" stroke="#334155" stroke-width="12"/>
+    <circle cx="600" cy="210" r="28" fill="url(#accent)"/>
+    <text x="600" y="318" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="38" font-weight="800" fill="#f8fafc">Agent Kernel</text>
+    <text x="600" y="354" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="18" fill="#cbd5e1">local memory, approval, lessons, guards</text>
+  </g>
+
+  <g font-family="Inter, Arial, sans-serif">
+    <g transform="translate(74 92)">
+      <rect width="260" height="74" rx="24" fill="#111827" stroke="#334155"/>
+      <text x="24" y="33" font-size="18" font-weight="800" fill="#f8fafc">Approved memory</text>
+      <text x="24" y="57" font-size="14" fill="#94a3b8">rules, preferences, workflows</text>
+    </g>
+    <g transform="translate(74 206)">
+      <rect width="260" height="74" rx="24" fill="#111827" stroke="#334155"/>
+      <text x="24" y="33" font-size="18" font-weight="800" fill="#f8fafc">Failure Lessons</text>
+      <text x="24" y="57" font-size="14" fill="#94a3b8">error, root cause, fix path</text>
+    </g>
+    <g transform="translate(74 320)">
+      <rect width="260" height="74" rx="24" fill="#111827" stroke="#334155"/>
+      <text x="24" y="33" font-size="18" font-weight="800" fill="#f8fafc">Proposal inbox</text>
+      <text x="24" y="57" font-size="14" fill="#94a3b8">agents suggest, user approves</text>
+    </g>
+  </g>
+
+  <g stroke="url(#accent)" stroke-width="4" fill="none" stroke-linecap="round">
+    <path d="M340 129 C380 129 382 160 416 160"/>
+    <path d="M340 243 C382 243 384 246 416 246"/>
+    <path d="M340 357 C382 357 384 320 416 320"/>
+    <path d="M784 160 C820 160 830 129 864 129"/>
+    <path d="M784 246 C820 246 830 246 864 246"/>
+    <path d="M784 320 C820 320 830 357 864 357"/>
+  </g>
+
+  <g font-family="Inter, Arial, sans-serif">
+    <g transform="translate(866 92)">
+      <rect width="260" height="74" rx="24" fill="#111827" stroke="#334155"/>
+      <text x="24" y="33" font-size="18" font-weight="800" fill="#f8fafc">Agent surfaces</text>
+      <text x="24" y="57" font-size="14" fill="#94a3b8">Claude, Codex, Cursor, Gemini</text>
+    </g>
+    <g transform="translate(866 206)">
+      <rect width="260" height="74" rx="24" fill="#111827" stroke="#334155"/>
+      <text x="24" y="33" font-size="18" font-weight="800" fill="#f8fafc">Safe project link</text>
+      <text x="24" y="57" font-size="14" fill="#94a3b8">marked blocks, dry-run, backups</text>
+    </g>
+    <g transform="translate(866 320)">
+      <rect width="260" height="74" rx="24" fill="#111827" stroke="#334155"/>
+      <text x="24" y="33" font-size="18" font-weight="800" fill="#f8fafc">Optional autopilot</text>
+      <text x="24" y="57" font-size="14" fill="#94a3b8">hooks, guards, MCP, bundles</text>
+    </g>
+  </g>
+</svg>
