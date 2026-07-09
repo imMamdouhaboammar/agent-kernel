@@ -47,11 +47,45 @@ function exitCodeOf(payload) {
   return null;
 }
 
+function hookEventName(payload) {
+  return firstString(payload.hook_event_name, payload.hookEventName) || 'PostToolUseFailure';
+}
+
+function jsonOut(value) {
+  process.stdout.write(JSON.stringify(value) + '\n');
+}
+
+function quietNoop(payload) {
+  jsonOut({
+    suppressOutput: true,
+    hookSpecificOutput: {
+      hookEventName: hookEventName(payload),
+      additionalContext: ''
+    }
+  });
+}
+
 function hasFailure(payload, text) {
   const code = exitCodeOf(payload);
   if (code !== null && code !== 0) return true;
   if (payload.error || payload.is_error || payload.failed) return true;
   return /\b(ERR_[A-Z0-9_]+|E[A-Z0-9_]{3,}|TS\d{4}|MODULE_NOT_FOUND|ReferenceError|TypeError|SyntaxError|failed|error:|cannot find module)\b/i.test(text);
+}
+
+function buildContext(lesson) {
+  const id = lesson?.id || 'unknown';
+  const signature = lesson?.errorSignature || 'unknown-failure';
+  const command = lesson?.evidence?.command || '';
+  const occurrences = lesson?.occurrences || 1;
+  const lines = [
+    `Agent Kernel captured Failure Lesson ${id}.`,
+    `Signature: ${signature}.`,
+    `Occurrences: ${occurrences}.`
+  ];
+  if (command) lines.push(`Failed command: ${command}.`);
+  lines.push(`Before retrying, search related lessons with: agent-kernel failure search "${signature}".`);
+  lines.push('Apply the smallest fix that matches the known lesson, then rerun the same failing command.');
+  return lines.join('\n');
 }
 
 function main() {
@@ -79,13 +113,14 @@ function main() {
   );
 
   if (!hasFailure(payload, text)) {
-    process.stdout.write('Agent Kernel failure hook: no failure captured.\n');
+    quietNoop(payload);
     return;
   }
 
   const args = [
     failureCli,
     'capture',
+    '--json',
     '--from', process.env.AGENT_KERNEL_AGENT || 'claude-hook',
     '--type', command ? 'command-failure' : 'tool-failure',
     '--command', command,
@@ -99,9 +134,27 @@ function main() {
     env: process.env,
     cwd: process.cwd()
   });
-  if (result.stdout) process.stdout.write(result.stdout);
-  if (result.stderr) process.stderr.write(result.stderr);
-  if (result.status && result.status !== 0) process.exit(result.status);
+
+  if (result.status && result.status !== 0) {
+    process.stderr.write(result.stderr || result.stdout || 'Agent Kernel failure capture failed.\n');
+    process.exit(result.status);
+  }
+
+  let lesson;
+  try {
+    lesson = JSON.parse(result.stdout);
+  } catch {
+    process.stderr.write(result.stdout || result.stderr || 'Agent Kernel failure capture returned invalid JSON.\n');
+    process.exit(1);
+  }
+
+  jsonOut({
+    suppressOutput: true,
+    hookSpecificOutput: {
+      hookEventName: hookEventName(payload),
+      additionalContext: buildContext(lesson)
+    }
+  });
 }
 
 main();
