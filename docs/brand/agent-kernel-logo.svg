@@ -1,21 +1,29 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240" role="img" aria-labelledby="title desc">
-  <title id="title">Agent Kernel Logo</title>
-  <desc id="desc">A minimal mark showing a protected local knowledge kernel.</desc>
-  <defs>
-    <linearGradient id="g" x1="46" y1="32" x2="194" y2="208" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#7dd3fc"/>
-      <stop offset="0.48" stop-color="#a78bfa"/>
-      <stop offset="1" stop-color="#22c55e"/>
-    </linearGradient>
-    <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#020617" flood-opacity="0.20"/>
-    </filter>
-  </defs>
-  <rect width="240" height="240" rx="56" fill="#0b1020"/>
-  <g filter="url(#s)">
-    <path d="M120 32 190 72v96l-70 40-70-40V72l70-40Z" fill="#111827" stroke="url(#g)" stroke-width="10" stroke-linejoin="round"/>
-    <path d="M85 89h70v19H85V89Zm0 43h70v19H85v-19Z" fill="#e5e7eb"/>
-    <circle cx="120" cy="120" r="54" fill="none" stroke="#334155" stroke-width="8"/>
-    <circle cx="120" cy="120" r="18" fill="url(#g)"/>
+  <title id="title">Agent Kernel Mark</title>
+  <desc id="desc">A minimal local kernel mark built from bracket, node, and routing pixels.</desc>
+  <rect x="8" y="8" width="224" height="224" rx="24" fill="#050505"/>
+  <rect x="8" y="8" width="224" height="224" rx="24" fill="none" stroke="#2A2A2A" stroke-width="3"/>
+  <g shape-rendering="crispEdges">
+    <rect x="56" y="52" width="18" height="18" fill="#F4F4F1"/>
+    <rect x="74" y="52" width="18" height="18" fill="#F4F4F1"/>
+    <rect x="148" y="52" width="18" height="18" fill="#F4F4F1"/>
+    <rect x="166" y="52" width="18" height="18" fill="#F4F4F1"/>
+    <rect x="56" y="70" width="18" height="18" fill="#F4F4F1"/>
+    <rect x="166" y="70" width="18" height="18" fill="#F4F4F1"/>
+    <rect x="56" y="152" width="18" height="18" fill="#F4F4F1"/>
+    <rect x="166" y="152" width="18" height="18" fill="#F4F4F1"/>
+    <rect x="56" y="170" width="18" height="18" fill="#F4F4F1"/>
+    <rect x="74" y="170" width="18" height="18" fill="#F4F4F1"/>
+    <rect x="148" y="170" width="18" height="18" fill="#F4F4F1"/>
+    <rect x="166" y="170" width="18" height="18" fill="#F4F4F1"/>
+    <rect x="92" y="88" width="18" height="18" fill="#A6A6A0"/>
+    <rect x="130" y="88" width="18" height="18" fill="#A6A6A0"/>
+    <rect x="92" y="134" width="18" height="18" fill="#A6A6A0"/>
+    <rect x="130" y="134" width="18" height="18" fill="#A6A6A0"/>
+    <rect x="111" y="111" width="18" height="18" fill="#F8F46A"/>
+    <rect x="111" y="88" width="18" height="18" fill="#F8F46A"/>
+    <rect x="111" y="134" width="18" height="18" fill="#F8F46A"/>
+    <rect x="88" y="111" width="18" height="18" fill="#F8F46A"/>
+    <rect x="134" y="111" width="18" height="18" fill="#F8F46A"/>
   </g>
 </svg>
