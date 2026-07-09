@@ -5,6 +5,22 @@ import os from 'node:os';
 import path from 'node:path';
 
 const VERSION = '1.0.0';
+const OBSERVATION_TYPES = new Set([
+  'user_prompt',
+  'assistant_plan',
+  'tool_use',
+  'tool_result',
+  'tool_failure',
+  'file_read',
+  'file_edit',
+  'command_run',
+  'command_failure',
+  'test_failure',
+  'guard_block',
+  'permission_prompt',
+  'session_summary',
+  'manual_note'
+]);
 
 function kernelHome() {
   return process.env.AGENT_KERNEL_HOME || path.join(os.homedir(), '.agent-kernel');
@@ -39,6 +55,11 @@ function writeJson(filePath, value) {
   writeText(filePath, JSON.stringify(value, null, 2) + '\n');
 }
 
+function appendJsonl(filePath, value) {
+  ensureDir(path.dirname(filePath));
+  fs.appendFileSync(filePath, JSON.stringify(value) + '\n');
+}
+
 function sessionPaths() {
   const root = kernelHome();
   const sessions = path.join(root, 'runtime', 'sessions');
@@ -65,6 +86,10 @@ function parseFlags(argv) {
 function sessionId() {
   const stamp = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14);
   return `session_${stamp}_${crypto.randomBytes(4).toString('hex')}`;
+}
+
+function observationId() {
+  return `obs_${crypto.randomBytes(8).toString('hex')}`;
 }
 
 function projectIdFrom(projectPath) {
@@ -99,6 +124,33 @@ function readObservations(id) {
   return raw.split('\n').map((line) => {
     try { return JSON.parse(line); } catch { return null; }
   }).filter(Boolean);
+}
+
+function normalizeString(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function normalizeFiles(flags) {
+  const files = [];
+  const add = (value) => {
+    if (Array.isArray(value)) value.forEach(add);
+    else if (typeof value === 'string') value.split(',').forEach((item) => { if (item.trim()) files.push(item.trim()); });
+  };
+  add(flags.file);
+  add(flags.files);
+  return [...new Set(files)];
+}
+
+function filterObservations(observations, flags) {
+  let out = observations;
+  if (flags.type) out = out.filter((obs) => obs.type === flags.type);
+  if (flags.file) out = out.filter((obs) => (obs.files || []).includes(flags.file));
+  if (flags.command) out = out.filter((obs) => String(obs.command || '').includes(String(flags.command)));
+  if (flags.query) {
+    const q = String(flags.query).toLowerCase();
+    out = out.filter((obs) => JSON.stringify(obs).toLowerCase().includes(q));
+  }
+  return out;
 }
 
 function printJson(value) {
@@ -208,8 +260,81 @@ function commandShow(flags) {
   process.stdout.write(`Observations: ${observations.length || session.observationCount || 0}\n`);
 }
 
+function commandObserve(flags) {
+  const id = flags._[0] || flags.session || flags.sessionId;
+  if (!id) {
+    process.stderr.write('Usage: agent-kernel session observe <session-id> --type <type> --text <text>\n');
+    process.exitCode = 1;
+    return;
+  }
+  const session = readSession(id);
+  if (!session) {
+    process.stderr.write(`Session not found: ${id}\n`);
+    process.exitCode = 1;
+    return;
+  }
+  const type = String(flags.type || 'manual_note');
+  if (!OBSERVATION_TYPES.has(type)) {
+    process.stderr.write(`Invalid observation type: ${type}\n`);
+    process.exitCode = 1;
+    return;
+  }
+  const text = normalizeString(flags.text || flags._.slice(1).join(' '));
+  if (!text) {
+    process.stderr.write('Observation text is required. Use --text <text>.\n');
+    process.exitCode = 1;
+    return;
+  }
+  const timestamp = nowIso();
+  const observation = {
+    id: observationId(),
+    sessionId: id,
+    timestamp,
+    agentId: String(flags.agent || session.agentId || 'unknown-agent'),
+    type,
+    projectId: String(flags.projectId || session.projectId || 'project'),
+    cwd: String(flags.cwd || session.cwd || process.cwd()),
+    files: normalizeFiles(flags),
+    command: normalizeString(flags.command),
+    exitCode: Number.isFinite(Number(flags.exitCode)) ? Number(flags.exitCode) : null,
+    text,
+    metadata: {}
+  };
+  appendJsonl(sessionLogFile(id), observation);
+  const next = { ...session, updatedAt: timestamp, observationCount: readObservations(id).length };
+  writeJson(sessionFile(id), next);
+  if (flags.json) printJson({ observation, session: next });
+  else process.stdout.write(`Captured observation ${observation.id}\n`);
+}
+
+function commandObservations(flags) {
+  const id = flags._[0] || flags.session || flags.sessionId;
+  if (!id) {
+    process.stderr.write('Usage: agent-kernel session observations <session-id> [--type type] [--file path] [--command text] [--query text]\n');
+    process.exitCode = 1;
+    return;
+  }
+  if (!readSession(id)) {
+    process.stderr.write(`Session not found: ${id}\n`);
+    process.exitCode = 1;
+    return;
+  }
+  const observations = filterObservations(readObservations(id), flags);
+  if (flags.json) {
+    printJson({ observations });
+    return;
+  }
+  if (!observations.length) {
+    process.stdout.write('No observations found\n');
+    return;
+  }
+  for (const obs of observations) {
+    process.stdout.write(`${obs.timestamp}\t${obs.type}\t${obs.agentId}\t${obs.text}\n`);
+  }
+}
+
 function usage() {
-  process.stdout.write(`agent-kernel-session ${VERSION}\n\nUsage:\n  agent-kernel session start --agent <agent-id> [--project .] [--json]\n  agent-kernel session end <session-id> [--json]\n  agent-kernel session list [--json]\n  agent-kernel session show <session-id> [--json]\n`);
+  process.stdout.write(`agent-kernel-session ${VERSION}\n\nUsage:\n  agent-kernel session start --agent <agent-id> [--project .] [--json]\n  agent-kernel session end <session-id> [--json]\n  agent-kernel session list [--json]\n  agent-kernel session show <session-id> [--json]\n  agent-kernel session observe <session-id> --type <type> --text <text> [--file path] [--command cmd] [--exit-code n] [--json]\n  agent-kernel session observations <session-id> [--type type] [--file path] [--command text] [--query text] [--json]\n`);
 }
 
 function main() {
@@ -220,6 +345,8 @@ function main() {
   if (command === 'end') return commandEnd(flags);
   if (command === 'list') return commandList(flags);
   if (command === 'show') return commandShow(flags);
+  if (command === 'observe') return commandObserve(flags);
+  if (command === 'observations') return commandObservations(flags);
   process.stderr.write(`Unknown session command: ${command}\n`);
   usage();
   process.exitCode = 1;
