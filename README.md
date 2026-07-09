@@ -178,6 +178,13 @@ agent-kernel session show <session-id>
 agent-kernel session end <session-id>
 ```
 
+Local context can be requested through CLI without starting the daemon:
+
+```bash
+agent-kernel context --query 'safe-link duplicate block' --file src/cli.mjs --budget 1200
+agent-kernel context --query 'memory changes' --json
+```
+
 Runtime diagnostics are separate from the default doctor output:
 
 ```bash
@@ -292,6 +299,7 @@ agent-kernel migrate json [--publish]
 agent-kernel memory list|search|show
 agent-kernel episode add|sync|search|show|stats|reindex
 agent-kernel failure capture|learn|list|search|show|propose|promote|validate
+agent-kernel context [--query text] [--file path] [--budget 1200]
 agent-kernel daemon start|stop|restart|status
 agent-kernel session start|end|list|show|observe|observations
 agent-kernel enforce install
@@ -313,6 +321,7 @@ agent-kernel-failure-hook
 agent-kernel-daemon
 agent-kernel-runtime-doctor
 agent-kernel-session
+agent-kernel-context
 agent-kernel-mode
 agent-kernel-agent-write
 ak
