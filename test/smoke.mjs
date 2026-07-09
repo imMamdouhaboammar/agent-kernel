@@ -23,6 +23,7 @@ import { run as runPublicCliDaemon } from './public-cli-daemon.mjs';
 import { run as runPublicCliRuntimeDoctor } from './public-cli-runtime-doctor.mjs';
 import { run as runPublicCliSession } from './public-cli-session.mjs';
 import { run as runPublicCliObservation } from './public-cli-observation.mjs';
+import { run as runPublicCliContext } from './public-cli-context.mjs';
 import { run as runWrapperRouting } from './wrapper-routing.mjs';
 import { run as runAgentPropose } from './agent-propose.mjs';
 import { run as runFailureLessons } from './failure-lessons.mjs';
@@ -46,6 +47,7 @@ const tests = [
   ['public-cli-runtime-doctor', runPublicCliRuntimeDoctor],
   ['public-cli-session', runPublicCliSession],
   ['public-cli-observation', runPublicCliObservation],
+  ['public-cli-context', runPublicCliContext],
   ['wrapper-routing', runWrapperRouting],
   ['agent-propose', runAgentPropose],
   ['failure-lessons', runFailureLessons],
