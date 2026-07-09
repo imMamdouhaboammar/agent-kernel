@@ -86,11 +86,39 @@ function sleep(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
+function listSessions() {
+  const p = runtimePaths();
+  if (!exists(p.sessions)) return [];
+  return fs.readdirSync(p.sessions)
+    .filter((name) => name.endsWith('.json') && !name.endsWith('.jsonl'))
+    .map((name) => readJson(path.join(p.sessions, name), null))
+    .filter(Boolean)
+    .sort((a, b) => String(b.updatedAt || b.startedAt || '').localeCompare(String(a.updatedAt || a.startedAt || '')));
+}
+
+function sessionStats() {
+  const sessions = listSessions();
+  const activeSessions = sessions.filter((session) => session.status === 'active').length;
+  const lastObservationAt = sessions
+    .map((session) => session.updatedAt || session.startedAt || '')
+    .filter(Boolean)
+    .sort()
+    .at(-1) || null;
+  return { sessionCount: sessions.length, activeSessions, lastObservationAt };
+}
+
+function withRuntimeMetrics(status) {
+  const stats = sessionStats();
+  const startedAtMs = Date.parse(status.startedAt || '');
+  const uptimeMs = Number.isFinite(startedAtMs) ? Math.max(0, Date.now() - startedAtMs) : null;
+  return { ...status, ...stats, uptimeMs, uptimeSeconds: uptimeMs === null ? null : Math.floor(uptimeMs / 1000) };
+}
+
 function readDaemonStatus() {
   const p = runtimePaths();
   const status = readJson(p.status, null);
   if (!status || !isPidAlive(status.pid)) return { running: false, statusPath: p.status };
-  return { running: true, statusPath: p.status, ...status };
+  return withRuntimeMetrics({ running: true, statusPath: p.status, ...status });
 }
 
 function sendJson(res, statusCode, body) {
@@ -262,16 +290,6 @@ function buildContext(body) {
   return { context, sections, budgetUsed: context.length };
 }
 
-function listSessions() {
-  const p = runtimePaths();
-  if (!exists(p.sessions)) return [];
-  return fs.readdirSync(p.sessions)
-    .filter((name) => name.endsWith('.json') && !name.endsWith('.jsonl'))
-    .map((name) => readJson(path.join(p.sessions, name), null))
-    .filter(Boolean)
-    .sort((a, b) => String(b.updatedAt || b.startedAt || '').localeCompare(String(a.updatedAt || a.startedAt || '')));
-}
-
 function readSession(sessionId) {
   const p = runtimePaths();
   const session = readJson(path.join(p.sessions, `${sessionId}.json`), null);
@@ -383,6 +401,12 @@ function commandStop() {
   process.stdout.write(`Stopped Agent Kernel daemon pid ${current.pid}\n`);
 }
 
+function commandRestart(flags) {
+  commandStop();
+  sleep(100);
+  commandStart(flags);
+}
+
 function commandStatus(flags) {
   const status = readDaemonStatus();
   if (flags.json) {
@@ -399,10 +423,14 @@ function commandStatus(flags) {
   process.stdout.write(`URL: http://${status.host}:${status.port}\n`);
   process.stdout.write(`Runtime: ${status.runtime}\n`);
   process.stdout.write(`Started: ${status.startedAt}\n`);
+  process.stdout.write(`Uptime: ${status.uptimeSeconds}s\n`);
+  process.stdout.write(`Sessions: ${status.sessionCount}\n`);
+  process.stdout.write(`Active sessions: ${status.activeSessions}\n`);
+  process.stdout.write(`Last observation: ${status.lastObservationAt || 'none'}\n`);
 }
 
 function usage() {
-  process.stdout.write(`agent-kernel-daemon ${VERSION}\n\nUsage:\n  agent-kernel-daemon start [--host 127.0.0.1] [--port 3999]\n  agent-kernel-daemon stop\n  agent-kernel-daemon status [--json]\n\nThe daemon is optional and local-only by default.\n`);
+  process.stdout.write(`agent-kernel-daemon ${VERSION}\n\nUsage:\n  agent-kernel-daemon start [--host 127.0.0.1] [--port 3999]\n  agent-kernel-daemon stop\n  agent-kernel-daemon restart [--host 127.0.0.1] [--port 3999]\n  agent-kernel-daemon status [--json]\n\nThe daemon is optional and local-only by default.\n`);
 }
 
 function main() {
@@ -412,6 +440,7 @@ function main() {
   if (!command || command === 'help' || command === '--help' || command === '-h') return usage();
   if (command === 'start') return commandStart(flags);
   if (command === 'stop') return commandStop(flags);
+  if (command === 'restart') return commandRestart(flags);
   if (command === 'status') return commandStatus(flags);
   if (command === '_serve') return commandServe(flags);
   process.stderr.write(`Unknown daemon command: ${command}\n`);
