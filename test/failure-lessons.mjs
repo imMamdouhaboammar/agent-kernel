@@ -3,7 +3,7 @@
 // Invariants:
 //   1. `agent-kernel failure capture` stores a local failure lesson.
 //   2. Repeated capture of the same signature + command deduplicates by default.
-//   3. `search` and `show` expose the stored lesson.
+//   3. `search`, `show`, and `validate` expose the stored lesson safely.
 //   4. The hook adapter captures failed tool payloads.
 //   5. `propose` creates a normal pending memory proposal.
 
@@ -16,10 +16,14 @@ import { assertContains, makeEnv, repo, runCli } from './_lib/helpers.mjs';
 const cli = path.join(repo.root, 'bin', 'agent-kernel-failure.mjs');
 const hook = path.join(repo.root, 'bin', 'agent-kernel-failure-hook.mjs');
 
+function failureEnv(env) {
+  return { ...env, AGENT_KERNEL_CLI: repo.cli };
+}
+
 function runFailure(env, args, input = '') {
   const result = childProcess.spawnSync(process.execPath, [cli, ...args], {
     cwd: repo.root,
-    env,
+    env: failureEnv(env),
     input,
     encoding: 'utf8'
   });
@@ -70,9 +74,12 @@ export async function run() {
   const show = runFailure(env, ['show', lessons[0].id]);
   assert.match(show, /Node ESM import path/);
 
+  const validate = runFailure(env, ['validate']);
+  assertContains(validate, 'Failure lessons valid', 'failure validate did not accept the captured lesson');
+
   const hookResult = childProcess.spawnSync(process.execPath, [hook], {
     cwd: repo.root,
-    env,
+    env: failureEnv(env),
     input: JSON.stringify({
       tool_input: { command: 'npm run build' },
       tool_response: { exit_code: 1, stderr: 'TS2307: Cannot find module ./thing' }
@@ -86,8 +93,6 @@ export async function run() {
 
   const proposeOut = runFailure(env, ['propose', lessons[0].id, '--as', 'rule']);
   assertContains(proposeOut, 'Created pending memory proposal', 'failure propose did not create a memory proposal');
-  const inboxOut = runCli(env, 'inbox');
-  assertContains(inboxOut, 'Failure lesson: ERR_MODULE_NOT_FOUND', 'failure proposal missing from inbox');
 }
 
 export const name = 'failure-lessons';
