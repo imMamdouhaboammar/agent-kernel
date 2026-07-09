@@ -13,6 +13,7 @@ const failurePath = path.resolve(here, 'agent-kernel-failure.mjs');
 const daemonPath = path.resolve(here, 'agent-kernel-daemon.mjs');
 const runtimeDoctorPath = path.resolve(here, 'agent-kernel-runtime-doctor.mjs');
 const sessionPath = path.resolve(here, 'agent-kernel-session.mjs');
+const contextPath = path.resolve(here, 'agent-kernel-context.mjs');
 
 const DEFAULT_DENY_WRITE_PATHS = [
   '.env',
@@ -320,6 +321,10 @@ function main() {
 
   if (command === 'session') {
     runNode(sessionPath, args.slice(1));
+  }
+
+  if (command === 'context') {
+    runNode(contextPath, args.slice(1));
   }
 
   if (command === 'failure') {
