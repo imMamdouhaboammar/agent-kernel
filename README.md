@@ -1,6 +1,6 @@
-<div align="center">
+<div align='center'>
 
-<img src="./docs/brand/agent-kernel-wordmark.svg" alt="Agent Kernel wordmark" width="420" />
+<img src='./docs/brand/agent-kernel-wordmark.svg' alt='Agent Kernel wordmark' width='420' />
 
 <h1>Agent Kernel</h1>
 
@@ -11,16 +11,16 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
 </p>
 
 <p>
-  <a href="https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel"><img alt="npm version" src="https://img.shields.io/npm/v/@mamdouh-aboammar/agent-kernel"></a>
-  <a href="https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel"><img alt="npm downloads" src="https://img.shields.io/npm/dw/@mamdouh-aboammar/agent-kernel"></a>
-  <a href="https://bundlephobia.com/package/@mamdouh-aboammar/agent-kernel"><img alt="bundle size" src="https://img.shields.io/bundlephobia/min/@mamdouh-aboammar/agent-kernel"></a>
-  <a href="https://github.com/imMamdouhaboammar/agent-kernel/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/imMamdouhaboammar/agent-kernel/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="node" src="https://img.shields.io/badge/node-%3E%3D18.18.0-30363d">
-  <img alt="runtime dependencies" src="https://img.shields.io/badge/runtime_deps-0-30363d">
-  <a href="./LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-30363d"></a>
+  <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'><img alt='npm version' src='https://img.shields.io/npm/v/@mamdouh-aboammar/agent-kernel'></a>
+  <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'><img alt='npm downloads' src='https://img.shields.io/npm/dw/@mamdouh-aboammar/agent-kernel'></a>
+  <a href='https://bundlephobia.com/package/@mamdouh-aboammar/agent-kernel'><img alt='bundle size' src='https://img.shields.io/bundlephobia/min/@mamdouh-aboammar/agent-kernel'></a>
+  <a href='https://github.com/imMamdouhaboammar/agent-kernel/actions/workflows/ci.yml'><img alt='CI' src='https://github.com/imMamdouhaboammar/agent-kernel/actions/workflows/ci.yml/badge.svg'></a>
+  <img alt='node' src='https://img.shields.io/badge/node-%3E%3D18.18.0-30363d'>
+  <img alt='runtime dependencies' src='https://img.shields.io/badge/runtime_deps-0-30363d'>
+  <a href='./LICENSE'><img alt='license' src='https://img.shields.io/badge/license-MIT-30363d'></a>
 </p>
 
-<img src="./docs/brand/agent-kernel-readme-lockup.svg" alt="Agent Kernel README lockup" width="900" />
+<img src='./docs/brand/agent-strip.svg' alt='Agent Kernel supported agent stack' width='900' />
 
 </div>
 
@@ -38,14 +38,14 @@ Agent Kernel gives those agents a small local operating layer.
 | Claude, Codex, Cursor, and Gemini drift from each other | One source of truth distributed to each surface |
 | The same build or test failure comes back | Failure Lessons that capture command, error, root cause, and fix |
 | Agents find useful project rules but should not silently save them | Proposal inbox with user approval before publish |
-| Existing `AGENTS.md`, `CLAUDE.md`, or Cursor rules might be damaged | Safe linking with dry-run mode and marked blocks |
+| Existing AGENTS.md, CLAUDE.md, or Cursor rules might be damaged | Safe linking with dry-run mode and marked blocks |
 | You do not want a heavy platform | A Node CLI, local JSON files, optional hooks, optional MCP |
 
 The practical gain: keep using your current agents, but stop making each one relearn the same project context from scratch.
 
 ---
 
-## What you gain without losing control
+## What Agent Kernel is
 
 Agent Kernel is not another coding agent. It does not replace Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity, or any AGENTS.md-compatible tool.
 
@@ -156,21 +156,6 @@ For existing repositories, prefer safe-link first.
 
 ---
 
-## Does every agent automatically know it exists?
-
-No. Agent Kernel is local and explicit.
-
-An agent knows about it after one of these happens:
-
-1. You safe-link generated guidance into the project.
-2. The agent reads a standard surface such as `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, or Cursor rules.
-3. You configure the local MCP server for an agent that supports MCP.
-4. You install hooks that run Agent Kernel helper commands at specific lifecycle points.
-
-That is intentional. Agent Kernel should be visible, reviewable, and easy to remove from a project if you decide not to use it there.
-
----
-
 ## Core workflows
 
 ### Save a durable rule
@@ -178,21 +163,13 @@ That is intentional. Agent Kernel should be visible, reviewable, and easy to rem
 Use `remember` when you are acting as the user:
 
 ```bash
-agent-kernel remember "Never add local SQLite fallback to production Supabase apps." \
-  --type policy \
-  --level critical \
-  --tags supabase,database \
-  --publish
+agent-kernel remember 'Never add local SQLite fallback to production Supabase apps.' --type policy --level critical --tags supabase,database --publish
 ```
 
 When an agent finds a useful rule, it should propose it instead:
 
 ```bash
-agent-kernel propose \
-  --from claude \
-  --text "Use pnpm in this repository." \
-  --reason "User corrected the package manager during setup."
-
+agent-kernel propose --from claude --text 'Use pnpm in this repository.' --reason 'User corrected the package manager during setup.'
 agent-kernel inbox
 agent-kernel approve <proposal-id> --publish
 ```
@@ -202,20 +179,13 @@ agent-kernel approve <proposal-id> --publish
 Capture the useful parts of a failure:
 
 ```bash
-agent-kernel failure capture \
-  --from claude \
-  --type test-failure \
-  --command "npm test" \
-  --exit-code 1 \
-  --text "ERR_MODULE_NOT_FOUND ..." \
-  --root-cause "Node ESM import path missed its explicit extension." \
-  --fix "Add the explicit .js extension to the relative import."
+agent-kernel failure capture --from claude --type test-failure --command 'npm test' --exit-code 1 --text 'ERR_MODULE_NOT_FOUND' --root-cause 'Node ESM import path missed its explicit extension.' --fix 'Add the explicit .js extension to the relative import.'
 ```
 
 Search before retrying a familiar issue:
 
 ```bash
-agent-kernel failure search "ERR_MODULE_NOT_FOUND"
+agent-kernel failure search ERR_MODULE_NOT_FOUND
 ```
 
 Promote a recurring lesson into reviewable memory:
@@ -226,27 +196,13 @@ agent-kernel inbox
 agent-kernel approve <proposal-id> --publish
 ```
 
-Repeated captures of the same `project + command + errorSignature` update the existing lesson and increment `occurrences` instead of creating noisy duplicates.
-
-For Claude Code automatic capture, see [`docs/hooks/FAILURE_LESSONS_HOOK.md`](./docs/hooks/FAILURE_LESSONS_HOOK.md). The recommended event is `PostToolUseFailure` with exec-form command hooks.
-
 ### Capture project history as episodes
 
 ```bash
-agent-kernel episode add \
-  --title "Stripe webhook bug fix" \
-  --tags stripe,webhook,bug \
-  --text "Root cause: missing signature verification on /api/stripe webhook. Fix: verify signature via stripe.webhooks.constructEvent()."
-```
-
-Later:
-
-```bash
-agent-kernel episode search "stripe webhook"
+agent-kernel episode add --title 'Stripe webhook bug fix' --tags stripe,webhook,bug --text 'Root cause: missing signature verification. Fix: verify signature via stripe.webhooks.constructEvent().'
+agent-kernel episode search 'stripe webhook'
 agent-kernel episode show <episode-id>
 ```
-
-Episodes are useful for investigation notes, decisions, and debugging context that should be searchable but does not necessarily belong as a permanent rule.
 
 ---
 
@@ -274,16 +230,14 @@ See [`docs/BUNDLE_KB.md`](./docs/BUNDLE_KB.md).
 
 ## Command surface
 
-### Core CLI
-
 ```text
 agent-kernel init [--sync] [--enforce]
 agent-kernel doctor
 agent-kernel compile
 agent-kernel sync
 agent-kernel link [project] [--hooks]
-agent-kernel remember "rule text" [--type rule] [--level critical] [--publish]
-agent-kernel propose --from claude --text "rule text" --reason "..."
+agent-kernel remember <text> [--type rule] [--level critical] [--publish]
+agent-kernel propose --from claude --text <text> --reason <reason>
 agent-kernel inbox
 agent-kernel approve <id> [--publish]
 agent-kernel reject <id>
@@ -301,7 +255,7 @@ agent-kernel start <claude|codex|cursor|antigravity|gemini> [project]
 agent-kernel status
 ```
 
-### Helper binaries
+Helper binaries:
 
 ```text
 agent-kernel-safe-link
@@ -313,52 +267,6 @@ agent-kernel-mode
 agent-kernel-agent-write
 ak
 ```
-
----
-
-## Memory layout
-
-```text
-~/.agent-kernel/
-  config.json
-  source/
-    memories/
-      rules.json
-      preferences.json
-      workflows.json
-      project-notes.json
-      skills.json
-    failures/
-      failure-lessons.json
-    policies/
-      policies.json
-    schemas/
-  episodes/
-    archive/
-    index.json
-    sources.json
-  inbox/
-    pending/
-    approved/
-    rejected/
-  dist/
-    AGENTS.md
-    CLAUDE.md
-    cursor-rule.mdc
-    antigravity-agents.md
-    GEMINI.md
-    SKILLS.md
-    policy.json
-  logs/
-    compile.jsonl
-    sync.jsonl
-    proposals.jsonl
-    approvals.jsonl
-    episodes.jsonl
-    failures.jsonl
-```
-
-Generated files in `dist/` are disposable. Source JSON, proposals, episodes, policies, and Failure Lessons are canonical.
 
 ---
 
@@ -374,22 +282,7 @@ Generated files in `dist/` are disposable. Source JSON, proposals, episodes, pol
 | Gemini CLI | `GEMINI.md` |
 | Skills.sh | `SKILL.md`, `skills.sh.json` |
 
-Repo-local ECC scaffolds:
-
-```text
-.claude/ecc-tools.json
-.claude/skills/agent-kernel/SKILL.md
-.claude/commands/*.md
-.claude/identity.json
-.claude/homunculus/instincts/inherited/agent-kernel-instincts.yaml
-.codex/AGENTS.md
-.codex/config.toml
-.codex/agents/*.toml
-.agents/skills/agent-kernel/SKILL.md
-.agents/skills/agent-kernel/agents/openai.yaml
-```
-
-Keep credentials and private MCP details in user-level config, not in repo-local ECC files.
+Keep credentials and private MCP details in user-level config, not in repo-local generated files.
 
 ---
 
@@ -443,50 +336,7 @@ npm run size
 npm run publish:dry
 ```
 
-### Project layout
-
-```text
-agent-kernel/
-├── src/cli.mjs              # Core CLI source, single ESM file
-├── dist/cli.mjs             # Built CLI copied from src by scripts/build.mjs
-├── bin/                     # Public wrappers and helper binaries
-├── scripts/                 # Build, lint, version checks
-├── test/                    # Smoke orchestrator and focused test modules
-├── docs/                    # Architecture and protocol docs
-├── docs/brand/              # Lightweight README and marketing SVG assets
-├── examples/                # CI guard workflow and samples
-├── development/             # Roadmap
-├── .claude/                 # Repo-local ECC artifacts and Claude workflow commands
-├── .codex/                  # Repo-local Codex baseline and role configs
-├── .agents/skills/          # Codex-facing generated repo skill
-├── .github/workflows/       # CI and release automation
-├── .claude-plugin/          # Claude Code marketplace manifest
-├── SKILL.md                 # Skills.sh and Claude marketplace discovery
-├── skills.sh.json           # Skills.sh grouping metadata
-├── package.json             # npm metadata
-├── tsconfig.json            # TypeScript config
-├── CHANGELOG.md             # Version history
-├── LICENSE                  # MIT
-└── README.md
-```
-
-### Adding a command or integration
-
-1. Edit the current runtime surface: `src/cli.mjs` for core commands or a focused `bin/` helper for intentionally standalone behavior.
-2. Update help output, README, `docs/ARCHITECTURE_NOW.md`, and the relevant protocol doc.
-3. Add or update a focused smoke test and wire it through `test/smoke.mjs`.
-4. Run `npm run build && npm test && npm run lint && npm run typecheck`.
-
----
-
-## Contributing
-
-See [`CONTRIBUTING.md`](./CONTRIBUTING.md).
-
-1. Branch from `master`.
-2. Make focused commits.
-3. Keep code, tests, docs, and discovery metadata aligned.
-4. Open a PR with a clear description of what changed and why.
+See [`CONTRIBUTING.md`](./CONTRIBUTING.md) before changing runtime behavior.
 
 ---
 
@@ -505,7 +355,7 @@ MIT © Mamdouh Aboammar
 
 ---
 
-<div align="center">
+<div align='center'>
 
 *Built by [Mamdouh Aboammar](https://github.com/imMamdouhaboammar) for everyone who is tired of explaining the same standards to a new agent every morning.*
 
