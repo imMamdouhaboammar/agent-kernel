@@ -10,6 +10,7 @@ const cliPath = path.resolve(here, '..', 'dist', 'cli.mjs');
 const safeLinkPath = path.resolve(here, 'agent-kernel-safe-link.mjs');
 const safeGitHookPath = path.resolve(here, 'agent-kernel-safe-git-hook.mjs');
 const failurePath = path.resolve(here, 'agent-kernel-failure.mjs');
+const daemonPath = path.resolve(here, 'agent-kernel-daemon.mjs');
 
 const DEFAULT_DENY_WRITE_PATHS = [
   '.env',
@@ -301,6 +302,10 @@ function main() {
 
   if (command === 'start') {
     return handleStart(args.slice(1));
+  }
+
+  if (command === 'daemon') {
+    runNode(daemonPath, args.slice(1));
   }
 
   if (command === 'failure') {
