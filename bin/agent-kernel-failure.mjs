@@ -57,6 +57,10 @@ function csv(value) {
   return String(value || '').split(',').map(s => s.trim()).filter(Boolean);
 }
 function compact(value, limit = EXCERPT_LIMIT) { return String(value || '').replace(/\r/g, '').trim().slice(0, limit); }
+function fingerprintOf(parts) {
+  const body = parts.map(v => compact(v, 400).toLowerCase()).join('\n---\n');
+  return crypto.createHash('sha256').update(body).digest('hex').slice(0, 24);
+}
 function logLine(value) {
   const p = paths();
   ensureDir(path.dirname(p.logs));
@@ -95,6 +99,18 @@ function normalizeStatus(value) {
   const status = String(value || 'captured');
   return ['captured', 'proposed', 'approved', 'rejected', 'archived'].includes(status) ? status : 'captured';
 }
+function validateLesson(lesson) {
+  const errors = [];
+  if (!lesson.id || !String(lesson.id).startsWith('failure_lesson_')) errors.push('id must start with failure_lesson_');
+  if (!lesson.errorSignature) errors.push('errorSignature is required');
+  if (!lesson.failureType) errors.push('failureType is required');
+  if (!lesson.agent) errors.push('agent is required');
+  if (!Array.isArray(lesson.symptoms)) errors.push('symptoms must be an array');
+  if (!Array.isArray(lesson.fixRecipe)) errors.push('fixRecipe must be an array');
+  if (!Array.isArray(lesson.promoteTo)) errors.push('promoteTo must be an array');
+  if (!lesson.evidence || typeof lesson.evidence !== 'object') errors.push('evidence object is required');
+  return errors;
+}
 
 function buildLesson(flags, text) {
   const raw = compact(text, TEXT_LIMIT);
@@ -105,22 +121,25 @@ function buildLesson(flags, text) {
     throw new Error('Refusing to store failure evidence because it appears to contain a secret. Redact it first.');
   }
   const signature = compact(flags.signature || inferSignature(raw), 180);
+  const project = String(flags.project || path.basename(process.cwd()) || '');
+  const command = compact(flags.command || '', 600);
   const now = nowIso();
-  return {
+  const lesson = {
     id: flags.id || lessonId(),
     status: normalizeStatus(flags.status),
     scope: String(flags.scope || 'global'),
-    project: String(flags.project || path.basename(process.cwd()) || ''),
+    project,
     agent: String(flags.from || flags.agent || 'unknown-agent'),
     failureType: String(flags.type || flags['failure-type'] || 'coding-failure'),
     errorSignature: signature,
+    fingerprint: fingerprintOf([project, command, signature]),
     symptoms: csv(flags.symptoms).length ? csv(flags.symptoms) : inferSymptoms(raw),
     rootCause: compact(flags['root-cause'] || flags.cause || '', 1000),
     fixRecipe: csv(flags.fix || flags['fixed-by']),
     preventionRule: compact(flags.rule || flags['prevention-rule'] || '', 1000),
     evidence: {
-      command: compact(flags.command || '', 600),
-      exitCode: flags['exit-code'] === undefined ? null : Number(flags['exit-code']),
+      command,
+      exitCode: flags['exit-code'] === undefined || flags['exit-code'] === '' ? null : Number(flags['exit-code']),
       cwd: process.cwd(),
       filesTouched: csv(flags.files || flags['files-touched']),
       outputExcerpt: raw.slice(0, EXCERPT_LIMIT)
@@ -128,9 +147,40 @@ function buildLesson(flags, text) {
     promoteTo: csv(flags['promote-to'] || flags.promote || 'rule'),
     targets: csv(flags.targets || 'all'),
     tags: csv(flags.tags || [String(flags.type || 'coding-failure'), signature.toLowerCase()].join(',')),
+    occurrences: 1,
+    firstSeenAt: now,
+    lastSeenAt: now,
     createdAt: now,
     updatedAt: now,
     version: 1
+  };
+  const errors = validateLesson(lesson);
+  if (errors.length) throw new Error(`Invalid failure lesson: ${errors.join('; ')}`);
+  return lesson;
+}
+
+function mergeLesson(existing, incoming) {
+  const now = nowIso();
+  return {
+    ...existing,
+    agent: incoming.agent || existing.agent,
+    status: existing.status === 'archived' ? 'captured' : existing.status,
+    symptoms: Array.from(new Set([...(existing.symptoms || []), ...(incoming.symptoms || [])])).slice(0, 8),
+    rootCause: existing.rootCause || incoming.rootCause,
+    fixRecipe: Array.from(new Set([...(existing.fixRecipe || []), ...(incoming.fixRecipe || [])])).slice(0, 12),
+    preventionRule: existing.preventionRule || incoming.preventionRule,
+    evidence: {
+      ...existing.evidence,
+      ...incoming.evidence,
+      outputExcerpt: incoming.evidence?.outputExcerpt || existing.evidence?.outputExcerpt || ''
+    },
+    promoteTo: Array.from(new Set([...(existing.promoteTo || []), ...(incoming.promoteTo || [])])),
+    targets: Array.from(new Set([...(existing.targets || []), ...(incoming.targets || [])])),
+    tags: Array.from(new Set([...(existing.tags || []), ...(incoming.tags || [])])),
+    occurrences: Number(existing.occurrences || 1) + 1,
+    firstSeenAt: existing.firstSeenAt || existing.createdAt || incoming.createdAt,
+    lastSeenAt: now,
+    updatedAt: now
   };
 }
 
@@ -138,7 +188,7 @@ function findLesson(wanted) {
   const lessons = loadLessons();
   const exact = lessons.find(x => x.id === wanted);
   if (exact) return { lessons, lesson: exact };
-  const matches = lessons.filter(x => x.id.includes(wanted) || x.errorSignature === wanted);
+  const matches = lessons.filter(x => x.id.includes(wanted) || x.errorSignature === wanted || x.fingerprint === wanted);
   if (matches.length === 1) return { lessons, lesson: matches[0] };
   return { lessons, lesson: null, matches };
 }
@@ -146,6 +196,7 @@ function formatLesson(lesson) {
   return [
     `[${lesson.id}] ${lesson.status} ${lesson.failureType}`,
     `Signature: ${lesson.errorSignature}`,
+    `Occurrences: ${lesson.occurrences || 1}`,
     `Agent: ${lesson.agent}`,
     `Project: ${lesson.project}`,
     `Root cause: ${lesson.rootCause || 'not provided'}`,
@@ -158,6 +209,7 @@ function proposalType(value) {
 }
 function buildProposalText(lesson, asType) {
   const lines = [`Failure lesson: ${lesson.errorSignature}`, ''];
+  lines.push(`Observed ${lesson.occurrences || 1} time(s).`, '');
   if (lesson.symptoms?.length) lines.push('Symptoms:', ...lesson.symptoms.map(s => `- ${s}`), '');
   if (lesson.rootCause) lines.push(`Root cause: ${lesson.rootCause}`, '');
   if (lesson.fixRecipe?.length) lines.push('Fix recipe:', ...lesson.fixRecipe.map((s, i) => `${i + 1}. ${s}`), '');
@@ -194,6 +246,21 @@ function commandCapture(flags, text) {
   let lesson;
   try { lesson = buildLesson(flags, text); } catch (err) { fail(err.message); return null; }
   const lessons = loadLessons();
+  const existingIndex = flags['allow-duplicate'] ? -1 : lessons.findIndex(x => (x.fingerprint || fingerprintOf([x.project, x.evidence?.command, x.errorSignature])) === lesson.fingerprint);
+  if (existingIndex >= 0) {
+    const updated = mergeLesson(lessons[existingIndex], lesson);
+    lessons[existingIndex] = updated;
+    saveLessons(lessons);
+    logLine({ action: 'capture-dedupe', id: updated.id, signature: updated.errorSignature, agent: updated.agent, occurrences: updated.occurrences });
+    if (flags.json) print(JSON.stringify(updated, null, 2));
+    else {
+      print(`Updated existing failure lesson: ${updated.id}`);
+      print(`Signature: ${updated.errorSignature}`);
+      print(`Occurrences: ${updated.occurrences}`);
+      print(`Next: agent-kernel failure propose ${updated.id} --as rule`);
+    }
+    return updated;
+  }
   lessons.push(lesson);
   saveLessons(lessons);
   logLine({ action: 'capture', id: lesson.id, signature: lesson.errorSignature, agent: lesson.agent });
@@ -245,8 +312,22 @@ function commandPropose(flags, wanted) {
     print(output);
   } catch (err) { fail(err.message); }
 }
+function commandValidate(flags) {
+  const lessons = loadLessons();
+  const failures = [];
+  lessons.forEach((lesson, index) => {
+    const errors = validateLesson(lesson);
+    if (errors.length) failures.push({ index, id: lesson.id || null, errors });
+  });
+  if (flags.json) print(JSON.stringify({ ok: failures.length === 0, checked: lessons.length, failures }, null, 2));
+  else if (failures.length === 0) print(`Failure lessons valid: ${lessons.length} checked`);
+  else {
+    failures.forEach(f => print(`[${f.index}] ${f.id || 'missing-id'}: ${f.errors.join('; ')}`));
+    process.exitCode = 1;
+  }
+}
 function usage() {
-  print(`agent-kernel failure\n\nUsage:\n  agent-kernel failure capture --from claude --type test-failure --command \"npm test\" --exit-code 1 --text \"<error>\"\n  cat error.log | agent-kernel failure capture --from codex --type build-failure --command \"npm run build\"\n  agent-kernel failure learn --from claude --text \"<error>\" --root-cause \"...\" --fix \"...\" --as rule\n  agent-kernel failure list [--status captured] [--json]\n  agent-kernel failure search \"ERR_MODULE_NOT_FOUND\"\n  agent-kernel failure show <id>\n  agent-kernel failure propose <id> --as rule\n\nFailure lessons are captured locally first. Promotion creates a pending memory proposal. Approval remains user-controlled.`);
+  print(`agent-kernel failure\n\nUsage:\n  agent-kernel failure capture --from claude --type test-failure --command \"npm test\" --exit-code 1 --text \"<error>\"\n  cat error.log | agent-kernel failure capture --from codex --type build-failure --command \"npm run build\"\n  agent-kernel failure learn --from claude --text \"<error>\" --root-cause \"...\" --fix \"...\" --as rule\n  agent-kernel failure list [--status captured] [--json]\n  agent-kernel failure search \"ERR_MODULE_NOT_FOUND\"\n  agent-kernel failure show <id>\n  agent-kernel failure propose <id> --as rule\n  agent-kernel failure validate [--json]\n\nCapture deduplicates the same project + command + error signature by default. Use --allow-duplicate when the separate occurrence must remain separate. Promotion creates a pending memory proposal. Approval remains user-controlled.`);
 }
 function main() {
   const [action = 'help', ...rest] = process.argv.slice(2);
@@ -260,6 +341,7 @@ function main() {
   if (action === 'search') return commandSearch(flags, flags._.join(' '));
   if (action === 'show') return commandShow(flags, flags._[0]);
   if (action === 'propose' || action === 'promote') return commandPropose(flags, flags._[0]);
+  if (action === 'validate') return commandValidate(flags);
   fail(`Unknown failure command: ${action}`);
   usage();
 }

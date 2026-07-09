@@ -20,6 +20,7 @@ import { run as runPublicCliSafeLink } from './public-cli-safe-link.mjs';
 import { run as runPublicCliSafeGitHook } from './public-cli-safe-git-hook.mjs';
 import { run as runWrapperRouting } from './wrapper-routing.mjs';
 import { run as runAgentPropose } from './agent-propose.mjs';
+import { run as runFailureLessons } from './failure-lessons.mjs';
 import { run as runModeConfig } from './mode-config.mjs';
 import { run as runAgentWriteModes } from './agent-write-modes.mjs';
 import { run as runPackageFiles } from './package-files.mjs';
@@ -37,6 +38,7 @@ const tests = [
   ['public-cli-safe-git-hook', runPublicCliSafeGitHook],
   ['wrapper-routing', runWrapperRouting],
   ['agent-propose', runAgentPropose],
+  ['failure-lessons', runFailureLessons],
   ['mode-config', runModeConfig],
   ['agent-write-modes', runAgentWriteModes],
   ['package-files', runPackageFiles]

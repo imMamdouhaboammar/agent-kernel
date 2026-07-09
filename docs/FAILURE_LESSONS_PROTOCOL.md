@@ -21,7 +21,8 @@ Without a durable loop, every project starts from zero.
 ```text
 failure happens
   -> capture failure evidence
-  -> store local failure lesson
+  -> dedupe by project + command + error signature
+  -> store or update local failure lesson
   -> search similar lessons before retrying
   -> propose durable memory
   -> user approves or rejects
@@ -37,6 +38,35 @@ Captured lessons are stored locally at:
 ```
 
 The file is intentionally separate from approved memories. Failure evidence is not automatically a rule. It must pass through proposal and approval before it affects other agents.
+
+The schema lives at:
+
+```text
+docs/schemas/failure-lesson.schema.json
+```
+
+## Dedupe model
+
+Capture computes a deterministic fingerprint from:
+
+```text
+project + command + errorSignature
+```
+
+If the same failure is captured again, the existing lesson is updated instead of creating a duplicate record. The lesson keeps:
+
+- `occurrences`
+- `firstSeenAt`
+- `lastSeenAt`
+- merged symptoms
+- merged fix recipe
+- merged tags and targets
+
+Use this only when the repeated error is the same technical pattern. To force a separate record:
+
+```bash
+agent-kernel failure capture --allow-duplicate --text "..."
+```
 
 ## CLI
 
@@ -63,6 +93,13 @@ Inspect a lesson:
 
 ```bash
 agent-kernel failure show <failure-lesson-id>
+```
+
+Validate stored lessons:
+
+```bash
+agent-kernel failure validate
+agent-kernel failure validate --json
 ```
 
 Propose it as durable memory:
