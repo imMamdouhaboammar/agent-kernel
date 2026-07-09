@@ -4,7 +4,7 @@
 //   1. `agent-kernel failure capture` stores a local failure lesson.
 //   2. Repeated capture of the same signature + command deduplicates by default.
 //   3. `search`, `show`, and `validate` expose the stored lesson safely.
-//   4. The hook adapter captures failed tool payloads.
+//   4. The hook adapter captures failed tool payloads and returns structured Claude context.
 //   5. `propose` creates a normal pending memory proposal.
 
 import assert from 'node:assert/strict';
@@ -81,12 +81,20 @@ export async function run() {
     cwd: repo.root,
     env: failureEnv(env),
     input: JSON.stringify({
+      hook_event_name: 'PostToolUseFailure',
+      tool_name: 'Bash',
       tool_input: { command: 'npm run build' },
       tool_response: { exit_code: 1, stderr: 'TS2307: Cannot find module ./thing' }
     }),
     encoding: 'utf8'
   });
   assert.equal(hookResult.status, 0, hookResult.stderr || hookResult.stdout);
+  const hookJson = JSON.parse(hookResult.stdout);
+  assert.equal(hookJson.suppressOutput, true);
+  assert.equal(hookJson.hookSpecificOutput.hookEventName, 'PostToolUseFailure');
+  assertContains(hookJson.hookSpecificOutput.additionalContext, 'Agent Kernel captured Failure Lesson', 'hook did not return Claude context');
+  assertContains(hookJson.hookSpecificOutput.additionalContext, 'TS2307', 'hook context missing signature');
+
   const afterHook = JSON.parse(fs.readFileSync(storePath, 'utf8'));
   assert.equal(afterHook.length, 2);
   assert.equal(afterHook[1].errorSignature, 'TS2307');
