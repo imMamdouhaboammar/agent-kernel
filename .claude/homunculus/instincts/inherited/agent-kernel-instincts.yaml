@@ -1,0 +1,507 @@
+# Instincts generated from https://github.com/imMamdouhaboammar/agent-kernel
+# Generated: 2026-07-09T11:21:47.510Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: agent-kernel-commit-conventional
+trigger: "when writing a commit message"
+confidence: 0.85
+domain: git
+source: repo-analysis
+source_repo: https://github.com/imMamdouhaboammar/agent-kernel
+---
+
+# Agent Kernel Commit Conventional
+
+## Action
+
+Use conventional commit format with prefixes: docs, feat, fix, testdata, test
+
+## Evidence
+
+- 11 commits analyzed
+- Detected conventional commit pattern
+- Examples: feat(failure): add failure lessons CLI, fix(failure): remove escaped newline typo
+
+---
+id: agent-kernel-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/imMamdouhaboammar/agent-kernel
+---
+
+# Agent Kernel Commit Length
+
+## Action
+
+Keep commit messages concise (~43 characters)
+
+## Evidence
+
+- Average commit message length: 43 chars
+- Based on 11 commits
+
+---
+id: agent-kernel-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/imMamdouhaboammar/agent-kernel
+---
+
+# Agent Kernel Naming Files
+
+## Action
+
+Use kebab-case naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: kebab-case
+
+---
+id: agent-kernel-import-relative
+trigger: "when importing modules"
+confidence: 0.75
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/imMamdouhaboammar/agent-kernel
+---
+
+# Agent Kernel Import Relative
+
+## Action
+
+Use relative imports for project files
+
+## Evidence
+
+- Import analysis shows relative import pattern
+- Example: import { x } from '../lib/x'
+
+---
+id: agent-kernel-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/imMamdouhaboammar/agent-kernel
+---
+
+# Agent Kernel Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: agent-kernel-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/imMamdouhaboammar/agent-kernel
+---
+
+# Agent Kernel Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: agent-kernel-workflow-feature-development
+trigger: "when implementing a new feature"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/imMamdouhaboammar/agent-kernel
+---
+
+# Agent Kernel Workflow Feature Development
+
+## Action
+
+Follow the feature-development workflow:
+1. Add feature implementation
+2. Add tests for feature
+3. Update documentation
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~16x per month
+- Files: **/*.test.*
+
+---
+id: agent-kernel-workflow-feature-development-with-cli-hook-docs-tests
+trigger: "when doing feature development with cli hook docs tests"
+confidence: 0.55
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/imMamdouhaboammar/agent-kernel
+---
+
+# Agent Kernel Workflow Feature Development With Cli Hook Docs Tests
+
+## Action
+
+Follow the feature-development-with-cli-hook-docs-tests workflow:
+1. Create CLI entry point for the feature (bin/agent-kernel-<feature>.mjs)
+2. Implement hook adapter for the feature (bin/agent-kernel-<feature>-hook.mjs)
+3. Document the feature protocol (docs/<FEATURE>_PROTOCOL.md)
+4. Document hook usage (docs/hooks/<FEATURE>_HOOK.md)
+5. Add example/test data (examples/<feature>-example.json, examples/<feature>-settings.json)
+6. Write smoke or integration test (test/<feature>.mjs)
+7. Expose new CLI bins in package.json
+8. Route new subcommand in main CLI (bin/agent-kernel.mjs)
+9. Document feature in AGENTS.md
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~1x per month
+- Files: bin/agent-kernel-<feature>.mjs, bin/agent-kernel-<feature>-hook.mjs, docs/<FEATURE>_PROTOCOL.md
+
+---
+id: agent-kernel-workflow-feature-bugfix-followup
+trigger: "when doing feature bugfix followup"
+confidence: 0.55
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/imMamdouhaboammar/agent-kernel
+---
+
+# Agent Kernel Workflow Feature Bugfix Followup
+
+## Action
+
+Follow the feature-bugfix-followup workflow:
+1. Add new CLI or feature file (bin/agent-kernel-<feature>.mjs)
+2. Commit a fix to the same file (bin/agent-kernel-<feature>.mjs)
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~1x per month
+- Files: bin/agent-kernel-<feature>.mjs
+
+---
+id: agent-kernel-workflow-feature-documentation-split
+trigger: "when doing feature documentation split"
+confidence: 0.55
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/imMamdouhaboammar/agent-kernel
+---
+
+# Agent Kernel Workflow Feature Documentation Split
+
+## Action
+
+Follow the feature-documentation-split workflow:
+1. Create or update docs/<FEATURE>_PROTOCOL.md
+2. Create or update docs/hooks/<FEATURE>_HOOK.md
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~1x per month
+- Files: docs/<FEATURE>_PROTOCOL.md, docs/hooks/<FEATURE>_HOOK.md
+
+---
+id: agent-kernel-instinct-file-naming
+trigger: "When creating a new file in the codebase"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: imMamdouhaboammar/agent-kernel
+---
+
+# Agent Kernel Instinct File Naming
+
+## Action
+
+Name the file using kebab-case
+
+## Evidence
+
+- Pattern in naming conventions
+- All files follow kebab-case
+
+---
+id: agent-kernel-instinct-function-naming
+trigger: "When defining a new function"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: imMamdouhaboammar/agent-kernel
+---
+
+# Agent Kernel Instinct Function Naming
+
+## Action
+
+Use camelCase for function names
+
+## Evidence
+
+- Pattern in naming conventions
+- Functions consistently use camelCase
+
+---
+id: agent-kernel-instinct-class-naming
+trigger: "When defining a new class"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: imMamdouhaboammar/agent-kernel
+---
+
+# Agent Kernel Instinct Class Naming
+
+## Action
+
+Use PascalCase for class names
+
+## Evidence
+
+- Pattern in naming conventions
+- Classes use PascalCase
+
+---
+id: agent-kernel-instinct-constant-naming
+trigger: "When defining a constant"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: imMamdouhaboammar/agent-kernel
+---
+
+# Agent Kernel Instinct Constant Naming
+
+## Action
+
+Use SCREAMING_SNAKE_CASE for constant names
+
+## Evidence
+
+- Pattern in naming conventions
+- Constants use SCREAMING_SNAKE_CASE
+
+---
+id: agent-kernel-instinct-import-style
+trigger: "When importing modules"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: imMamdouhaboammar/agent-kernel
+---
+
+# Agent Kernel Instinct Import Style
+
+## Action
+
+Use relative import paths
+
+## Evidence
+
+- Pattern in importStyle
+- All imports are relative
+
+---
+id: agent-kernel-instinct-export-style
+trigger: "When exporting modules or functions"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: imMamdouhaboammar/agent-kernel
+---
+
+# Agent Kernel Instinct Export Style
+
+## Action
+
+Use named exports
+
+## Evidence
+
+- Pattern in exportStyle
+- All exports are named
+
+---
+id: agent-kernel-instinct-test-location
+trigger: "When adding tests for a feature"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: imMamdouhaboammar/agent-kernel
+---
+
+# Agent Kernel Instinct Test Location
+
+## Action
+
+Place test files in the separate 'test' folder
+
+## Evidence
+
+- testLocation: separate
+- test/<feature>.mjs
+
+---
+id: agent-kernel-instinct-test-file-naming
+trigger: "When naming a test file"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: imMamdouhaboammar/agent-kernel
+---
+
+# Agent Kernel Instinct Test File Naming
+
+## Action
+
+Use the format test/<feature>.mjs
+
+## Evidence
+
+- test/<feature>.mjs
+- Pattern in test files
+
+---
+id: agent-kernel-instinct-test-data
+trigger: "When adding test data for a feature"
+confidence: 0.85
+domain: testing
+source: repo-analysis
+source_repo: imMamdouhaboammar/agent-kernel
+---
+
+# Agent Kernel Instinct Test Data
+
+## Action
+
+Place example or settings JSON in the 'examples' folder
+
+## Evidence
+
+- examples/<feature>-example.json
+- examples/<feature>-settings.json
+
+---
+id: agent-kernel-instinct-git-commit-format
+trigger: "When making a commit"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: imMamdouhaboammar/agent-kernel
+---
+
+# Agent Kernel Instinct Git Commit Format
+
+## Action
+
+Use conventional commit prefixes: docs, feat, fix, testdata, test, chore
+
+## Evidence
+
+- Conventional commit prefixes in all commits
+- Examples: 'feat(failure): ...', 'fix(failure): ...'
+
+---
+id: agent-kernel-instinct-git-commit-length
+trigger: "When writing a commit message"
+confidence: 0.7
+domain: git
+source: repo-analysis
+source_repo: imMamdouhaboammar/agent-kernel
+---
+
+# Agent Kernel Instinct Git Commit Length
+
+## Action
+
+Keep the commit message concise (around 43 characters on average)
+
+## Evidence
+
+- averageLength: 43
+- Short, descriptive commit messages
+
+---
+id: agent-kernel-instinct-workflow-feature-module
+trigger: "When adding a new major feature or module"
+confidence: 0.95
+domain: workflow
+source: repo-analysis
+source_repo: imMamdouhaboammar/agent-kernel
+---
+
+# Agent Kernel Instinct Workflow Feature Module
+
+## Action
+
+Follow the workflow: create CLI entry, hook adapter, protocol doc, hook doc, example data, test, expose in package.json, route in main CLI, document in AGENTS.md
+
+## Evidence
+
+- feature-development-with-cli-hook-docs-tests workflow
+- Commits: 'feat(failure): add failure lessons CLI', 'docs(failure): define failure lessons protocol', etc.
+
+---
+id: agent-kernel-instinct-workflow-feature-fixup
+trigger: "When a new CLI or feature file is added and immediately followed by a fix to the same file"
+confidence: 0.8
+domain: workflow
+source: repo-analysis
+source_repo: imMamdouhaboammar/agent-kernel
+---
+
+# Agent Kernel Instinct Workflow Feature Fixup
+
+## Action
+
+Commit the fix as a separate 'fix' commit referencing the feature file
+
+## Evidence
+
+- feature-bugfix-followup workflow
+- Commits: 'feat(failure): add failure lessons CLI', 'fix(failure): remove escaped newline typo'
+
+---
+id: agent-kernel-instinct-workflow-feature-docs-split
+trigger: "When documenting a new feature and its hook adapter"
+confidence: 0.85
+domain: workflow
+source: repo-analysis
+source_repo: imMamdouhaboammar/agent-kernel
+---
+
+# Agent Kernel Instinct Workflow Feature Docs Split
+
+## Action
+
+Create or update both docs/<FEATURE>_PROTOCOL.md and docs/hooks/<FEATURE>_HOOK.md
+
+## Evidence
+
+- feature-documentation-split workflow
+- Docs: docs/FAILURE_PROTOCOL.md, docs/hooks/FAILURE_HOOK.md
+
