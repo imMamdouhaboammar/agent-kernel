@@ -139,6 +139,6 @@ This keeps hand-written project guidance, source memory, generated output, and a
 
 ## Current status
 
-`agent-kernel-safe-link` is a companion binary with regression coverage for duplicate marked blocks. It exists to keep project linking safe while the main `agent-kernel link` command remains part of the monolithic CLI surface.
+`agent-kernel-safe-link` is a companion binary with regression coverage for duplicate marked blocks and Claude guidance linking through `CLAUDE.md`. It exists to keep project linking safe while the main `agent-kernel link` wrapper routes user-facing link operations through the same safe behavior.
 
-Future work can move the same merge strategy into the main `link` command once the behavior is fully aligned with the runtime and smoke suite.
+Future work can move the same merge strategy into the monolithic runtime once the behavior is fully aligned with the command surface and smoke suite.
