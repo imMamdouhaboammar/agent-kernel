@@ -11,6 +11,9 @@ agents. It provides:
 - a shared JSON-first memory layer (rules, preferences, workflows,
   project notes, skills) at `~/.agent-kernel/source/memories/`
 - an episodic memory archive at `~/.agent-kernel/episodes/`
+- a Failure Lessons loop at `~/.agent-kernel/source/failures/` so
+  repeated coding errors can become reviewable rules, workflows,
+  skill triggers, or policies
 - an approval inbox (`~/.agent-kernel/inbox/`) so agents can
   propose new rules but only the kernel publishes them
 - a compiler that turns the JSON source into agent-specific
@@ -32,6 +35,7 @@ current source layout and the explicit list of files that matter.
 agent-kernel/
 ├── src/cli.mjs              # Source CLI — single ESM file (~85 kB)
 ├── dist/cli.mjs             # Built CLI (copy of src via scripts/build.mjs)
+├── bin/                     # Thin executable wrappers and standalone helpers
 ├── scripts/
 │   ├── build.mjs            # copyFileSync src → dist + chmod
 │   ├── lint.mjs             # MCP tool name + secret pattern sanity
@@ -54,10 +58,11 @@ agent-kernel/
    [`development/BACKLOG.md`](./development/BACKLOG.md). Adding
    files there today will be ignored at runtime and will mislead
    future contributors.
-2. **The CLI is a single file**. All commands live in
+2. **The CLI is a single file**. All core commands live in
    `src/cli.mjs`. Find the `dispatch(args)` function and add a new
-   `case` there. Do not split into modules without first updating
-   the modularization epic.
+   `case` there. Thin executable wrappers in `bin/` may route to
+   focused standalone helpers when the helper is intentionally outside
+   the current single-file runtime.
 3. **`scripts/build.mjs` only copies**. It reads `src/cli.mjs`,
    injects `VERSION` from `package.json`, writes
    `dist/cli.mjs`, and `chmod`s it. Anything beyond that is out of
@@ -68,11 +73,51 @@ agent-kernel/
 5. **Do not commit secrets**, `.env` files, `node_modules/`, or
    anything matching `DEFAULT_SECRET_PATTERNS` in `src/cli.mjs`.
 
+## Failure Lessons protocol
+
+When a command, test, edit, or agent workflow fails in a way that may
+repeat, capture it as a local Failure Lesson before trying another
+blind fix.
+
+```bash
+agent-kernel failure capture \
+  --from <agent> \
+  --type test-failure \
+  --command "npm test" \
+  --exit-code 1 \
+  --text "<error output>" \
+  --root-cause "<why it happened>" \
+  --fix "<known fix step>"
+```
+
+Before retrying a similar failure, search prior lessons:
+
+```bash
+agent-kernel failure search "ERR_MODULE_NOT_FOUND"
+```
+
+If the lesson is useful beyond the current session, propose it as
+reviewable memory:
+
+```bash
+agent-kernel failure propose <failure-lesson-id> --as rule
+```
+
+Allowed promotion targets are `rule`, `policy`, `workflow`, `skill`,
+and `note`. Promotion must create a pending proposal. Do not silently
+approve or publish it.
+
+Read [`docs/FAILURE_LESSONS_PROTOCOL.md`](./docs/FAILURE_LESSONS_PROTOCOL.md)
+before changing this workflow.
+
 ## Adding a new command
 
-1. Edit `src/cli.mjs` — find `dispatch(args)` and add a `case`.
+1. Edit `src/cli.mjs` for core runtime commands, or add a clearly
+   named `bin/` helper when the helper is intentionally outside the
+   current single-file runtime.
 2. Update `--help` output and the README core-commands section.
-3. Add a smoke test to `test/smoke.mjs`.
+3. Add a smoke test to `test/smoke.mjs` or a focused test file wired
+   through `package.json#scripts.test`.
 4. Run `npm run build && npm test` locally before opening a PR.
 
 ## Install + verify
@@ -80,7 +125,7 @@ agent-kernel/
 ```bash
 npm install
 npm run build        # copyFileSync src/cli.mjs → dist/cli.mjs + chmod
-npm test             # node scripts/check-version.mjs && node test/smoke.mjs
+npm test             # node scripts/check-version.mjs && smoke tests
 npm run typecheck    # tsc --noEmit
 npm run lint         # node scripts/lint.mjs && node scripts/check-version.mjs
 npm run size         # npm pack --dry-run (preview the published tarball)
