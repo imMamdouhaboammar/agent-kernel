@@ -30,7 +30,7 @@ A single Node.js CLI (`agent-kernel` / `ak`) that gives every coding agent you u
    - `.cursor/rules/00-agent-kernel.mdc`
    - `.agents/agents.md`
    - `GEMINI.md`
-6. Hooks: Claude `PreToolUse` + `PostToolUse`, git `pre-commit`, optional CI guard
+6. Hooks: Claude `PreToolUse` + `PostToolUseFailure`, git `pre-commit`, optional CI guard
 7. MCP tools for memory, episodes, approval, and guard operations
 8. Deterministic policy guard blocking dangerous shell commands and secret leaks
 
@@ -119,6 +119,15 @@ agent-kernel approve <proposal-id> --publish
 
 Agents may capture and propose. They must not silently approve or publish.
 
+## Hook behavior
+
+Claude failure capture should use `PostToolUseFailure`, narrow matchers, exec form with `args`, short timeouts, and structured JSON output with `additionalContext`.
+
+See:
+
+- [docs/hooks/FAILURE_LESSONS_HOOK.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/hooks/FAILURE_LESSONS_HOOK.md)
+- [docs/hooks/CLAUDE_HOOKS_BEST_PRACTICES.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/hooks/CLAUDE_HOOKS_BEST_PRACTICES.md)
+
 ## Memory layout
 
 ```text
@@ -164,7 +173,7 @@ Agents may capture and propose. They must not silently approve or publish.
 
 | Agent | Memory source | Hook install | Compile target |
 |---|---|---|---|
-| Claude Code | yes | yes `~/.claude/hooks/` | `PreToolUse` + `PostToolUse` |
+| Claude Code | yes | yes `~/.claude/hooks/` | `PreToolUse` + `PostToolUseFailure` |
 | Codex | yes | n/a | `AGENTS.md` |
 | Cursor | yes | n/a | `.mdc` rule |
 | OpenCode | yes | n/a | `AGENTS.md` |
@@ -195,6 +204,8 @@ Agents may capture and propose. They must not silently approve or publish.
 - [docs/MEMORY_PROTOCOL.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/MEMORY_PROTOCOL.md)
 - [docs/EPISODIC_MEMORY.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/EPISODIC_MEMORY.md)
 - [docs/FAILURE_LESSONS_PROTOCOL.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/FAILURE_LESSONS_PROTOCOL.md)
+- [docs/hooks/FAILURE_LESSONS_HOOK.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/hooks/FAILURE_LESSONS_HOOK.md)
+- [docs/hooks/CLAUDE_HOOKS_BEST_PRACTICES.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/hooks/CLAUDE_HOOKS_BEST_PRACTICES.md)
 - [docs/MCP_SERVER.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/MCP_SERVER.md)
 - [docs/STRICT_MODE.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/STRICT_MODE.md)
 - [docs/JSON_FIRST_STORAGE.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/JSON_FIRST_STORAGE.md)
