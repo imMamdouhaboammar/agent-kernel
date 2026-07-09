@@ -42,6 +42,50 @@ function applyRuntimePatches(srcText) {
     srcText = srcText.replace(agentsWrite, `${agentsWrite}\n  ${claudeWrite}`);
   }
 
+  const episodeLimitLine = 'const EPISODE_TEXT_LIMIT = 120000;';
+  const redactionBlock = `const EPISODE_REDACTION_PATTERNS = [
+  ...DEFAULT_SECRET_PATTERNS,
+  '(' + 'OPENAI_API_KEY|ANTHROPIC_API_KEY|SUPABASE_SERVICE_ROLE_KEY' + ')\\\\s*=\\\\s*[^\\\\s\\\\n]+',
+  'github_' + 'pat_[A-Za-z0-9_]{20,}',
+  'xox' + '[abposr]-[A-Za-z0-9-]{10,}'
+];
+
+function redactEpisodeText(value) {
+  let text = String(value || '');
+  for (const pattern of EPISODE_REDACTION_PATTERNS) {
+    try { text = text.replace(new RegExp(pattern, 'gi'), '[REDACTED_SECRET]'); } catch {}
+  }
+  return text;
+}`;
+
+  if (!srcText.includes('function redactEpisodeText(')) {
+    if (!srcText.includes(episodeLimitLine)) {
+      console.error('✗ EPISODE_TEXT_LIMIT anchor not found — inspect src/cli.mjs before building');
+      process.exit(1);
+    }
+    srcText = srcText.replace(episodeLimitLine, `${episodeLimitLine}\n${redactionBlock}`);
+  }
+
+  const rawTextLine = "const text = String(input.text || '').slice(0, EPISODE_TEXT_LIMIT);";
+  const redactedTextLine = "const text = redactEpisodeText(input.text || '').slice(0, EPISODE_TEXT_LIMIT);";
+  if (srcText.includes(rawTextLine)) srcText = srcText.replace(rawTextLine, redactedTextLine);
+
+  const titleLine = "title: input.title || titleFromText(text),";
+  const redactedTitleLine = "title: redactEpisodeText(input.title || titleFromText(text)).slice(0, 200),";
+  if (srcText.includes(titleLine)) srcText = srcText.replace(titleLine, redactedTitleLine);
+
+  const summaryLine = "summary: input.summary || '',";
+  const redactedSummaryLine = "summary: redactEpisodeText(input.summary || ''),";
+  if (srcText.includes(summaryLine)) srcText = srcText.replace(summaryLine, redactedSummaryLine);
+
+  const projectLine = "project: input.project || '',";
+  const redactedProjectLine = "project: redactEpisodeText(input.project || ''),";
+  if (srcText.includes(projectLine)) srcText = srcText.replace(projectLine, redactedProjectLine);
+
+  const tagsLine = "tags: Array.isArray(input.tags) ? input.tags : String(input.tags || '').split(',').map(s => s.trim()).filter(Boolean),";
+  const redactedTagsLine = "tags: Array.isArray(input.tags) ? input.tags.map(redactEpisodeText) : redactEpisodeText(String(input.tags || '')).split(',').map(s => s.trim()).filter(Boolean),";
+  if (srcText.includes(tagsLine)) srcText = srcText.replace(tagsLine, redactedTagsLine);
+
   return srcText;
 }
 

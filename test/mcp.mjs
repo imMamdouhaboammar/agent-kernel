@@ -4,16 +4,26 @@
 //   1. `mcp test` lists the MCP tool registry.
 //   2. The tool list includes both memory and episode tools.
 //   3. `mcp serve` answers a tools/call JSON-RPC request over stdin/stdout.
-//   4. The approval workflow remains disabled by default — there is no
+//   4. MCP episode capture redacts known secret patterns before persistence.
+//   5. The approval workflow remains disabled by default — there is no
 //      env flag that auto-publishes pending proposals without review.
-//   5. The agent-kernel guard command is exposed as an MCP tool and
+//   6. The agent-kernel guard command is exposed as an MCP tool and
 //      correctly blocks a curl-pipe-shell command.
 
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { assertContains, assertNotContains, makeEnv, repo, runCli } from './_lib/helpers.mjs';
 
+function parseMcpTextResponse(output) {
+  const rpc = JSON.parse(String(output).trim());
+  const text = rpc?.result?.content?.[0]?.text;
+  if (!text) throw new Error(`MCP response did not contain text content: ${output}`);
+  return JSON.parse(text);
+}
+
 export async function run() {
-  const { env } = makeEnv();
+  const { env, kernelHome } = makeEnv();
   runCli(env, 'init', '--sync');
 
   // 1 + 2. mcp test returns the tool registry with both memory and
@@ -23,7 +33,7 @@ export async function run() {
   assertContains(mcpTestOut, 'agent_kernel_search_episodes', 'mcp test missing episode tool');
   assertContains(mcpTestOut, 'agent_kernel_guard_command', 'mcp test missing guard tool');
 
-  // 3 + 5. mcp serve responds to a tools/call for the guard command.
+  // 3 + 6. mcp serve responds to a tools/call for the guard command.
   const guardRequest = JSON.stringify({
     jsonrpc: '2.0',
     id: 1,
@@ -46,7 +56,38 @@ export async function run() {
   assertContains(guardOut, 'blocked', 'mcp guard did not block curl-pipe-shell');
   assertNotContains(guardOut, '"error"', 'mcp guard returned a JSON-RPC error');
 
-  // 4. Approval remains disabled by default.
+  // 4. MCP episode capture follows the same redaction boundary as CLI capture.
+  const mcpSecret = 'ghp_' + 'abcdefghijklmnopqrstuvwxyz123456';
+  const captureRequest = JSON.stringify({
+    jsonrpc: '2.0',
+    id: 2,
+    method: 'tools/call',
+    params: {
+      name: 'agent_kernel_capture_episode',
+      arguments: {
+        title: 'MCP redaction smoke',
+        text: `MCP should redact ${mcpSecret}`,
+        tags: 'mcp-redaction-smoke'
+      }
+    }
+  }) + '\n';
+  const captureOut = execFileSync(
+    process.execPath,
+    [repo.cli || `${repo.root}/dist/cli.mjs`, 'mcp', 'serve'],
+    {
+      cwd: repo.root,
+      env,
+      input: captureRequest,
+      encoding: 'utf8'
+    }
+  );
+  const capture = parseMcpTextResponse(captureOut);
+  if (!capture.ok || !capture.id) throw new Error(`mcp episode capture did not succeed: ${captureOut}`);
+  const persisted = readFileSync(join(kernelHome, 'episodes', 'archive', `${capture.id}.json`), 'utf8');
+  if (persisted.includes(mcpSecret)) throw new Error('MCP episode capture persisted a raw GitHub token');
+  assertContains(persisted, '[REDACTED_SECRET]', 'MCP episode archive did not include redaction marker');
+
+  // 5. Approval remains disabled by default.
   // Propose a memory and verify it stays in pending — no env flag should
   // auto-publish without user review.
   runCli(env, 'init', '--sync');

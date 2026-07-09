@@ -250,7 +250,10 @@ const secretRegexes = [
   /xox[abposr]-[A-Za-z0-9-]{10,}/g
 ];
 const secretAllowList = new Set([
+  'scripts/build.mjs',
+  'test/episode.mjs',
   'test/guard.mjs',
+  'test/mcp.mjs',
   'examples/sample-episode.json'
 ]);
 const filesToSecretScan = walkFiles(root, (rel) => scanExtensions.test(rel));
