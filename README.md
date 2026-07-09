@@ -171,6 +171,8 @@ Runtime sessions can also be managed directly without starting the daemon:
 
 ```bash
 agent-kernel session start --agent claude-code --project .
+agent-kernel session observe <session-id> --type command_failure --text 'npm test failed' --command 'npm test'
+agent-kernel session observations <session-id> --type command_failure
 agent-kernel session list
 agent-kernel session show <session-id>
 agent-kernel session end <session-id>
@@ -291,7 +293,7 @@ agent-kernel memory list|search|show
 agent-kernel episode add|sync|search|show|stats|reindex
 agent-kernel failure capture|learn|list|search|show|propose|promote|validate
 agent-kernel daemon start|stop|restart|status
-agent-kernel session start|end|list|show
+agent-kernel session start|end|list|show|observe|observations
 agent-kernel enforce install
 agent-kernel guard [--staged|--file path]
 agent-kernel git-hook install [project]
