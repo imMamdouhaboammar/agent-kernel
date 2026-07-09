@@ -1,10 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="860" height="220" viewBox="0 0 860 220" role="img" aria-labelledby="title desc">
   <title id="title">Agent Kernel Wordmark</title>
-  <desc id="desc">Minimal Agent Kernel wordmark with a compact local kernel symbol.</desc>
-  <rect width="860" height="220" rx="28" fill="#050505"/>
-  <g transform="translate(42 42)">
-    <rect x="0" y="0" width="136" height="136" rx="16" fill="#050505" stroke="#2A2A2A" stroke-width="3"/>
-    <g shape-rendering="crispEdges" transform="translate(29 25) scale(.62)">
+  <desc id="desc">Centered minimal Agent Kernel wordmark with a compact local kernel symbol.</desc>
+  <rect width="860" height="220" rx="22" fill="#050505"/>
+  <rect x="1" y="1" width="858" height="218" rx="21" fill="none" stroke="#2A2A2A" stroke-width="1.5"/>
+
+  <g transform="translate(391 26)">
+    <rect x="0" y="0" width="78" height="78" rx="12" fill="#050505" stroke="#2A2A2A" stroke-width="2"/>
+    <g shape-rendering="crispEdges" transform="translate(18 17) scale(.34)">
       <rect x="0" y="0" width="18" height="18" fill="#F4F4F1"/><rect x="18" y="0" width="18" height="18" fill="#F4F4F1"/><rect x="92" y="0" width="18" height="18" fill="#F4F4F1"/><rect x="110" y="0" width="18" height="18" fill="#F4F4F1"/>
       <rect x="0" y="18" width="18" height="18" fill="#F4F4F1"/><rect x="110" y="18" width="18" height="18" fill="#F4F4F1"/>
       <rect x="0" y="100" width="18" height="18" fill="#F4F4F1"/><rect x="110" y="100" width="18" height="18" fill="#F4F4F1"/>
@@ -13,9 +15,11 @@
       <rect x="55" y="59" width="18" height="18" fill="#F8F46A"/><rect x="55" y="36" width="18" height="18" fill="#F8F46A"/><rect x="55" y="82" width="18" height="18" fill="#F8F46A"/><rect x="32" y="59" width="18" height="18" fill="#F8F46A"/><rect x="78" y="59" width="18" height="18" fill="#F8F46A"/>
     </g>
   </g>
-  <g font-family="JetBrains Mono, SFMono-Regular, Consolas, Liberation Mono, monospace" font-weight="500">
-    <text x="206" y="118" font-size="50" fill="#F4F4F1" letter-spacing="-1">Agent</text>
-    <text x="398" y="118" font-size="50" fill="#F8F46A" letter-spacing="-1">Kernel</text>
-    <text x="210" y="152" font-size="18" fill="#8E8E88">local memory layer for coding agents</text>
+
+  <g font-family="JetBrains Mono, SFMono-Regular, Consolas, Liberation Mono, monospace" text-anchor="middle">
+    <text x="430" y="136" font-size="46" font-weight="600" letter-spacing="-1.6">
+      <tspan fill="#F4F4F1">Agent</tspan><tspan fill="#8E8E88"> </tspan><tspan fill="#F8F46A">Kernel</tspan>
+    </text>
+    <text x="430" y="168" font-size="16" font-weight="400" fill="#8E8E88">local memory layer for coding agents</text>
   </g>
 </svg>
