@@ -1,105 +1,121 @@
 name: GitHub Release
 
-# Auto-create a GitHub Release when a v* tag is pushed.
-# Independent from npm-publish.yml so a publish failure doesn't block the release
-# and vice versa.
-
 on:
   push:
     tags:
-      - 'v*'
+      - v*
 
 permissions:
   contents: write
+
+concurrency:
+  group: github-release-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
   release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Determine tag + version
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Determine tag and version
         id: meta
         run: |
-          set -e
-          TAG="${GITHUB_REF_NAME}"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          tag="${GITHUB_REF_NAME}"
+          version="${tag#v}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
-      - name: Determine baseline (previous tag)
+      - name: Validate tag matches package.json
+        run: |
+          version=$(node -p "require('./package.json').version")
+          expected="${{ steps.meta.outputs.version }}"
+          echo "package.json.version=$version expected=$expected"
+          if [ "$version" != "$expected" ]; then
+            echo "package.json version does not match release tag"
+            exit 1
+          fi
+
+      - name: Determine previous tag
         id: baseline
         run: |
-          set -e
-          CURRENT="${{ steps.meta.outputs.tag }}"
-          # Find the previous semver tag
-          PREV=$(git tag --sort=-version:refname | grep -E '^v[0-9]' | grep -v "^${CURRENT}$" | head -n 1 || true)
-          if [ -z "$PREV" ]; then
-            # First release — use the very first commit
-            BASELINE="$(git rev-list --max-parents=0 HEAD)"
+          current="${{ steps.meta.outputs.tag }}"
+          previous=$(git tag --sort=-version:refname | grep -E '^v[0-9]' | grep -v "^${current}$" | head -n 1 || true)
+          if [ -n "$previous" ]; then
+            echo "previous_tag=$previous" >> "$GITHUB_OUTPUT"
+            echo "baseline=$previous"
           else
-            BASELINE="$PREV"
+            echo "previous_tag=" >> "$GITHUB_OUTPUT"
+            echo "baseline=first release"
           fi
-          echo "baseline=$BASELINE" >> "$GITHUB_OUTPUT"
-          echo "  baseline for changelog: $BASELINE"
 
       - name: Generate release notes
         id: notes
         uses: actions/github-script@v7
         with:
           script: |
-            const tag = context.ref.replace('refs/tags/', '');
-            const baseline = '${{ steps.baseline.outputs.baseline }}';
+            const fs = require('fs');
+            const tag = '${{ steps.meta.outputs.tag }}';
+            const version = '${{ steps.meta.outputs.version }}';
+            const previousTag = '${{ steps.baseline.outputs.previous_tag }}';
 
-            // Try to pull structured changelog from CHANGELOG.md first
             let structured = '';
             try {
-              const fs = require('fs');
               const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
-              const versionHeader = changelog.match(new RegExp('## \\[?' + tag.replace(/^v/, '') + '\\]?[^\n]*'));
+              const escaped = version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              const versionHeader = changelog.match(new RegExp(`^## \\[[v]?${escaped}\\].*$|^## [v]?${escaped}.*$`, 'm'));
               if (versionHeader) {
                 const startIdx = changelog.indexOf(versionHeader[0]);
-                // Find the next ## header
                 const rest = changelog.substring(startIdx + versionHeader[0].length);
                 const nextHeader = rest.match(/^## /m);
                 const endIdx = nextHeader ? rest.indexOf(nextHeader[0]) : rest.length;
-                structured = versionHeader[0] + '\n' + rest.substring(0, endIdx).trim();
+                structured = `${versionHeader[0]}\n${rest.substring(0, endIdx).trim()}`.trim();
               }
-            } catch (e) {
-              core.warning('Could not parse CHANGELOG.md: ' + e.message);
+            } catch (error) {
+              core.warning(`Could not parse CHANGELOG.md: ${error.message}`);
             }
 
-            // Get auto-generated notes from GitHub
             let autoNotes = '';
             try {
-              const { data: notes } = await github.rest.repos.generateReleaseNotes({
+              const args = {
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                tag_name: tag,
-                previous_tag_name: baseline.startsWith('v') ? baseline : undefined
-              });
+                tag_name: tag
+              };
+              if (previousTag) args.previous_tag_name = previousTag;
+              const { data: notes } = await github.rest.repos.generateReleaseNotes(args);
               autoNotes = notes.body || '';
-            } catch (e) {
-              core.warning('Could not generate auto notes: ' + e.message);
+            } catch (error) {
+              core.warning(`Could not generate GitHub release notes: ${error.message}`);
             }
 
             const body = [
-              structured ? '### What changed (from CHANGELOG)\n\n' + structured : '',
-              autoNotes ? '### Commits\n\n' + autoNotes : ''
+              structured ? `### Changelog\n\n${structured}` : '',
+              autoNotes ? `### Commit summary\n\n${autoNotes}` : ''
             ].filter(Boolean).join('\n\n');
 
-            require('fs').writeFileSync('/tmp/release-body.md', body || 'Initial release.');
+            fs.writeFileSync('/tmp/release-body.md', body || `Release ${tag}.`);
             core.info('Release body written to /tmp/release-body.md');
-            core.info('Body length: ' + body.length + ' chars');
 
-      - name: Create GitHub Release (capture release id)
-        id: create_release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.meta.outputs.tag }}
-          name: "${{ steps.meta.outputs.tag }}"
+          name: ${{ steps.meta.outputs.tag }}
           body_path: /tmp/release-body.md
           draft: false
           prerelease: ${{ contains(steps.meta.outputs.version, '-') }}
@@ -110,29 +126,18 @@ jobs:
 
       - name: Build source tarball
         run: |
-          set -e
-          TAG="${GITHUB_REF_NAME}"
-          VER="${TAG#v}"
-          ARCHIVE="agent-kernel-v${VER}.tar.gz"
-          git archive --prefix="agent-kernel-v${VER}/" --format=tar.gz -o "/tmp/${ARCHIVE}" "${TAG}"
-          echo "  built /tmp/${ARCHIVE}"
-          ls -la "/tmp/${ARCHIVE}"
+          version="${{ steps.meta.outputs.version }}"
+          archive="agent-kernel-v${version}.tar.gz"
+          git archive --prefix="agent-kernel-v${version}/" --format=tar.gz -o "/tmp/${archive}" "${{ steps.meta.outputs.tag }}"
+          test -s "/tmp/${archive}" || { echo "tarball missing or empty"; exit 1; }
+          ls -la "/tmp/${archive}"
 
-      - name: Attach source tarball via gh CLI
+      - name: Attach source tarball
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.meta.outputs.tag }}
-          VER: ${{ steps.meta.outputs.version }}
+          VERSION: ${{ steps.meta.outputs.version }}
         run: |
-          set -e
-          ARCHIVE="/tmp/agent-kernel-v${VER}.tar.gz"
-          if [ ! -f "$ARCHIVE" ]; then
-            echo "  ✗ tarball missing: $ARCHIVE"
-            exit 1
-          fi
-          echo "  uploading $ARCHIVE to release ${TAG}..."
-          gh release upload "${TAG}" "${ARCHIVE}" --clobber
-          echo "  ✓ tarball attached"
-          echo ""
-          echo "  release assets:"
-          gh release view "${TAG}" --json assets --jq '.assets[] | "    - \(.name) (\(.size) bytes)"'
+          archive="/tmp/agent-kernel-v${VERSION}.tar.gz"
+          gh release upload "$TAG" "$archive" --clobber
+          gh release view "$TAG" --json assets --jq '.assets[] | "- \(.name) (\(.size) bytes)"'
