@@ -35,7 +35,8 @@ export async function run() {
   assertContains(showOut, text, 'episode show did not return the full text');
 
   // 4. redaction happens before persistence.
-  const rawSecret = 'OPENAI_API_KEY=sk-abcdefghijklmnopqrstuvwxyz1234567890';
+  const fakeKey = 'sk-' + 'abcdefghijklmnopqrstuvwxyz1234567890';
+  const rawSecret = `OPENAI_API_KEY=${fakeKey}`;
   const redactionOut = runCli(env, 'episode', 'add', '--title', 'redaction smoke', '--tags', 'redaction-smoke', '--text', `Do not persist ${rawSecret}`);
   assertContains(redactionOut, 'Saved episode', 'episode redaction add did not confirm save');
 
@@ -44,7 +45,7 @@ export async function run() {
   if (!redactionIdMatch) throw new Error('could not extract redaction episode id from search output');
   const redactionPath = join(kernelHome, 'episodes', 'archive', `${redactionIdMatch[0]}.json`);
   const persistedRedaction = readFileSync(redactionPath, 'utf8');
-  if (persistedRedaction.includes('sk-abcdefghijklmnopqrstuvwxyz1234567890') || persistedRedaction.includes('OPENAI_API_KEY=')) {
+  if (persistedRedaction.includes(fakeKey) || persistedRedaction.includes('OPENAI_API_KEY=')) {
     throw new Error('episode archive persisted a raw secret');
   }
   assertContains(persistedRedaction, '[REDACTED_SECRET]', 'episode archive did not include redaction marker');
