@@ -20,6 +20,7 @@ import { run as runCoreLinkClaude } from './core-link-claude.mjs';
 import { run as runPublicCliSafeLink } from './public-cli-safe-link.mjs';
 import { run as runPublicCliSafeGitHook } from './public-cli-safe-git-hook.mjs';
 import { run as runPublicCliDaemon } from './public-cli-daemon.mjs';
+import { run as runPublicCliRuntimeDoctor } from './public-cli-runtime-doctor.mjs';
 import { run as runWrapperRouting } from './wrapper-routing.mjs';
 import { run as runAgentPropose } from './agent-propose.mjs';
 import { run as runFailureLessons } from './failure-lessons.mjs';
@@ -40,6 +41,7 @@ const tests = [
   ['public-cli-safe-link', runPublicCliSafeLink],
   ['public-cli-safe-git-hook', runPublicCliSafeGitHook],
   ['public-cli-daemon', runPublicCliDaemon],
+  ['public-cli-runtime-doctor', runPublicCliRuntimeDoctor],
   ['wrapper-routing', runWrapperRouting],
   ['agent-propose', runAgentPropose],
   ['failure-lessons', runFailureLessons],
