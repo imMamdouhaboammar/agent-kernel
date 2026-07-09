@@ -8,13 +8,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - `docs/OPERATING_MODEL.md` to explain the day-to-day Agent Kernel governance loop: propose, approve, publish, capture, search, and promote.
+- `docs/TROUBLESHOOTING.md` with symptom-based diagnosis for install, memory home, safe-link, hooks, MCP, Failure Lessons, docs drift, and release issues.
+- `docs/AGENT_RUNBOOK.md` with a practical workflow for AI coding agents working on this repository or using Agent Kernel inside another project.
 
 ### Changed
 
 - `README.md` now gives a clearer install path, safe project adoption flow, operating loop, command map, and documentation map.
-- `docs/README.md` now separates first-time setup, runtime docs, integration docs, schema docs, development docs, and ownership rules.
+- `docs/README.md` now separates first-time setup, runtime docs, integration docs, schema docs, development docs, agent docs, troubleshooting, and ownership rules.
 - `docs/INTEGRATIONS.md` now recommends `agent-kernel-safe-link` and `agent-kernel-safe-git-hook` as the default adoption path for existing projects.
 - `docs/SAFE_LINKING.md` now documents idempotency, duplicate marked-block cleanup, backup behavior, direct-link comparison, and what agents should not edit.
+- `AGENTS.md` now points coding agents to the dedicated runbook and troubleshooting guide before non-trivial work.
+- `CONTRIBUTING.md` now includes clearer pre-edit reading order, helper-binary checklist, safe-link and hook rules, troubleshooting-first guidance, and release pre-flight checks.
 
 ### Planned
 
