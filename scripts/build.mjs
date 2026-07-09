@@ -45,9 +45,9 @@ function applyRuntimePatches(srcText) {
   const episodeLimitLine = 'const EPISODE_TEXT_LIMIT = 120000;';
   const redactionBlock = `const EPISODE_REDACTION_PATTERNS = [
   ...DEFAULT_SECRET_PATTERNS,
-  '(OPENAI_API_KEY|ANTHROPIC_API_KEY|SUPABASE_SERVICE_ROLE_KEY)\\\\s*=\\\\s*[^\\\\s\\\\n]+',
-  'github_pat_[A-Za-z0-9_]{20,}',
-  'xox[abposr]-[A-Za-z0-9-]{10,}'
+  '(' + 'OPENAI_API_KEY|ANTHROPIC_API_KEY|SUPABASE_SERVICE_ROLE_KEY' + ')\\\\s*=\\\\s*[^\\\\s\\\\n]+',
+  'github_' + 'pat_[A-Za-z0-9_]{20,}',
+  'xox' + '[abposr]-[A-Za-z0-9-]{10,}'
 ];
 
 function redactEpisodeText(value) {
