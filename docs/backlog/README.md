@@ -13,6 +13,7 @@ The first runtime slice has started:
 - the daemon is optional and local-only by default
 - first endpoints exist for health, status, observation capture, context, and sessions
 - a public CLI smoke test covers the daemon route and local evidence capture
+- CI or local test execution still needs to verify the latest implementation commit
 
 ## Product principle
 
