@@ -14,13 +14,20 @@ Instructions for AI coding agents working on or with the `agent-kernel` reposito
 - Claude hooks, git hooks, MCP tools, and deterministic guardrails
 - repo-local ECC scaffolding for Claude Code and Codex
 
-Read `docs/ARCHITECTURE_NOW.md` before editing runtime behavior.
+Read these before non-trivial work:
+
+1. `docs/AGENT_RUNBOOK.md`
+2. `docs/ARCHITECTURE_NOW.md`
+3. `docs/OPERATING_MODEL.md`
+4. Relevant protocol docs for the area being changed
+
+Use `docs/TROUBLESHOOTING.md` before changing runtime code to fix setup, linking, hook, MCP, or memory problems.
 
 ## Source layout
 
 ```text
 agent-kernel/
-├── src/cli.mjs              # Core CLI source — single ESM file
+├── src/cli.mjs              # Core CLI source, single ESM file
 ├── dist/cli.mjs             # Built CLI copied from src by scripts/build.mjs
 ├── bin/                     # Public wrappers and focused helper binaries
 ├── scripts/                 # Build, lint, version, and consistency checks
@@ -46,6 +53,20 @@ agent-kernel/
 5. Do not approve or publish memory from an agent hook. Hooks may capture evidence or create context. Approval is a user action.
 6. Do not commit secrets, `.env` files, `node_modules/`, or private MCP credentials.
 7. Keep repo-local ECC configs reviewable and credential-free.
+8. Search existing docs and tests before inventing new behavior.
+
+## Agent workflow
+
+When a user asks for work in this repo:
+
+1. Classify the request: docs, runtime, helper binary, hook, MCP, safe-link, Failure Lessons, release, or repo maintenance.
+2. Inspect the relevant files before editing.
+3. Prefer a small coherent PR over a broad rewrite.
+4. Update docs and tests when behavior changes.
+5. Capture repeatable failures instead of retrying blindly.
+6. Summarize changed files and validation clearly.
+
+See `docs/AGENT_RUNBOOK.md` for the detailed workflow.
 
 ## Failure Lessons protocol
 
@@ -151,6 +172,8 @@ When behavior changes, update docs in the same PR. `docs/README.md` explains whi
 
 ## When in doubt
 
-1. Read `docs/README.md`.
-2. Read `docs/ARCHITECTURE_NOW.md`.
-3. Check `development/BACKLOG.md` before building planned modular work.
+1. Read `docs/AGENT_RUNBOOK.md`.
+2. Read `docs/README.md`.
+3. Read `docs/ARCHITECTURE_NOW.md`.
+4. Check `docs/TROUBLESHOOTING.md` if something fails.
+5. Check `development/BACKLOG.md` before building planned modular work.
