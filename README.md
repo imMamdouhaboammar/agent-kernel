@@ -1,5 +1,9 @@
 # Agent Kernel
 
+[![npm version](https://img.shields.io/npm/v/@mamdouh-aboammar/agent-kernel)](https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel)
+[![npm downloads](https://img.shields.io/npm/dw/@mamdouh-aboammar/agent-kernel)](https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel)
+[![bundle size](https://img.shields.io/bundlephobia/min/@mamdouh-aboammar/agent-kernel)](https://bundlephobia.com/package/@mamdouh-aboammar/agent-kernel)
+
 Shared memory, rules, and safety for every AI coding agent on your machine.
 
 Agent Kernel is a local-first governance layer for Claude Code, Codex, Cursor, Antigravity, Gemini CLI, OpenCode, and other coding agents. It gives them one shared source of truth for rules, preferences, workflows, project notes, episodes, policy guards, and reusable failure lessons.
@@ -227,9 +231,9 @@ secret-leak        OPENAI/ANTHROPIC/SUPABASE/Google API keys blocked
 
 ## Integrations
 
-- delegate-team — bundled inside `delegate-team` v2.5.0+ at `agent-kernel/`.
-- MCP — every core command is exposed as an MCP tool. See [`docs/MCP_SERVER.md`](./docs/MCP_SERVER.md).
-- Skills.sh — discoverable via `npx skills add imMamdouhaboammar/agent-kernel -a claude-code -g -y`.
+- delegate-team: bundled inside `delegate-team` v2.5.0+ at `agent-kernel/`.
+- MCP: every core command is exposed as an MCP tool. See [`docs/MCP_SERVER.md`](./docs/MCP_SERVER.md).
+- Skills.sh: discoverable via `npx skills add imMamdouhaboammar/agent-kernel -a claude-code -g -y`.
 
 ---
 
@@ -296,12 +300,12 @@ MIT © Mamdouh Aboammar
 
 ## Links
 
-- npm — https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel
-- Repository — https://github.com/imMamdouhaboammar/agent-kernel
-- Issues — https://github.com/imMamdouhaboammar/agent-kernel/issues
-- Releases — https://github.com/imMamdouhaboammar/agent-kernel/releases
-- Skills.sh — https://skills.sh/imMamdouhaboammar/agent-kernel
-- delegate-team integration — https://github.com/imMamdouhaboammar/delegate-team/blob/master/integrations/agent-kernel.md
+- npm: https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel
+- Repository: https://github.com/imMamdouhaboammar/agent-kernel
+- Issues: https://github.com/imMamdouhaboammar/agent-kernel/issues
+- Releases: https://github.com/imMamdouhaboammar/agent-kernel/releases
+- Skills.sh: https://skills.sh/imMamdouhaboammar/agent-kernel
+- delegate-team integration: https://github.com/imMamdouhaboammar/delegate-team/blob/master/integrations/agent-kernel.md
 
 ---
 
