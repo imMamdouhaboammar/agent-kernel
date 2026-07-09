@@ -10,14 +10,8 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const TEXT_LIMIT = 120000;
 const EXCERPT_LIMIT = 4000;
 
-function print(message = '') {
-  process.stdout.write(String(message) + '\n');
-}
-
-function fail(message, code = 1) {
-  process.stderr.write(String(message) + '\n');
-  process.exitCode = code;
-}
+function print(message = '') { process.stdout.write(String(message) + '\n'); }
+function fail(message, code = 1) { process.stderr.write(String(message) + '\n'); process.exitCode = code; }
 
 function parseArgs(argv) {
   const flags = { _: [] };
@@ -32,47 +26,19 @@ function parseArgs(argv) {
         if (next && !next.startsWith('-')) { flags[raw] = next; i++; }
         else flags[raw] = true;
       }
-    } else {
-      flags._.push(arg);
-    }
+    } else flags._.push(arg);
   }
   return flags;
 }
 
 function readStdin() {
-  try {
-    if (process.stdin.isTTY) return '';
-    return fs.readFileSync(0, 'utf8');
-  } catch {
-    return '';
-  }
+  try { return process.stdin.isTTY ? '' : fs.readFileSync(0, 'utf8'); } catch { return ''; }
 }
-
-function ensureDir(targetPath) {
-  fs.mkdirSync(targetPath, { recursive: true });
-}
-
-function readJson(targetPath, fallback) {
-  try {
-    return JSON.parse(fs.readFileSync(targetPath, 'utf8'));
-  } catch {
-    return fallback;
-  }
-}
-
-function writeJson(targetPath, value) {
-  ensureDir(path.dirname(targetPath));
-  fs.writeFileSync(targetPath, JSON.stringify(value, null, 2) + '\n', 'utf8');
-}
-
-function nowIso() {
-  return new Date().toISOString();
-}
-
-function homeDir() {
-  return process.env.AGENT_KERNEL_HOME || path.join(os.homedir(), '.agent-kernel');
-}
-
+function ensureDir(p) { fs.mkdirSync(p, { recursive: true }); }
+function readJson(p, fallback) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return fallback; } }
+function writeJson(p, value) { ensureDir(path.dirname(p)); fs.writeFileSync(p, JSON.stringify(value, null, 2) + '\n', 'utf8'); }
+function nowIso() { return new Date().toISOString(); }
+function homeDir() { return process.env.AGENT_KERNEL_HOME || path.join(os.homedir(), '.agent-kernel'); }
 function paths() {
   const root = homeDir();
   return {
@@ -82,48 +48,37 @@ function paths() {
     logs: path.join(root, 'logs', 'failures.jsonl')
   };
 }
-
 function lessonId() {
   const stamp = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14);
   return `failure_lesson_${stamp}_${crypto.randomBytes(3).toString('hex')}`;
 }
-
 function csv(value) {
   if (Array.isArray(value)) return value.map(String).map(s => s.trim()).filter(Boolean);
   return String(value || '').split(',').map(s => s.trim()).filter(Boolean);
 }
-
-function compact(value, limit = EXCERPT_LIMIT) {
-  return String(value || '').replace(/\r/g, '').trim().slice(0, limit);
-}
-
+function compact(value, limit = EXCERPT_LIMIT) { return String(value || '').replace(/\r/g, '').trim().slice(0, limit); }
 function logLine(value) {
   const p = paths();
   ensureDir(path.dirname(p.logs));
   fs.appendFileSync(p.logs, JSON.stringify({ at: nowIso(), ...value }) + '\n');
 }
-
 function loadLessons() {
   const p = paths();
   ensureDir(p.failuresDir);
   const value = readJson(p.lessons, []);
   return Array.isArray(value) ? value : [];
 }
-
-function saveLessons(lessons) {
-  writeJson(paths().lessons, lessons);
-}
+function saveLessons(lessons) { writeJson(paths().lessons, lessons); }
 
 function secretRisk(text) {
-  const checks = [
+  return [
     /OPENAI_API_KEY\s*=\s*["'][^"']+["']/i,
     /ANTHROPIC_API_KEY\s*=\s*["'][^"']+["']/i,
     /SUPABASE_SERVICE_ROLE_KEY\s*=\s*["'][^"']+["']/i,
     /AIza[0-9A-Za-z_-]{35}/,
     /sk-[A-Za-z0-9]{20,}/,
     /ghp_[A-Za-z0-9]{20,}/
-  ];
-  return checks.some(re => re.test(String(text || '')));
+  ].some(re => re.test(String(text || '')));
 }
 
 function inferSignature(text) {
@@ -133,15 +88,9 @@ function inferSignature(text) {
   const first = s.split('\n').map(x => x.trim()).find(Boolean);
   return first ? first.slice(0, 120) : 'unknown-failure';
 }
-
 function inferSymptoms(text) {
-  return String(text || '')
-    .split('\n')
-    .map(x => x.trim())
-    .filter(Boolean)
-    .slice(0, 4)
-    .map(x => x.slice(0, 180));
-}\n
+  return String(text || '').split('\n').map(x => x.trim()).filter(Boolean).slice(0, 4).map(x => x.slice(0, 180));
+}
 function normalizeStatus(value) {
   const status = String(value || 'captured');
   return ['captured', 'proposed', 'approved', 'rejected', 'archived'].includes(status) ? status : 'captured';
@@ -155,10 +104,7 @@ function buildLesson(flags, text) {
   if (secretRisk(raw) || secretRisk(flags.fix) || secretRisk(flags['fixed-by'])) {
     throw new Error('Refusing to store failure evidence because it appears to contain a secret. Redact it first.');
   }
-
   const signature = compact(flags.signature || inferSignature(raw), 180);
-  const fixRecipe = csv(flags.fix || flags['fixed-by']);
-  const symptoms = csv(flags.symptoms);
   const now = nowIso();
   return {
     id: flags.id || lessonId(),
@@ -168,9 +114,9 @@ function buildLesson(flags, text) {
     agent: String(flags.from || flags.agent || 'unknown-agent'),
     failureType: String(flags.type || flags['failure-type'] || 'coding-failure'),
     errorSignature: signature,
-    symptoms: symptoms.length ? symptoms : inferSymptoms(raw),
+    symptoms: csv(flags.symptoms).length ? csv(flags.symptoms) : inferSymptoms(raw),
     rootCause: compact(flags['root-cause'] || flags.cause || '', 1000),
-    fixRecipe,
+    fixRecipe: csv(flags.fix || flags['fixed-by']),
     preventionRule: compact(flags.rule || flags['prevention-rule'] || '', 1000),
     evidence: {
       command: compact(flags.command || '', 600),
@@ -196,7 +142,6 @@ function findLesson(wanted) {
   if (matches.length === 1) return { lessons, lesson: matches[0] };
   return { lessons, lesson: null, matches };
 }
-
 function formatLesson(lesson) {
   return [
     `[${lesson.id}] ${lesson.status} ${lesson.failureType}`,
@@ -208,55 +153,23 @@ function formatLesson(lesson) {
     `Rule: ${lesson.preventionRule || 'not provided'}`
   ].join('\n');
 }
-
+function proposalType(value) {
+  return ({ rule: 'rule', policy: 'policy', workflow: 'workflow', note: 'project-note', 'project-note': 'project-note', skill: 'skill-trigger', 'skill-trigger': 'skill-trigger' })[String(value || 'rule')] || 'rule';
+}
 function buildProposalText(lesson, asType) {
-  const lines = [];
-  lines.push(`Failure lesson: ${lesson.errorSignature}`);
-  lines.push('');
-  if (lesson.symptoms?.length) {
-    lines.push('Symptoms:');
-    for (const s of lesson.symptoms) lines.push(`- ${s}`);
-    lines.push('');
-  }
-  if (lesson.rootCause) {
-    lines.push(`Root cause: ${lesson.rootCause}`);
-    lines.push('');
-  }
-  if (lesson.fixRecipe?.length) {
-    lines.push('Fix recipe:');
-    lesson.fixRecipe.forEach((step, index) => lines.push(`${index + 1}. ${step}`));
-    lines.push('');
-  }
-  if (lesson.preventionRule) {
-    lines.push(`Prevention rule: ${lesson.preventionRule}`);
-  } else if (asType === 'rule') {
-    lines.push(`Prevention rule: Before fixing a similar ${lesson.failureType}, search Agent Kernel failure lessons for ${lesson.errorSignature}.`);
-  }
-  lines.push('');
-  lines.push('When this pattern appears again, search failure lessons first, apply the known fix path, then verify with the same failing command or test.');
+  const lines = [`Failure lesson: ${lesson.errorSignature}`, ''];
+  if (lesson.symptoms?.length) lines.push('Symptoms:', ...lesson.symptoms.map(s => `- ${s}`), '');
+  if (lesson.rootCause) lines.push(`Root cause: ${lesson.rootCause}`, '');
+  if (lesson.fixRecipe?.length) lines.push('Fix recipe:', ...lesson.fixRecipe.map((s, i) => `${i + 1}. ${s}`), '');
+  if (lesson.preventionRule) lines.push(`Prevention rule: ${lesson.preventionRule}`);
+  else if (asType === 'rule') lines.push(`Prevention rule: Before fixing a similar ${lesson.failureType}, search Agent Kernel failure lessons for ${lesson.errorSignature}.`);
+  lines.push('', 'When this pattern appears again, search failure lessons first, apply the known fix path, then verify with the same failing command or test.');
   return lines.join('\n').slice(0, 1900);
 }
-
-function proposalType(value) {
-  const raw = String(value || 'rule');
-  const map = {
-    rule: 'rule',
-    policy: 'policy',
-    workflow: 'workflow',
-    note: 'project-note',
-    'project-note': 'project-note',
-    skill: 'skill-trigger',
-    'skill-trigger': 'skill-trigger'
-  };
-  return map[raw] || 'rule';
-}
-
 function proposeCommand() {
   const local = path.resolve(here, 'agent-kernel-agent-propose.mjs');
-  if (fs.existsSync(local)) return [process.execPath, local];
-  return ['agent-kernel-agent-propose'];
+  return fs.existsSync(local) ? [process.execPath, local] : ['agent-kernel-agent-propose'];
 }
-
 function createProposal(lesson, flags) {
   const type = proposalType(flags.as || flags.to || lesson.promoteTo?.[0] || 'rule');
   const [cmd, ...baseArgs] = proposeCommand();
@@ -273,20 +186,13 @@ function createProposal(lesson, flags) {
   ];
   const result = childProcess.spawnSync(cmd, args, { encoding: 'utf8', env: process.env, cwd: process.cwd() });
   if (result.error) throw result.error;
-  if (result.status !== 0) {
-    throw new Error((result.stderr || result.stdout || `proposal command failed with status ${result.status}`).trim());
-  }
+  if (result.status !== 0) throw new Error((result.stderr || result.stdout || `proposal command failed with status ${result.status}`).trim());
   return result.stdout.trim();
 }
 
 function commandCapture(flags, text) {
   let lesson;
-  try {
-    lesson = buildLesson(flags, text);
-  } catch (err) {
-    fail(err.message);
-    return null;
-  }
+  try { lesson = buildLesson(flags, text); } catch (err) { fail(err.message); return null; }
   const lessons = loadLessons();
   lessons.push(lesson);
   saveLessons(lessons);
@@ -299,7 +205,6 @@ function commandCapture(flags, text) {
   }
   return lesson;
 }
-
 function commandList(flags) {
   let lessons = loadLessons();
   if (flags.status) lessons = lessons.filter(x => x.status === flags.status);
@@ -311,7 +216,6 @@ function commandList(flags) {
   else if (!lessons.length) print('No failure lessons found.');
   else for (const lesson of lessons) print(`${formatLesson(lesson)}\n`);
 }
-
 function commandSearch(flags, query) {
   const q = String(flags.query || query || '').toLowerCase();
   if (!q) { fail('Usage: agent-kernel failure search <query>'); return; }
@@ -320,19 +224,12 @@ function commandSearch(flags, query) {
   else if (!lessons.length) print('No matching failure lessons.');
   else for (const lesson of lessons) print(`${formatLesson(lesson)}\n`);
 }
-
 function commandShow(flags, wanted) {
   if (!wanted) { fail('Usage: agent-kernel failure show <id>'); return; }
   const { lesson, matches } = findLesson(wanted);
-  if (!lesson) {
-    if (matches?.length) fail(`Ambiguous failure lesson id: ${wanted}`);
-    else fail(`Failure lesson not found: ${wanted}`);
-    return;
-  }
-  if (flags.markdown) print(formatLesson(lesson));
-  else print(JSON.stringify(lesson, null, 2));
+  if (!lesson) { fail(matches?.length ? `Ambiguous failure lesson id: ${wanted}` : `Failure lesson not found: ${wanted}`); return; }
+  print(flags.markdown ? formatLesson(lesson) : JSON.stringify(lesson, null, 2));
 }
-
 function commandPropose(flags, wanted) {
   if (!wanted) { fail('Usage: agent-kernel failure propose <id> [--as rule|policy|workflow|skill]'); return; }
   const { lessons, lesson } = findLesson(wanted);
@@ -346,28 +243,19 @@ function commandPropose(flags, wanted) {
     saveLessons(lessons);
     logLine({ action: 'propose', id: lesson.id, memoryType: lesson.proposedMemoryType });
     print(output);
-  } catch (err) {
-    fail(err.message);
-  }
+  } catch (err) { fail(err.message); }
 }
-
 function usage() {
   print(`agent-kernel failure\n\nUsage:\n  agent-kernel failure capture --from claude --type test-failure --command \"npm test\" --exit-code 1 --text \"<error>\"\n  cat error.log | agent-kernel failure capture --from codex --type build-failure --command \"npm run build\"\n  agent-kernel failure learn --from claude --text \"<error>\" --root-cause \"...\" --fix \"...\" --as rule\n  agent-kernel failure list [--status captured] [--json]\n  agent-kernel failure search \"ERR_MODULE_NOT_FOUND\"\n  agent-kernel failure show <id>\n  agent-kernel failure propose <id> --as rule\n\nFailure lessons are captured locally first. Promotion creates a pending memory proposal. Approval remains user-controlled.`);
 }
-
 function main() {
   const [action = 'help', ...rest] = process.argv.slice(2);
   const flags = parseArgs(rest);
   const inlineText = flags.text || flags.error || flags.output || flags._.join(' ');
   const text = inlineText || readStdin();
-
   if (action === 'help' || action === '--help' || action === '-h') return usage();
   if (action === 'capture') return commandCapture(flags, text);
-  if (action === 'learn') {
-    const lesson = commandCapture(flags, text);
-    if (lesson && !process.exitCode) commandPropose(flags, lesson.id);
-    return;
-  }
+  if (action === 'learn') { const lesson = commandCapture(flags, text); if (lesson && !process.exitCode) commandPropose(flags, lesson.id); return; }
   if (action === 'list') return commandList(flags);
   if (action === 'search') return commandSearch(flags, flags._.join(' '));
   if (action === 'show') return commandShow(flags, flags._[0]);
@@ -375,5 +263,4 @@ function main() {
   fail(`Unknown failure command: ${action}`);
   usage();
 }
-
 main();
