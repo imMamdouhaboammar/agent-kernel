@@ -8,11 +8,12 @@ This folder contains lightweight SVG assets for the Agent Kernel README and mark
 |---|---|
 | `agent-kernel-logo.svg` | Minimal repo logo for README, cards, and package pages |
 | `agent-kernel-hero.svg` | README hero explaining the local memory flow |
-| `agent-strip.svg` | Supported-agent surface strip using thin typography and embedded icon marks |
+| `agent-strip-icons.svg` | README-supported agent surface strip using thin typography and embedded icon marks |
+| `agent-strip.svg` | Legacy strip path kept for compatibility with older README renders and caches |
 
 ## Icon source and trademark boundary
 
-`agent-strip.svg` uses the uploaded LobeHub icon SVGs for the supported agent surfaces shown in the README. The visual treatment is repo-owned, but the vendor names and marks are not.
+`agent-strip-icons.svg` uses the uploaded LobeHub icon SVGs for the supported agent surfaces shown in the README. The visual treatment is repo-owned, but the vendor names and marks are not.
 
 Names and marks such as Claude Code, Codex, Cursor, Gemini CLI, OpenCode, and related AI tooling brands belong to their respective owners.
 
@@ -22,6 +23,10 @@ When adding or changing vendor marks:
 2. keep the strip restrained and legible at README scale
 3. keep the trademark note visible in the SVG
 4. do not imply official partnership, endorsement, or certification
+
+## Cache note
+
+The README points to `agent-strip-icons.svg` rather than the original `agent-strip.svg` path so GitHub does not keep serving a previously cached render of the old strip.
 
 ## Visual direction
 

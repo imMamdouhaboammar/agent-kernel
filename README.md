@@ -20,7 +20,7 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
   <a href="./LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-30363d"></a>
 </p>
 
-<img src="./docs/brand/agent-strip.svg" alt="Supported agent surfaces: Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity, AGENTS.md" width="780" />
+<img src="./docs/brand/agent-strip-icons.svg" alt="Supported agent surfaces: Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity, AGENTS.md" width="780" />
 
 <br />
 
