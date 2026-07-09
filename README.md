@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./docs/brand/agent-kernel-logo.svg" alt="Agent Kernel minimal logo" width="96" />
+<img src="./docs/brand/agent-kernel-wordmark.svg" alt="Agent Kernel wordmark" width="420" />
 
 <h1>Agent Kernel</h1>
 
@@ -20,11 +20,7 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
   <a href="./LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-30363d"></a>
 </p>
 
-<img src="./docs/brand/agent-strip-icons.svg" alt="Supported agent surfaces: Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity, AGENTS.md" width="780" />
-
-<br />
-
-<img src="./docs/brand/agent-kernel-hero.svg" alt="Agent Kernel flow: local memory to approved guidance to agent surfaces" width="900" />
+<img src="./docs/brand/agent-kernel-readme-lockup.svg" alt="Agent Kernel README lockup" width="900" />
 
 </div>
 
