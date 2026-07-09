@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/imMamdouhaboammar/agent-kernel/docs/schemas/failure-lesson.schema.json",
+  "title": "Agent Kernel Failure Lesson",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "id",
+    "status",
+    "scope",
+    "project",
+    "agent",
+    "failureType",
+    "errorSignature",
+    "fingerprint",
+    "symptoms",
+    "fixRecipe",
+    "evidence",
+    "promoteTo",
+    "targets",
+    "tags",
+    "occurrences",
+    "createdAt",
+    "updatedAt",
+    "version"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^failure_lesson_"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["captured", "proposed", "approved", "rejected", "archived"]
+    },
+    "scope": {
+      "type": "string",
+      "enum": ["global", "project"]
+    },
+    "project": {
+      "type": "string"
+    },
+    "agent": {
+      "type": "string"
+    },
+    "failureType": {
+      "type": "string"
+    },
+    "errorSignature": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fingerprint": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{24}$"
+    },
+    "symptoms": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "rootCause": {
+      "type": "string"
+    },
+    "fixRecipe": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "preventionRule": {
+      "type": "string"
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["command", "exitCode", "cwd", "filesTouched", "outputExcerpt"],
+      "properties": {
+        "command": { "type": "string" },
+        "exitCode": { "type": ["number", "null"] },
+        "cwd": { "type": "string" },
+        "filesTouched": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "outputExcerpt": { "type": "string" }
+      }
+    },
+    "promoteTo": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["rule", "policy", "workflow", "skill", "note"]
+      }
+    },
+    "targets": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "occurrences": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "firstSeenAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "lastSeenAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    }
+  }
+}
