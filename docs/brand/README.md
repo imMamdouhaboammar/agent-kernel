@@ -1,6 +1,6 @@
 # Brand assets
 
-This folder contains lightweight repo-owned SVG assets for the Agent Kernel README and marketing surfaces.
+This folder contains lightweight SVG assets for the Agent Kernel README and marketing surfaces.
 
 ## Files
 
@@ -8,21 +8,27 @@ This folder contains lightweight repo-owned SVG assets for the Agent Kernel READ
 |---|---|
 | `agent-kernel-logo.svg` | Minimal repo logo for README, cards, and package pages |
 | `agent-kernel-hero.svg` | README hero explaining the local memory flow |
-| `agent-strip.svg` | Brand-safe supported-agent surface strip |
+| `agent-strip.svg` | Supported-agent surface strip using thin typography and embedded icon marks |
 
-## Trademark boundary
+## Icon source and trademark boundary
 
-The agent strip uses text labels only. It does not embed third-party vendor logos.
+`agent-strip.svg` uses the uploaded LobeHub icon SVGs for the supported agent surfaces shown in the README. The visual treatment is repo-owned, but the vendor names and marks are not.
 
-Names such as Claude Code, Codex, Cursor, Gemini CLI, OpenCode, and Antigravity identify supported surfaces. Their names and marks belong to their respective owners.
+Names and marks such as Claude Code, Codex, Cursor, Gemini CLI, OpenCode, and related AI tooling brands belong to their respective owners.
 
-If official vendor logos are added later, they should be stored only after checking the relevant brand terms and usage rights.
+When adding or changing vendor marks:
+
+1. use SVGs only from an approved source or uploaded asset
+2. keep the strip restrained and legible at README scale
+3. keep the trademark note visible in the SVG
+4. do not imply official partnership, endorsement, or certification
 
 ## Visual direction
 
 - dark technical base
-- compact geometric mark
-- soft blue, violet, and green gradient
-- minimal text
-- no heavy illustration system
+- compact rounded chips
+- JetBrains Mono / monospace typography
+- thin text weight
+- original icon marks where available
+- minimal copy
 - readable inside GitHub dark and light modes
