@@ -7,12 +7,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `docs/brand/` with lightweight repo-owned SVG assets: minimal logo, README hero, and supported-agent surface strip.
+- `docs/BUNDLE_KB.md` documenting the planned Knowledge Bundle feature for portable `.akb` sharing, inspection, diffing, review-first import, and guided install.
 - `docs/OPERATING_MODEL.md` to explain the day-to-day Agent Kernel governance loop: propose, approve, publish, capture, search, and promote.
 - `docs/TROUBLESHOOTING.md` with symptom-based diagnosis for install, memory home, safe-link, hooks, MCP, Failure Lessons, docs drift, and release issues.
 - `docs/AGENT_RUNBOOK.md` with a practical workflow for AI coding agents working on this repository or using Agent Kernel inside another project.
 
 ### Changed
 
+- `README.md` now opens with centered product positioning, badges, brand visuals, and a clearer explanation of why installing Agent Kernel gives value without adding a heavy system.
+- `README.md` now explains that Agent Kernel is a local control layer around existing agents, not a replacement agent.
+- `README.md` now includes a planned `Bundle your KB` section with proposed bundle commands.
+- `docs/README.md` now includes the Knowledge Bundle doc, brand asset map, and docs ownership rule for bundle behavior.
 - `README.md` now gives a clearer install path, safe project adoption flow, operating loop, command map, and documentation map.
 - `docs/README.md` now separates first-time setup, runtime docs, integration docs, schema docs, development docs, agent docs, troubleshooting, and ownership rules.
 - `docs/INTEGRATIONS.md` now recommends `agent-kernel-safe-link` and `agent-kernel-safe-git-hook` as the default adoption path for existing projects.
@@ -27,6 +33,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Planned
 
+- Add a `bundle` command group for portable knowledge sharing: `bundle create`, `bundle inspect`, `bundle diff`, `bundle import`, and `bundle install`.
 - Modularize `src/cli.mjs` into `src/core/*` and `src/commands/*` (tracked
   in `development/BACKLOG.md`). The repo keeps a single-file CLI today
   because that fits the < 100 KB npm package budget.

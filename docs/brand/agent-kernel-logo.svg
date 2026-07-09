@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240" role="img" aria-labelledby="title desc">
+  <title id="title">Agent Kernel Logo</title>
+  <desc id="desc">A minimal mark showing a protected local knowledge kernel.</desc>
+  <defs>
+    <linearGradient id="g" x1="46" y1="32" x2="194" y2="208" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7dd3fc"/>
+      <stop offset="0.48" stop-color="#a78bfa"/>
+      <stop offset="1" stop-color="#22c55e"/>
+    </linearGradient>
+    <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#020617" flood-opacity="0.20"/>
+    </filter>
+  </defs>
+  <rect width="240" height="240" rx="56" fill="#0b1020"/>
+  <g filter="url(#s)">
+    <path d="M120 32 190 72v96l-70 40-70-40V72l70-40Z" fill="#111827" stroke="url(#g)" stroke-width="10" stroke-linejoin="round"/>
+    <path d="M85 89h70v19H85V89Zm0 43h70v19H85v-19Z" fill="#e5e7eb"/>
+    <circle cx="120" cy="120" r="54" fill="none" stroke="#334155" stroke-width="8"/>
+    <circle cx="120" cy="120" r="18" fill="url(#g)"/>
+  </g>
+</svg>

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="150" viewBox="0 0 980 150" role="img" aria-labelledby="title desc">
+  <title id="title">Agent Kernel supported agent surfaces</title>
+  <desc id="desc">Text chips for Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity, and AGENTS.md.</desc>
+  <rect width="980" height="150" rx="32" fill="#0b1020"/>
+  <text x="490" y="34" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="15" fill="#94a3b8" letter-spacing="2">ONE LOCAL KERNEL FOR YOUR AGENT STACK</text>
+  <g font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700" fill="#e5e7eb">
+    <g transform="translate(38 64)">
+      <rect width="118" height="48" rx="24" fill="#111827" stroke="#334155"/>
+      <circle cx="28" cy="24" r="10" fill="#a78bfa"/>
+      <text x="48" y="31">Claude</text>
+    </g>
+    <g transform="translate(176 64)">
+      <rect width="112" height="48" rx="24" fill="#111827" stroke="#334155"/>
+      <circle cx="28" cy="24" r="10" fill="#22c55e"/>
+      <text x="48" y="31">Codex</text>
+    </g>
+    <g transform="translate(308 64)">
+      <rect width="112" height="48" rx="24" fill="#111827" stroke="#334155"/>
+      <circle cx="28" cy="24" r="10" fill="#38bdf8"/>
+      <text x="48" y="31">Cursor</text>
+    </g>
+    <g transform="translate(440 64)">
+      <rect width="132" height="48" rx="24" fill="#111827" stroke="#334155"/>
+      <circle cx="28" cy="24" r="10" fill="#f59e0b"/>
+      <text x="48" y="31">Gemini</text>
+    </g>
+    <g transform="translate(592 64)">
+      <rect width="138" height="48" rx="24" fill="#111827" stroke="#334155"/>
+      <circle cx="28" cy="24" r="10" fill="#e879f9"/>
+      <text x="48" y="31">OpenCode</text>
+    </g>
+    <g transform="translate(750 64)">
+      <rect width="160" height="48" rx="24" fill="#111827" stroke="#334155"/>
+      <circle cx="28" cy="24" r="10" fill="#f97316"/>
+      <text x="48" y="31">AGENTS.md</text>
+    </g>
+  </g>
+  <text x="490" y="135" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="12" fill="#64748b">Brand-safe text labels. Vendor names belong to their owners.</text>
+</svg>

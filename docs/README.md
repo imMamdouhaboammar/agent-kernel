@@ -2,7 +2,7 @@
 
 This folder is the canonical documentation set for Agent Kernel.
 
-Use it to understand the current runtime, connect agent surfaces, update memory behavior, review hook safety, troubleshoot setup, and decide which doc must change when behavior changes.
+Use it to understand the current runtime, connect agent surfaces, update memory behavior, review hook safety, troubleshoot setup, decide which doc must change when behavior changes, and plan portable knowledge sharing.
 
 ---
 
@@ -20,6 +20,7 @@ Use it to understand the current runtime, connect agent surfaces, update memory 
 | I want to change hooks | `hooks/CLAUDE_HOOKS_BEST_PRACTICES.md` | `hooks/FAILURE_LESSONS_HOOK.md` |
 | I want to change MCP tools | `MCP_SERVER.md` | `MEMORY_PROTOCOL.md`, `ARCHITECTURE_NOW.md` |
 | I want to connect another agent | `INTEGRATIONS.md` | `SAFE_LINKING.md` |
+| I want to plan portable knowledge sharing | `BUNDLE_KB.md` | `MEMORY_PROTOCOL.md`, `OPERATING_MODEL.md` |
 | I want to review hardening history | `audits/REPO-HARDENING-AUDIT.md` | `CHANGELOG.md` at repo root |
 
 ---
@@ -45,6 +46,7 @@ This order is deliberately practical. It gets a user from install to safe projec
 - `OPERATING_MODEL.md` explains the day-to-day governance loop and where each type of knowledge belongs.
 - `MEMORY_PROTOCOL.md` documents durable memory, proposals, approval, publish, and sync.
 - `FAILURE_LESSONS_PROTOCOL.md` documents the error-to-skill loop.
+- `BUNDLE_KB.md` documents the planned portable knowledge bundle format and command contract.
 - `MCP_SERVER.md` documents the local stdio MCP server and the trust boundary.
 - `STRICT_MODE.md` documents guard and enforcement behavior.
 - `JSON_FIRST_STORAGE.md` documents the JSON-first storage model.
@@ -59,6 +61,15 @@ This order is deliberately practical. It gets a user from install to safe projec
 - `INTEGRATIONS.md` covers Claude Code, Codex, Cursor, OpenCode, Antigravity, Gemini CLI, Skills.sh, marketplace metadata, and the ECC bundle.
 - `hooks/FAILURE_LESSONS_HOOK.md` covers automatic failure capture from Claude Code.
 - `hooks/CLAUDE_HOOKS_BEST_PRACTICES.md` covers hook event selection, exec-form commands, matcher discipline, output discipline, and security boundaries.
+
+---
+
+## Brand and marketing assets
+
+- `brand/agent-kernel-logo.svg` is the minimal repo logo.
+- `brand/agent-kernel-hero.svg` is the README hero visual.
+- `brand/agent-strip.svg` is the brand-safe supported-agent surface strip.
+- `brand/README.md` explains usage and the third-party logo boundary.
 
 ---
 
@@ -116,37 +127,6 @@ When changing behavior, update docs in the same PR.
 | New helper binary | `README.md`, `ARCHITECTURE_NOW.md`, relevant setup or protocol doc |
 | New memory type | `MEMORY_PROTOCOL.md`, `OPERATING_MODEL.md`, `README.md`, `SKILL.md` |
 | New Failure Lessons behavior | `FAILURE_LESSONS_PROTOCOL.md`, `OPERATING_MODEL.md`, `hooks/FAILURE_LESSONS_HOOK.md`, tests |
+| New bundle behavior | `BUNDLE_KB.md`, `MEMORY_PROTOCOL.md`, `OPERATING_MODEL.md`, `README.md`, tests |
 | New hook | `hooks/CLAUDE_HOOKS_BEST_PRACTICES.md`, `INTEGRATIONS.md`, example settings |
 | New MCP tool | `MCP_SERVER.md`, tests, README if user-facing |
-| New integration | `INTEGRATIONS.md`, `README.md`, `SKILL.md` |
-| New safe-link behavior | `SAFE_LINKING.md`, `INSTALL_AND_AGENT_SETUP.md`, README if user-facing |
-| New troubleshooting guidance | `TROUBLESHOOTING.md`, setup or protocol doc if behavior is clarified |
-| New agent behavior rule | `AGENT_RUNBOOK.md`, `AGENTS.md`, relevant protocol doc |
-| Release-visible change | `CHANGELOG.md` |
-
----
-
-## Do not document aspirations as shipped behavior
-
-`src/{adapters,commands,core,hooks}/` are placeholders today. If a feature is not wired into the runtime, document it as planned work, not as current behavior.
-
-Use `ARCHITECTURE_NOW.md` as the tie-breaker when roadmap docs and implementation disagree.
-
----
-
-## Review checklist
-
-Before merging a docs update:
-
-- Does `ARCHITECTURE_NOW.md` still match the code?
-- Does `README.md` give a new user the shortest correct path?
-- Does `INSTALL_AND_AGENT_SETUP.md` still use the safest setup path?
-- Does `OPERATING_MODEL.md` still describe the real approval and promotion flow?
-- Does `TROUBLESHOOTING.md` point to real commands and real files?
-- Does `AGENT_RUNBOOK.md` preserve runtime, generated-file, memory, hook, and MCP boundaries?
-- Does `SKILL.md` describe current capabilities accurately?
-- Are generated files identified as generated/disposable?
-- Are approval boundaries explicit?
-- Are hooks documented as narrow, auditable adapters rather than hidden agents?
-- Are private credentials excluded from repo-local config examples?
-- Are references to `development/` canonical, with `develpment/` treated only as legacy compatibility?
