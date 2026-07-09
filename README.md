@@ -85,6 +85,7 @@ It is currently:
 - generated markdown and config surfaces
 - optional git hooks
 - optional local stdio MCP server
+- optional local daemon for live context capture
 - zero runtime npm dependencies
 
 It is not:
@@ -153,6 +154,31 @@ agent-kernel link . --hooks
 ```
 
 For existing repositories, prefer safe-link first.
+
+---
+
+## Optional live runtime
+
+Agent Kernel can run a small local daemon when you explicitly ask for live session evidence and context calls. It is stopped by default and binds to `127.0.0.1` unless you deliberately override it.
+
+```bash
+agent-kernel daemon start
+agent-kernel daemon status
+agent-kernel daemon stop
+```
+
+The first runtime surface exposes local-only health, observation, context, and session endpoints:
+
+```text
+GET  /ak/health
+GET  /ak/status
+POST /ak/observe
+POST /ak/context
+GET  /ak/sessions
+GET  /ak/sessions/:id
+```
+
+Runtime observations are evidence. They do not become approved memory unless the user promotes them through the normal proposal and approval flow.
 
 ---
 
@@ -247,6 +273,7 @@ agent-kernel migrate json [--publish]
 agent-kernel memory list|search|show
 agent-kernel episode add|sync|search|show|stats|reindex
 agent-kernel failure capture|learn|list|search|show|propose|promote|validate
+agent-kernel daemon start|stop|status
 agent-kernel enforce install
 agent-kernel guard [--staged|--file path]
 agent-kernel git-hook install [project]
@@ -263,6 +290,7 @@ agent-kernel-safe-git-hook
 agent-kernel-agent-propose
 agent-kernel-failure
 agent-kernel-failure-hook
+agent-kernel-daemon
 agent-kernel-mode
 agent-kernel-agent-write
 ak
