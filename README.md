@@ -95,6 +95,8 @@ agent-kernel approve <proposal-id> --publish
 
 Repeated captures of the same project + command + error signature update the existing lesson and increment `occurrences` instead of creating noisy duplicates.
 
+For Claude Code automatic capture, see [`docs/hooks/FAILURE_LESSONS_HOOK.md`](./docs/hooks/FAILURE_LESSONS_HOOK.md). The recommended event is `PostToolUseFailure` with exec-form command hooks.
+
 ### 5. Capture an episode
 
 ```bash
@@ -197,7 +199,7 @@ Full reference: see [`docs/`](./docs).
 
 | Agent | Memory source | Hook install | Compile target |
 |---|---|---|---|
-| Claude Code | yes | yes `~/.claude/hooks/` | `PreToolUse` + `PostToolUse` |
+| Claude Code | yes | yes `~/.claude/hooks/` | `PreToolUse` + `PostToolUseFailure` |
 | Codex | yes | n/a | `AGENTS.md` |
 | Cursor | yes | n/a | `.mdc` rule |
 | OpenCode | yes | n/a | `AGENTS.md` |
