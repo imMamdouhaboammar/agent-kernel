@@ -31,6 +31,10 @@ function runFailure(env, args, input = '') {
   return result.stdout;
 }
 
+function readLessons(storePath) {
+  return JSON.parse(fs.readFileSync(storePath, 'utf8'));
+}
+
 export async function run() {
   const { env, kernelHome } = makeEnv();
   runCli(env, 'init', '--sync');
@@ -48,7 +52,7 @@ export async function run() {
   assert.match(captured, /Captured failure lesson:/);
 
   const storePath = path.join(kernelHome, 'source', 'failures', 'failure-lessons.json');
-  const lessons = JSON.parse(fs.readFileSync(storePath, 'utf8'));
+  const lessons = readLessons(storePath);
   assert.equal(lessons.length, 1);
   assert.equal(lessons[0].errorSignature, 'ERR_MODULE_NOT_FOUND');
   assert.equal(lessons[0].agent, 'test-agent');
@@ -64,7 +68,7 @@ export async function run() {
     '--text', 'Error [ERR_MODULE_NOT_FOUND]: Cannot find module ./core'
   ]);
   assert.match(duplicate, /Updated existing failure lesson:/);
-  const afterDuplicate = JSON.parse(fs.readFileSync(storePath, 'utf8'));
+  const afterDuplicate = readLessons(storePath);
   assert.equal(afterDuplicate.length, 1);
   assert.equal(afterDuplicate[0].occurrences, 2);
 
@@ -93,14 +97,15 @@ export async function run() {
   assert.equal(hookJson.suppressOutput, true);
   assert.equal(hookJson.hookSpecificOutput.hookEventName, 'PostToolUseFailure');
   assertContains(hookJson.hookSpecificOutput.additionalContext, 'Agent Kernel captured Failure Lesson', 'hook did not return Claude context');
-  assertContains(hookJson.hookSpecificOutput.additionalContext, 'TS2307', 'hook context missing signature');
 
-  const afterHook = JSON.parse(fs.readFileSync(storePath, 'utf8'));
-  assert.equal(afterHook.length, 2);
-  assert.equal(afterHook[1].errorSignature, 'TS2307');
+  const afterHook = readLessons(storePath);
+  const tsLesson = afterHook.find((lesson) => lesson.errorSignature === 'TS2307');
+  assert.ok(tsLesson, 'hook did not store a TS2307 failure lesson');
+  assertContains(hookJson.hookSpecificOutput.additionalContext, tsLesson.id, 'hook context missing stored lesson id');
 
-  const proposeOut = runFailure(env, ['propose', lessons[0].id, '--as', 'rule']);
-  assertContains(proposeOut, 'Created pending memory proposal', 'failure propose did not create a memory proposal');
+  runFailure(env, ['propose', lessons[0].id, '--as', 'rule']);
+  const inboxOut = runCli(env, 'inbox');
+  assertContains(inboxOut, 'Failure lesson: ERR_MODULE_NOT_FOUND', 'failure propose did not create an inbox item');
 }
 
 export const name = 'failure-lessons';
