@@ -21,6 +21,7 @@ import { run as runPublicCliSafeLink } from './public-cli-safe-link.mjs';
 import { run as runPublicCliSafeGitHook } from './public-cli-safe-git-hook.mjs';
 import { run as runPublicCliDaemon } from './public-cli-daemon.mjs';
 import { run as runPublicCliRuntimeDoctor } from './public-cli-runtime-doctor.mjs';
+import { run as runPublicCliSession } from './public-cli-session.mjs';
 import { run as runWrapperRouting } from './wrapper-routing.mjs';
 import { run as runAgentPropose } from './agent-propose.mjs';
 import { run as runFailureLessons } from './failure-lessons.mjs';
@@ -42,6 +43,7 @@ const tests = [
   ['public-cli-safe-git-hook', runPublicCliSafeGitHook],
   ['public-cli-daemon', runPublicCliDaemon],
   ['public-cli-runtime-doctor', runPublicCliRuntimeDoctor],
+  ['public-cli-session', runPublicCliSession],
   ['wrapper-routing', runWrapperRouting],
   ['agent-propose', runAgentPropose],
   ['failure-lessons', runFailureLessons],
