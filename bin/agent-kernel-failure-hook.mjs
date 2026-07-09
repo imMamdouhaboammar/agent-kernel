@@ -51,7 +51,7 @@ function hasFailure(payload, text) {
   const code = exitCodeOf(payload);
   if (code !== null && code !== 0) return true;
   if (payload.error || payload.is_error || payload.failed) return true;
-  return /\b(ERR_[A-Z0-9_]+|MODULE_NOT_FOUND|ReferenceError|TypeError|SyntaxError|failed|error:)\b/i.test(text);
+  return /\b(ERR_[A-Z0-9_]+|E[A-Z0-9_]{3,}|TS\d{4}|MODULE_NOT_FOUND|ReferenceError|TypeError|SyntaxError|failed|error:|cannot find module)\b/i.test(text);
 }
 
 function main() {
