@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240" role="img" aria-labelledby="title desc">
   <title id="title">Agent Kernel Mark</title>
-  <desc id="desc">A minimal local kernel mark built from bracket, node, and routing pixels.</desc>
-  <rect x="8" y="8" width="224" height="224" rx="24" fill="#050505"/>
-  <rect x="8" y="8" width="224" height="224" rx="24" fill="none" stroke="#2A2A2A" stroke-width="3"/>
+  <desc id="desc">A centered minimal local kernel mark built from bracket, node, and routing pixels.</desc>
+  <rect x="8" y="8" width="224" height="224" rx="22" fill="#050505"/>
+  <rect x="8" y="8" width="224" height="224" rx="22" fill="none" stroke="#2A2A2A" stroke-width="3"/>
   <g shape-rendering="crispEdges">
     <rect x="56" y="52" width="18" height="18" fill="#F4F4F1"/>
     <rect x="74" y="52" width="18" height="18" fill="#F4F4F1"/>
