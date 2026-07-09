@@ -142,6 +142,7 @@ function main() {
 
   const targets = [
     ['AGENTS.md', path.join(dist, 'AGENTS.md')],
+    ['CLAUDE.md', path.join(dist, 'CLAUDE.md')],
     ['GEMINI.md', path.join(dist, 'GEMINI.md')],
     ['.cursor/rules/00-agent-kernel.mdc', path.join(dist, 'cursor-rule.mdc')],
     ['.agents/agents.md', path.join(dist, 'antigravity-agents.md')],
