@@ -1,0 +1,1177 @@
+# Agent Kernel Backlog: Live Local Memory Runtime
+
+## Product Principle
+
+Agent Kernel must remain local-first, lightweight, review-first, and agent-agnostic.
+
+The goal is not to turn Agent Kernel into a heavy memory platform, hosted service, database server, or autonomous background agent. The goal is to add a thin runtime layer that helps Claude Code, Codex, Cursor, Gemini CLI, OpenCode, and AGENTS.md-compatible agents see relevant local context at the right moment, while keeping durable memory under explicit user approval.
+
+## Non-Negotiable Constraints
+
+Agent Kernel must keep:
+
+1. Local-first storage under `~/.agent-kernel`
+2. No required cloud account
+3. No required external database
+4. No required vector DB
+5. No required background daemon by default
+6. No automatic approval or publishing from hooks
+7. No secrets in repo-local generated files
+8. No agent-owned durable memory without user review
+9. Small MCP surface by default
+10. Runtime features must be optional and safe to disable
+
+## Strategic Direction
+
+Agent Kernel should evolve from:
+
+```text
+source JSON -> compile -> generated agent files
+```
+
+into:
+
+```text
+source JSON + approved memory + episodes + failure lessons
+  -> static agent guidance
+  -> optional live local context
+  -> safer agent behavior during real work
+```
+
+The static layer remains the default. The live layer is optional.
+
+---
+
+# Milestone 1: Live Context Runtime Foundation
+
+## Objective
+
+Add an optional local runtime that captures session observations and returns relevant context to agents during work, without making Agent Kernel heavy or daemon-dependent.
+
+## Backlog Item AK-LIVE-001: Add optional local daemon command
+
+### User Story
+
+As a developer using multiple AI coding agents, I want to start a tiny local Agent Kernel runtime only when needed, so agents can read and submit runtime context without changing the default lightweight CLI behavior.
+
+### Proposed Commands
+
+```bash
+agent-kernel daemon start
+agent-kernel daemon stop
+agent-kernel daemon status
+agent-kernel daemon restart
+```
+
+### Behavior
+
+The daemon should:
+
+1. Bind to `127.0.0.1` by default
+2. Store all runtime data inside `~/.agent-kernel`
+3. Start only when explicitly requested
+4. Not run as a hidden background service after install
+5. Refuse external bind addresses unless explicitly configured
+6. Use a local secret when remote access is enabled
+7. Never approve or publish memory
+
+### Initial Endpoints
+
+```text
+GET  /ak/health
+GET  /ak/status
+POST /ak/observe
+POST /ak/context
+GET  /ak/sessions
+GET  /ak/sessions/:id
+```
+
+### Storage
+
+```text
+~/.agent-kernel/runtime/
+  sessions/
+    <session-id>.json
+    <session-id>.jsonl
+  observations/
+  context-cache/
+  logs/
+```
+
+### Acceptance Criteria
+
+1. `agent-kernel daemon start` starts a local server on `127.0.0.1`
+2. `agent-kernel daemon status` reports port, PID, uptime, session count, and last observation time
+3. `POST /ak/observe` writes append-only JSONL observations
+4. `POST /ak/context` returns context from approved memory, episodes, and Failure Lessons
+5. No durable memory is created by the daemon
+6. Tests prove the daemon is optional and not started by install, init, compile, or link
+
+### Out of Scope
+
+1. Viewer UI
+2. Vector search
+3. Knowledge graph
+4. Auto-consolidation
+5. Remote sync
+
+---
+
+## Backlog Item AK-LIVE-002: Add runtime health and diagnostics
+
+### User Story
+
+As a user, I want to know whether Agent Kernel is correctly connected to my agents, so I can debug setup issues without guessing.
+
+### Proposed Commands
+
+```bash
+agent-kernel status --runtime
+agent-kernel doctor --runtime
+agent-kernel doctor --agents
+agent-kernel doctor --json
+```
+
+### Health Checks
+
+The runtime health report should include:
+
+1. Kernel home path
+2. Runtime enabled or disabled
+3. Daemon running or stopped
+4. Local port
+5. Last observation timestamp
+6. Active sessions
+7. Installed MCP config status
+8. Installed hook status
+9. Pending proposal count
+10. Failure Lesson count
+11. Stale compiled files check
+12. Secret or unsafe bind warning
+
+### Acceptance Criteria
+
+1. `doctor --runtime` works even when daemon is stopped
+2. Warnings are actionable, not vague
+3. JSON output is stable enough for CI or agents
+4. No secrets are printed
+
+---
+
+# Milestone 2: Session Capture and Timeline
+
+## Objective
+
+Capture what agents did during a coding session in a compact, local, replayable format that supports debugging and Failure Lessons.
+
+## Backlog Item AK-SESSION-001: Add session model
+
+### User Story
+
+As a user, I want Agent Kernel to track each agent session, so I can understand what happened before a bug, edit, failure, or commit.
+
+### Session Fields
+
+```json
+{
+  "id": "session_...",
+  "projectId": "agent-kernel",
+  "cwd": "/path/to/repo",
+  "agentId": "claude-code",
+  "agentRole": "coding-agent",
+  "trustLevel": "propose-only",
+  "startedAt": "ISO timestamp",
+  "endedAt": "ISO timestamp",
+  "status": "active|completed|failed",
+  "observationCount": 0,
+  "linkedCommits": [],
+  "linkedFailures": [],
+  "summary": ""
+}
+```
+
+### Commands
+
+```bash
+agent-kernel session start --agent claude-code --project .
+agent-kernel session end <session-id>
+agent-kernel session list
+agent-kernel session show <session-id>
+```
+
+### Acceptance Criteria
+
+1. Sessions are stored locally as JSON
+2. Observations are stored as append-only JSONL
+3. Session metadata references linked failures, episodes, and commits
+4. Session commands do not require daemon mode if used manually
+5. Unknown agents are accepted with custom `agentId`
+
+---
+
+## Backlog Item AK-SESSION-002: Add observation capture
+
+### User Story
+
+As an AI coding workflow user, I want Agent Kernel to capture useful session events, so repeated mistakes can become searchable evidence later.
+
+### Observation Types
+
+```text
+user_prompt
+assistant_plan
+tool_use
+tool_result
+tool_failure
+file_read
+file_edit
+command_run
+command_failure
+test_failure
+guard_block
+permission_prompt
+session_summary
+manual_note
+```
+
+### Required Observation Fields
+
+```json
+{
+  "id": "obs_...",
+  "sessionId": "session_...",
+  "timestamp": "ISO timestamp",
+  "agentId": "claude-code",
+  "type": "tool_failure",
+  "projectId": "agent-kernel",
+  "cwd": "/path/to/repo",
+  "files": [],
+  "command": "",
+  "exitCode": null,
+  "text": "",
+  "metadata": {}
+}
+```
+
+### Acceptance Criteria
+
+1. Observations are append-only
+2. Invalid observation payloads are rejected
+3. Unknown fields are dropped or stored only under safe `metadata`
+4. Observations do not become approved memory
+5. Observations can be searched by session, file, command, type, and text
+
+---
+
+## Backlog Item AK-SESSION-003: Add session timeline command
+
+### User Story
+
+As a maintainer, I want to view a compact timeline of what an agent did, so I can diagnose failures without reading raw logs.
+
+### Commands
+
+```bash
+agent-kernel session timeline <session-id>
+agent-kernel session timeline <session-id> --type command_failure
+agent-kernel session timeline <session-id> --files src/cli.mjs
+agent-kernel session timeline <session-id> --compact
+```
+
+### Output Example
+
+```text
+10:14:02 user_prompt       Fix failing safe-link smoke test
+10:14:18 file_read         src/cli.mjs
+10:15:44 file_edit         src/cli.mjs
+10:16:10 command_run       npm test
+10:16:39 command_failure   safe-link duplicated marked block
+10:17:22 failure_capture   failure_123
+```
+
+### Acceptance Criteria
+
+1. Timeline is chronological
+2. Compact output fits in terminal
+3. JSON output is available through `--json`
+4. Timeline can filter by type and file
+5. Tests cover empty, active, completed, and corrupted sessions
+
+---
+
+# Milestone 3: File-Aware Context
+
+## Objective
+
+Make Agent Kernel useful at the exact moment an agent touches a file by surfacing related rules, failures, episodes, and previous edits.
+
+## Backlog Item AK-FILE-001: Add file context command
+
+### User Story
+
+As an AI coding agent, I want to ask Agent Kernel what it knows about a file before editing it, so I avoid repeating old mistakes.
+
+### Proposed Command
+
+```bash
+agent-kernel file-context src/cli.mjs
+agent-kernel file-context src/cli.mjs test/smoke.mjs --budget 1200
+agent-kernel file-context src/cli.mjs --json
+```
+
+### Context Sources
+
+1. Approved memories tagged with the file
+2. Failure Lessons mentioning the file
+3. Episodes linked to the file
+4. Session observations involving the file
+5. Guard policies related to the file
+6. Pending proposals related to the file, marked clearly as pending
+
+### Output Sections
+
+```text
+Approved Rules
+Failure Lessons
+Related Episodes
+Recent Session Observations
+Guard Warnings
+Pending Proposals
+```
+
+### Acceptance Criteria
+
+1. Context is budget-aware
+2. Approved memory and pending proposals are clearly separated
+3. The command works without daemon mode
+4. Results are sorted by relevance and recency
+5. No raw sensitive values are printed
+
+---
+
+## Backlog Item AK-FILE-002: Add file references to memories, failures, and episodes
+
+### User Story
+
+As a user, I want memories and lessons to point to relevant files, so agents can retrieve them when editing those files.
+
+### Data Model Update
+
+Memory, Failure Lesson, and Episode records should support:
+
+```json
+{
+  "files": [
+    "src/cli.mjs",
+    "test/smoke.mjs"
+  ]
+}
+```
+
+### Commands to Update
+
+```bash
+agent-kernel remember "... " --files src/cli.mjs
+agent-kernel propose --text "... " --files src/cli.mjs
+agent-kernel failure capture ... --files src/cli.mjs
+agent-kernel episode add ... --files src/cli.mjs
+```
+
+### Acceptance Criteria
+
+1. Existing records without `files` remain valid
+2. File paths are normalized relative to project root where possible
+3. Search can filter by file
+4. Compile output can optionally include file-specific notes
+5. Tests cover path normalization
+
+---
+
+# Milestone 4: Live Context Injection for Agents
+
+## Objective
+
+Let supported agents receive relevant context during real work while keeping generated files as the stable fallback.
+
+## Backlog Item AK-INJECT-001: Add context endpoint
+
+### User Story
+
+As an agent integration, I want to request a compact context block for a session, files, and task, so I can inject only useful local guidance.
+
+### Endpoint
+
+```text
+POST /ak/context
+```
+
+### Payload
+
+```json
+{
+  "sessionId": "session_...",
+  "projectId": "agent-kernel",
+  "agentId": "claude-code",
+  "query": "fix safe-link idempotency",
+  "files": ["src/cli.mjs", "test/safe-link.mjs"],
+  "budget": 1200
+}
+```
+
+### Response
+
+```json
+{
+  "context": "...",
+  "sections": {
+    "rules": [],
+    "failureLessons": [],
+    "episodes": [],
+    "guardWarnings": [],
+    "pendingProposals": []
+  },
+  "budgetUsed": 1032
+}
+```
+
+### Acceptance Criteria
+
+1. Context respects budget
+2. Context never includes rejected proposals
+3. Pending proposals are marked as unapproved
+4. Context can be generated without daemon through CLI
+5. Context is deterministic for the same inputs where possible
+
+---
+
+## Backlog Item AK-INJECT-002: Add Claude Code hook for live context
+
+### User Story
+
+As a Claude Code user, I want Agent Kernel to inject relevant context before risky edits or repeated failures, so Claude can avoid known mistakes.
+
+### Hook Strategy
+
+Use hooks for context only. Do not approve or publish memory from hooks.
+
+Potential hook points:
+
+```text
+SessionStart
+PreToolUse
+PostToolUseFailure
+PreCompact
+Stop
+```
+
+### Behavior
+
+1. `SessionStart`: inject compact project context
+2. `PreToolUse`: inject file context for Edit, Write, MultiEdit, Bash where relevant
+3. `PostToolUseFailure`: capture failure evidence
+4. `PreCompact`: summarize session into local observation
+5. `Stop`: close session and optionally create proposal candidates
+
+### Acceptance Criteria
+
+1. Hook scripts have short timeouts
+2. Hook scripts fail open unless guard mode requires blocking
+3. Hook output uses structured context
+4. Approval remains impossible from hook
+5. Existing hook docs are updated
+
+---
+
+## Backlog Item AK-INJECT-003: Add OpenCode integration notes
+
+### User Story
+
+As an OpenCode user, I want to connect Agent Kernel through MCP and optional plugin hooks, so the agent can get fresh context without depending only on AGENTS.md.
+
+### Proposed Scope
+
+Documentation-first integration:
+
+1. MCP config
+2. Optional runtime observe calls
+3. Optional context injection pattern
+4. Clear tradeoff between static AGENTS.md and live context
+
+### Acceptance Criteria
+
+1. Add `docs/integrations/OPENCODE.md`
+2. Include minimal config
+3. Include local-only warning
+4. Explain that Agent Kernel does not require daemon mode by default
+5. No implementation dependency on OpenCode plugin SDK in core package
+
+---
+
+# Milestone 5: Commit Links and Work Evidence
+
+## Objective
+
+Connect memory, sessions, failures, and commits so users can trace why code changed.
+
+## Backlog Item AK-COMMIT-001: Add commit link command
+
+### User Story
+
+As a maintainer, I want to link an agent session to a git commit, so I can later trace the context behind a change.
+
+### Commands
+
+```bash
+agent-kernel commit link --sha <sha> --session <session-id>
+agent-kernel commit list
+agent-kernel commit show <sha>
+agent-kernel commit context <sha>
+```
+
+### Commit Record
+
+```json
+{
+  "sha": "...",
+  "shortSha": "...",
+  "repo": "...",
+  "branch": "master",
+  "message": "...",
+  "author": "...",
+  "authoredAt": "ISO timestamp",
+  "files": [],
+  "sessionIds": [],
+  "failureIds": [],
+  "episodeIds": [],
+  "linkedAt": "ISO timestamp"
+}
+```
+
+### Acceptance Criteria
+
+1. Commit links are idempotent
+2. Multiple sessions can link to one commit
+3. `commit context` returns related sessions, failures, and episodes
+4. Works offline
+5. Does not require GitHub API
+
+---
+
+## Backlog Item AK-COMMIT-002: Add optional post-commit helper
+
+### User Story
+
+As a user, I want Agent Kernel to optionally link the latest session to a commit after commit creation, so memory stays connected to real code history.
+
+### Command
+
+```bash
+agent-kernel git-hook install --commit-link
+```
+
+### Behavior
+
+1. Installs a safe post-commit hook
+2. Links HEAD commit to latest active or recently completed session
+3. Does not block commit if Agent Kernel is unavailable
+4. Writes local evidence only
+
+### Acceptance Criteria
+
+1. Hook is opt-in
+2. Hook is idempotent
+3. Existing hooks are preserved
+4. Safe-link style marked block is used
+5. Tests cover repeated install
+
+---
+
+# Milestone 6: Pattern Detection and Proposal Generation
+
+## Objective
+
+Let Agent Kernel detect recurring lessons and suggest durable memory, while keeping the approval boundary intact.
+
+## Backlog Item AK-PATTERN-001: Detect recurring failures
+
+### User Story
+
+As a user, I want Agent Kernel to identify repeated failures, so I can promote real patterns into durable rules or workflows.
+
+### Command
+
+```bash
+agent-kernel failure patterns
+agent-kernel failure patterns --min-count 3
+agent-kernel failure patterns --project .
+```
+
+### Pattern Signals
+
+1. Same error text
+2. Same command
+3. Same file
+4. Same root cause
+5. Same fix
+6. Same agent repeating the same mistake
+
+### Acceptance Criteria
+
+1. Patterns are generated locally
+2. No LLM required
+3. Results are explainable
+4. User can promote a pattern to proposal
+5. False positives are easy to reject
+
+---
+
+## Backlog Item AK-PATTERN-002: Generate proposals from patterns
+
+### User Story
+
+As a user, I want recurring failures to become reviewable proposals, so useful lessons can become durable memory without manual rewriting.
+
+### Command
+
+```bash
+agent-kernel failure propose-pattern <pattern-id> --as rule
+agent-kernel failure propose-pattern <pattern-id> --as workflow
+agent-kernel failure propose-pattern <pattern-id> --as skill
+```
+
+### Allowed Proposal Types
+
+```text
+rule
+policy
+workflow
+skill
+note
+```
+
+### Acceptance Criteria
+
+1. Proposal is created in inbox pending state
+2. Proposal includes evidence references
+3. Proposal does not auto-publish
+4. Proposal text is concise and editable
+5. User can approve or reject normally
+
+---
+
+## Backlog Item AK-PATTERN-003: Add episode distillation
+
+### User Story
+
+As a user, I want to distill completed sessions into useful episodes, so the project history becomes searchable without storing noisy raw logs forever.
+
+### Command
+
+```bash
+agent-kernel session distill <session-id> --to episode
+agent-kernel session distill <session-id> --to proposal
+agent-kernel session distill <session-id> --dry-run
+```
+
+### Acceptance Criteria
+
+1. Distillation can run without LLM using deterministic summaries
+2. Optional LLM mode can be added later behind a flag
+3. Output is reviewable
+4. Raw session logs remain separate from approved memory
+5. Session links to created episode or proposal
+
+---
+
+# Milestone 7: Agent Identity, Trust, and Scope
+
+## Objective
+
+Support multiple agents safely without giving all agents the same memory permissions.
+
+## Backlog Item AK-AGENT-001: Add agent identity model
+
+### User Story
+
+As a user working with Claude, Codex, Cursor, and OpenCode, I want Agent Kernel to know which agent created each observation or proposal.
+
+### Agent Fields
+
+```json
+{
+  "agentId": "claude-code",
+  "displayName": "Claude Code",
+  "surface": "cli",
+  "trustLevel": "read-only|propose-only|capture-only|trusted-local",
+  "allowedActions": [
+    "search",
+    "context",
+    "observe",
+    "propose",
+    "guard"
+  ]
+}
+```
+
+### Acceptance Criteria
+
+1. Observations include `agentId`
+2. Proposals include `createdBy`
+3. Sessions include `agentId`
+4. Search can filter by agent
+5. Trust level does not grant approval by default
+
+---
+
+## Backlog Item AK-AGENT-002: Add agent registry
+
+### User Story
+
+As a user, I want to configure agent permissions once, so Agent Kernel can safely expose different capabilities to different tools.
+
+### Commands
+
+```bash
+agent-kernel agent list
+agent-kernel agent add claude-code --trust propose-only
+agent-kernel agent add cursor --trust read-only
+agent-kernel agent set codex --trust capture-only
+agent-kernel agent show claude-code
+```
+
+### Acceptance Criteria
+
+1. Registry is stored locally
+2. Defaults are conservative
+3. Unknown agents get lowest safe trust level
+4. MCP tools respect trust level
+5. Runtime endpoints respect trust level when auth is enabled
+
+---
+
+# Milestone 8: Lightweight MCP Surface Upgrade
+
+## Objective
+
+Improve MCP usefulness without copying a large 50+ tool surface.
+
+## Backlog Item AK-MCP-001: Split MCP tools into core and extended
+
+### User Story
+
+As an MCP client, I want a small default tool list, so agents do not get overwhelmed by too many tools.
+
+### Core Tools
+
+```text
+agent_kernel_get_status
+agent_kernel_search_memory
+agent_kernel_get_context
+agent_kernel_get_file_context
+agent_kernel_propose_memory
+agent_kernel_list_pending
+agent_kernel_guard_command
+agent_kernel_capture_failure
+agent_kernel_search_failures
+agent_kernel_search_episodes
+```
+
+### Extended Tools
+
+Enabled only with:
+
+```bash
+AGENT_KERNEL_MCP_TOOLS=extended
+```
+
+Extended may include:
+
+```text
+agent_kernel_read_session
+agent_kernel_session_timeline
+agent_kernel_link_commit
+agent_kernel_commit_context
+agent_kernel_detect_patterns
+agent_kernel_create_episode
+```
+
+### Acceptance Criteria
+
+1. Default MCP list stays small
+2. Extended mode is opt-in
+3. Approval tool remains disabled unless explicitly enabled
+4. Tool descriptions tell agents when to use each tool
+5. MCP docs include examples for Claude, Cursor, Codex, Gemini, and OpenCode
+
+---
+
+## Backlog Item AK-MCP-002: Add MCP context and file-context tools
+
+### User Story
+
+As an AI coding agent, I want to request compact context through MCP, so I can retrieve local knowledge without shelling out.
+
+### Tools
+
+```text
+agent_kernel_get_context
+agent_kernel_get_file_context
+```
+
+### Acceptance Criteria
+
+1. Tools support token budget
+2. Tools support file list
+3. Tools support project ID
+4. Tools do not expose rejected proposals
+5. Output separates approved memory from pending evidence
+
+---
+
+# Milestone 9: Local Search Upgrade
+
+## Objective
+
+Improve retrieval quality without adding heavy dependencies or external systems.
+
+## Backlog Item AK-SEARCH-001: Add structured local search index
+
+### User Story
+
+As a user, I want faster and better local search across memories, episodes, failures, and sessions.
+
+### Scope
+
+Create a lightweight local index:
+
+```text
+~/.agent-kernel/index/
+  memory-index.json
+  failure-index.json
+  episode-index.json
+  session-index.json
+```
+
+### Indexed Fields
+
+1. Title
+2. Text
+3. Tags
+4. Files
+5. Commands
+6. Error text
+7. Root cause
+8. Fix
+9. Agent ID
+10. Project ID
+11. Created timestamp
+
+### Acceptance Criteria
+
+1. Works without external libraries
+2. Can rebuild from source data
+3. Search remains usable if index is missing
+4. Index corruption does not corrupt source data
+5. `agent-kernel reindex` rebuilds everything
+
+---
+
+## Backlog Item AK-SEARCH-002: Add relevance scoring
+
+### User Story
+
+As an agent, I want the most relevant local context first, so I do not waste context budget.
+
+### Ranking Signals
+
+1. Exact file match
+2. Exact command match
+3. Exact error match
+4. Tag match
+5. Recent related session
+6. Approved memory priority
+7. Failure recurrence count
+8. Project match
+9. Agent match
+
+### Acceptance Criteria
+
+1. Ranking is deterministic
+2. Ranking can be explained with `--debug`
+3. Search supports `--budget`
+4. Search supports `--json`
+5. No embeddings required
+
+---
+
+# Milestone 10: Retention, Cleanup, and Privacy
+
+## Objective
+
+Keep local memory useful without becoming a noisy local data graveyard.
+
+## Backlog Item AK-RETENTION-001: Add retention policy for raw observations
+
+### User Story
+
+As a privacy-conscious user, I want raw session logs to expire or be compacted, while approved memory remains durable.
+
+### Config
+
+```json
+{
+  "runtimeRetentionDays": 30,
+  "keepFailureEvidence": true,
+  "keepApprovedMemoryForever": true,
+  "autoPruneRawObservations": false
+}
+```
+
+### Commands
+
+```bash
+agent-kernel retention status
+agent-kernel retention prune --dry-run
+agent-kernel retention prune
+```
+
+### Acceptance Criteria
+
+1. Prune is dry-run by default or prompts before deletion
+2. Approved memories are never deleted by retention
+3. Failure Lessons are preserved unless explicitly included
+4. Deleted records are logged in audit trail
+5. User can disable retention
+
+---
+
+## Backlog Item AK-RETENTION-002: Add local export and import
+
+### User Story
+
+As a user, I want to export and import my local Agent Kernel data, so I can move machines or back up memory safely.
+
+### Commands
+
+```bash
+agent-kernel export ./agent-kernel-backup.json
+agent-kernel import ./agent-kernel-backup.json --to inbox
+agent-kernel import ./agent-kernel-backup.json --replace
+```
+
+### Default Import Behavior
+
+Import must be review-first. Imported durable memory should go to inbox unless the user explicitly chooses replace.
+
+### Acceptance Criteria
+
+1. Export includes version metadata
+2. Import validates schema
+3. Import to inbox is default
+4. Replace requires explicit flag
+5. Secrets are excluded by default
+
+---
+
+# Milestone 11: Lightweight Visual Inspection
+
+## Objective
+
+Offer visibility into runtime memory without building a heavy dashboard.
+
+## Backlog Item AK-VIEW-001: Add terminal viewer
+
+### User Story
+
+As a user, I want a simple terminal view of recent sessions, proposals, and failures.
+
+### Command
+
+```bash
+agent-kernel view
+agent-kernel view sessions
+agent-kernel view failures
+agent-kernel view inbox
+```
+
+### Acceptance Criteria
+
+1. Terminal only
+2. No web UI required
+3. Works offline
+4. Uses existing local data
+5. Does not add runtime dependencies
+
+---
+
+## Backlog Item AK-VIEW-002: Consider optional static HTML report
+
+### User Story
+
+As a user, I want to generate a static local report for review, without running a dashboard server.
+
+### Command
+
+```bash
+agent-kernel report ./agent-kernel-report.html
+```
+
+### Scope
+
+The report may include:
+
+1. Memory summary
+2. Pending proposals
+3. Recent failures
+4. Recent sessions
+5. File hotspots
+6. Agent activity
+
+### Acceptance Criteria
+
+1. Static HTML only
+2. No client-side package dependency
+3. No external assets
+4. No secrets
+5. Generated on demand
+
+---
+
+# Milestone 12: Documentation and Positioning
+
+## Objective
+
+Explain the new runtime layer without confusing users or making Agent Kernel sound heavy.
+
+## Backlog Item AK-DOCS-001: Add Live Context Runtime doc
+
+### File
+
+```text
+docs/LIVE_CONTEXT_RUNTIME.md
+```
+
+### Must Explain
+
+1. Runtime is optional
+2. CLI still works without daemon
+3. Generated files remain first-class
+4. Hooks capture evidence only
+5. Approval remains user-owned
+6. Raw observations are not approved memory
+7. Storage stays local
+
+### Acceptance Criteria
+
+1. Includes diagrams
+2. Includes safety model
+3. Includes setup examples
+4. Includes troubleshooting
+5. Links from README and docs index
+
+---
+
+## Backlog Item AK-DOCS-002: Update README positioning
+
+### Goal
+
+Update README to explain three layers:
+
+```text
+Layer 1: Local source of truth
+Layer 2: Generated agent guidance
+Layer 3: Optional live context runtime
+```
+
+### Acceptance Criteria
+
+1. Does not overpromise
+2. Does not suggest cloud service
+3. Does not mention heavy AI memory platform language
+4. Keeps local and lightweight message prominent
+5. Includes safe setup path
+
+---
+
+# Suggested Build Order
+
+## Sprint 1
+
+1. AK-LIVE-001: Optional local daemon
+2. AK-LIVE-002: Runtime diagnostics
+3. AK-SESSION-001: Session model
+4. AK-SESSION-002: Observation capture
+
+## Sprint 2
+
+1. AK-SESSION-003: Session timeline
+2. AK-FILE-001: File context command
+3. AK-FILE-002: File references in memory/failures/episodes
+4. AK-INJECT-001: Context endpoint
+
+## Sprint 3
+
+1. AK-INJECT-002: Claude live context hook
+2. AK-COMMIT-001: Commit link command
+3. AK-PATTERN-001: Recurring failure patterns
+4. AK-PATTERN-002: Pattern to proposal
+
+## Sprint 4
+
+1. AK-AGENT-001: Agent identity
+2. AK-AGENT-002: Agent registry
+3. AK-MCP-001: Core vs extended MCP tools
+4. AK-MCP-002: MCP context tools
+
+## Sprint 5
+
+1. AK-SEARCH-001: Structured local search index
+2. AK-SEARCH-002: Relevance scoring
+3. AK-RETENTION-001: Raw observation retention
+4. AK-DOCS-001: Live runtime docs
+
+---
+
+# MVP Definition
+
+The first useful version should include only:
+
+1. Optional daemon
+2. Session capture
+3. Observation storage
+4. Context endpoint
+5. File context command
+6. Session timeline
+7. Claude hook integration
+8. No auto-approval
+9. No vector database
+10. No web dashboard
+
+MVP success test:
+
+```text
+A user starts Agent Kernel runtime.
+Claude Code edits a file.
+A command fails.
+Agent Kernel captures the failure.
+Next time another agent touches the same file, Agent Kernel returns the related Failure Lesson and approved rule before the agent repeats the mistake.
+```
+
+---
+
+# What We Should Avoid
+
+Do not add:
+
+1. Required database server
+2. Required embeddings
+3. Required daemon on install
+4. Hosted sync
+5. Large MCP tool explosion
+6. Auto-approve from hooks
+7. Agent-owned memory mutation
+8. Repo-local secrets
+9. Heavy dashboard
+10. Runtime dependency bloat
+
+The kernel should feel like a precise local layer, not a platform.
