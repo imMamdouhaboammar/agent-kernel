@@ -13,6 +13,7 @@
     "agent-kernel-failure-hook": "./bin/agent-kernel-failure-hook.mjs",
     "agent-kernel-daemon": "./bin/agent-kernel-daemon.mjs",
     "agent-kernel-runtime-doctor": "./bin/agent-kernel-runtime-doctor.mjs",
+    "agent-kernel-session": "./bin/agent-kernel-session.mjs",
     "agent-kernel-mode": "./bin/agent-kernel-mode.mjs",
     "agent-kernel-agent-write": "./bin/agent-kernel-agent-write.mjs"
   },
