@@ -16,9 +16,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `README.md` now gives a clearer install path, safe project adoption flow, operating loop, command map, and documentation map.
 - `docs/README.md` now separates first-time setup, runtime docs, integration docs, schema docs, development docs, agent docs, troubleshooting, and ownership rules.
 - `docs/INTEGRATIONS.md` now recommends `agent-kernel-safe-link` and `agent-kernel-safe-git-hook` as the default adoption path for existing projects.
-- `docs/SAFE_LINKING.md` now documents idempotency, duplicate marked-block cleanup, backup behavior, direct-link comparison, and what agents should not edit.
+- `docs/SAFE_LINKING.md` now documents idempotency, duplicate marked-block cleanup, backup behavior, direct-link comparison, Claude guidance linking, and what agents should not edit.
 - `AGENTS.md` now points coding agents to the dedicated runbook and troubleshooting guide before non-trivial work.
 - `CONTRIBUTING.md` now includes clearer pre-edit reading order, helper-binary checklist, safe-link and hook rules, troubleshooting-first guidance, and release pre-flight checks.
+
+### Fixed
+
+- `agent-kernel-safe-link` now links generated Claude guidance into `CLAUDE.md`, preserving existing Claude-specific instructions outside the Agent Kernel marked block.
+- Public `agent-kernel link` safe behavior now has regression coverage for `CLAUDE.md` preservation and idempotency.
 
 ### Planned
 
