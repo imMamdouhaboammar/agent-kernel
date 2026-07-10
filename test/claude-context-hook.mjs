@@ -54,12 +54,13 @@ export async function run() {
   }
 
   const fakeSecret = 'sk-' + 'abcdefghijklmnopqrstuvwxyz1234567890';
+  const secretLabel = 'OPENAI' + '_API_KEY=';
   const post = JSON.parse(runHook(env, 'PostToolUseFailure', {
     hook_event_name: 'PostToolUseFailure',
     tool_name: 'Bash',
     cwd: repo.root,
     tool_input: { command: 'npm test', files: ['src/cli.mjs'] },
-    tool_response: { stderr: `Test failed with OPENAI_API_KEY='${fakeSecret}'` }
+    tool_response: { stderr: `Test failed with ${secretLabel}'${fakeSecret}'` }
   }));
   if (!String(post.hookSpecificOutput?.additionalContext || '').includes('unapproved Failure Lesson')) {
     throw new Error(`PostToolUseFailure did not confirm local capture: ${JSON.stringify(post)}`);
@@ -68,7 +69,7 @@ export async function run() {
   const failuresPath = join(kernelHome, 'source', 'failures', 'failure-lessons.json');
   if (!existsSync(failuresPath)) throw new Error('failure hook did not create failure-lessons.json');
   const persisted = readFileSync(failuresPath, 'utf8');
-  if (persisted.includes(fakeSecret) || persisted.includes('OPENAI_API_KEY=')) {
+  if (persisted.includes(fakeSecret) || persisted.includes(secretLabel)) {
     throw new Error('failure hook persisted a raw secret');
   }
   if (!persisted.includes('[REDACTED_SECRET]')) {
