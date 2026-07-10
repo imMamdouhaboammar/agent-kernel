@@ -15,6 +15,8 @@ const runtimeDoctorPath = path.resolve(here, 'agent-kernel-runtime-doctor.mjs');
 const sessionPath = path.resolve(here, 'agent-kernel-session.mjs');
 const contextPath = path.resolve(here, 'agent-kernel-context.mjs');
 const fileContextPath = path.resolve(here, 'agent-kernel-file-context.mjs');
+const fileRecordsPath = path.resolve(here, 'agent-kernel-file-records.mjs');
+const episodeFileRecordsPath = path.resolve(here, 'agent-kernel-episode-file-records.mjs');
 
 const DEFAULT_DENY_WRITE_PATHS = [
   '.env',
@@ -99,6 +101,10 @@ function splitLinkArgs(args) {
     linkArgs.push(arg);
   }
   return { linkArgs, installHooks, dryRun, noBackup };
+}
+
+function hasFileFlags(args) {
+  return args.some((arg) => arg === '--file' || arg === '--files' || arg.startsWith('--file=') || arg.startsWith('--files='));
 }
 
 function gitRoot(projectPath) {
@@ -308,7 +314,12 @@ function main() {
     return handleHook(command, subcommand, rest);
   }
 
+  if ((command === 'remember' || command === 'propose' || command === 'memory' || command === 'compile') && hasFileFlags(args.slice(1))) {
+    runNode(fileRecordsPath, args);
+  }
+
   if (command === 'episode') {
+    if (hasFileFlags(args.slice(1)) || subcommand === 'reindex') runNode(episodeFileRecordsPath, args.slice(1));
     return handleEpisode(args.slice(1));
   }
 
@@ -321,6 +332,7 @@ function main() {
   }
 
   if (command === 'session') {
+    if ((subcommand === 'observe' || subcommand === 'observations') && hasFileFlags(args.slice(2))) runNode(fileRecordsPath, args);
     runNode(sessionPath, args.slice(1));
   }
 
@@ -333,7 +345,7 @@ function main() {
   }
 
   if (command === 'failure') {
-    runNode(failurePath, args.slice(1));
+    runNode(fileRecordsPath, args);
   }
 
   if (command === 'git-hook' && subcommand === 'install') {
