@@ -16,6 +16,7 @@ const sessionPath = path.resolve(here, 'agent-kernel-session.mjs');
 const contextPath = path.resolve(here, 'agent-kernel-context.mjs');
 const fileContextPath = path.resolve(here, 'agent-kernel-file-context.mjs');
 const fileRecordsPath = path.resolve(here, 'agent-kernel-file-records.mjs');
+const episodeFileRecordsPath = path.resolve(here, 'agent-kernel-episode-file-records.mjs');
 
 const DEFAULT_DENY_WRITE_PATHS = [
   '.env',
@@ -318,7 +319,7 @@ function main() {
   }
 
   if (command === 'episode') {
-    if (hasFileFlags(args.slice(1)) || subcommand === 'reindex') runNode(fileRecordsPath, args);
+    if (hasFileFlags(args.slice(1)) || subcommand === 'reindex') runNode(episodeFileRecordsPath, args.slice(1));
     return handleEpisode(args.slice(1));
   }
 
