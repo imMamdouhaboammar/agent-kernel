@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 const VERSION = '1.0.0';
+const COMPACT_WIDTH = 120;
 const OBSERVATION_TYPES = new Set([
   'user_prompt',
   'assistant_plan',
@@ -121,7 +122,7 @@ function listSessions() {
 function readObservations(id) {
   const raw = readText(sessionLogFile(id), '').trim();
   if (!raw) return [];
-  return raw.split('\n').map((line) => {
+  return raw.split(/\r?\n/).map((line) => {
     try { return JSON.parse(line); } catch { return null; }
   }).filter(Boolean);
 }
@@ -130,27 +131,97 @@ function normalizeString(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+function slash(value) {
+  return String(value || '').replace(/\\/g, '/').replace(/^\.\//, '');
+}
+
 function normalizeFiles(flags) {
   const files = [];
   const add = (value) => {
     if (Array.isArray(value)) value.forEach(add);
-    else if (typeof value === 'string') value.split(',').forEach((item) => { if (item.trim()) files.push(item.trim()); });
+    else if (typeof value === 'string') value.split(',').forEach((item) => {
+      const normalized = slash(item.trim());
+      if (normalized) files.push(normalized);
+    });
   };
   add(flags.file);
   add(flags.files);
   return [...new Set(files)];
 }
 
+function observationMatchesFiles(observation, requestedFiles) {
+  if (!requestedFiles.length) return true;
+  const observedFiles = (Array.isArray(observation.files) ? observation.files : [])
+    .map(slash)
+    .filter(Boolean);
+  return requestedFiles.some((requested) => observedFiles.some((observed) => (
+    observed === requested ||
+    observed.endsWith('/' + requested) ||
+    requested.endsWith('/' + observed)
+  )));
+}
+
 function filterObservations(observations, flags) {
   let out = observations;
   if (flags.type) out = out.filter((obs) => obs.type === flags.type);
-  if (flags.file) out = out.filter((obs) => (obs.files || []).includes(flags.file));
+  const files = normalizeFiles(flags);
+  if (files.length) out = out.filter((obs) => observationMatchesFiles(obs, files));
   if (flags.command) out = out.filter((obs) => String(obs.command || '').includes(String(flags.command)));
   if (flags.query) {
     const q = String(flags.query).toLowerCase();
     out = out.filter((obs) => JSON.stringify(obs).toLowerCase().includes(q));
   }
   return out;
+}
+
+function chronologicalObservations(observations) {
+  return observations
+    .map((observation, sourceIndex) => ({
+      observation,
+      sourceIndex,
+      time: Date.parse(observation.timestamp || observation.createdAt || '')
+    }))
+    .sort((a, b) => {
+      const aValid = Number.isFinite(a.time);
+      const bValid = Number.isFinite(b.time);
+      if (aValid && bValid && a.time !== b.time) return a.time - b.time;
+      if (aValid !== bValid) return aValid ? -1 : 1;
+      return a.sourceIndex - b.sourceIndex;
+    })
+    .map(({ observation }, index) => ({ sequence: index + 1, ...observation }));
+}
+
+function compactText(value, limit = 500) {
+  const text = String(value || '').replace(/\s+/g, ' ').trim();
+  if (text.length <= limit) return text;
+  if (limit <= 3) return text.slice(0, limit);
+  return text.slice(0, limit - 3) + '...';
+}
+
+function compactTimestamp(value) {
+  const text = String(value || 'unknown-time');
+  const match = text.match(/T(\d{2}:\d{2}:\d{2})/);
+  return match ? match[1] : compactText(text, 19);
+}
+
+function compactTimelineLine(observation) {
+  const time = compactTimestamp(observation.timestamp || observation.createdAt);
+  const type = compactText(observation.type || 'unknown', 20);
+  const files = (observation.files || []).map(slash).filter(Boolean);
+  const file = files.length ? compactText(files.join(','), 28) : '-';
+  const command = observation.command ? ` ${compactText(observation.command, 28)}` : '';
+  const prefix = `${time} ${type} ${file}${command}`;
+  const remaining = Math.max(12, COMPACT_WIDTH - prefix.length - 3);
+  return compactText(`${prefix} | ${compactText(observation.text, remaining)}`, COMPACT_WIDTH);
+}
+
+function timelineFilters(flags) {
+  return {
+    type: flags.type || null,
+    files: normalizeFiles(flags),
+    command: flags.command || null,
+    query: flags.query || null
+  };
 }
 
 function printJson(value) {
@@ -333,8 +404,62 @@ function commandObservations(flags) {
   }
 }
 
+function commandTimeline(flags) {
+  const id = flags._[0] || flags.session || flags.sessionId;
+  if (!id) {
+    process.stderr.write('Usage: agent-kernel session timeline <session-id> [--type type] [--files path] [--compact] [--json]\n');
+    process.exitCode = 1;
+    return;
+  }
+  const session = readSession(id);
+  if (!session) {
+    process.stderr.write(`Session not found: ${id}\n`);
+    process.exitCode = 1;
+    return;
+  }
+
+  const observations = chronologicalObservations(filterObservations(readObservations(id), flags));
+  const result = {
+    session,
+    filters: timelineFilters(flags),
+    count: observations.length,
+    observations
+  };
+
+  if (flags.json) {
+    printJson(result);
+    return;
+  }
+
+  if (!observations.length) {
+    process.stdout.write(`No timeline events found for session ${id}\n`);
+    return;
+  }
+
+  if (flags.compact) {
+    for (const observation of observations) {
+      process.stdout.write(compactTimelineLine(observation) + '\n');
+    }
+    return;
+  }
+
+  process.stdout.write(`Session timeline: ${session.id}\n`);
+  process.stdout.write(`Agent: ${session.agentId}\n`);
+  process.stdout.write(`Project: ${session.projectId}\n`);
+  process.stdout.write(`Events: ${observations.length}\n\n`);
+
+  for (const observation of observations) {
+    process.stdout.write(`${observation.sequence}. ${observation.timestamp || 'unknown time'}  ${observation.type || 'unknown'}\n`);
+    process.stdout.write(`   Agent: ${observation.agentId || session.agentId || 'unknown-agent'}\n`);
+    if (observation.files?.length) process.stdout.write(`   Files: ${observation.files.map(slash).join(', ')}\n`);
+    if (observation.command) process.stdout.write(`   Command: ${compactText(observation.command, 500)}\n`);
+    if (observation.exitCode !== null && observation.exitCode !== undefined) process.stdout.write(`   Exit: ${observation.exitCode}\n`);
+    process.stdout.write(`   ${compactText(observation.text, 800) || '(no text)'}\n\n`);
+  }
+}
+
 function usage() {
-  process.stdout.write(`agent-kernel-session ${VERSION}\n\nUsage:\n  agent-kernel session start --agent <agent-id> [--project .] [--json]\n  agent-kernel session end <session-id> [--json]\n  agent-kernel session list [--json]\n  agent-kernel session show <session-id> [--json]\n  agent-kernel session observe <session-id> --type <type> --text <text> [--file path] [--command cmd] [--exit-code n] [--json]\n  agent-kernel session observations <session-id> [--type type] [--file path] [--command text] [--query text] [--json]\n`);
+  process.stdout.write(`agent-kernel-session ${VERSION}\n\nUsage:\n  agent-kernel session start --agent <agent-id> [--project .] [--json]\n  agent-kernel session end <session-id> [--json]\n  agent-kernel session list [--json]\n  agent-kernel session show <session-id> [--json]\n  agent-kernel session observe <session-id> --type <type> --text <text> [--file path] [--command cmd] [--exit-code n] [--json]\n  agent-kernel session observations <session-id> [--type type] [--file path] [--command text] [--query text] [--json]\n  agent-kernel session timeline <session-id> [--type type] [--file path|--files a,b] [--compact] [--json]\n`);
 }
 
 function main() {
@@ -347,6 +472,7 @@ function main() {
   if (command === 'show') return commandShow(flags);
   if (command === 'observe') return commandObserve(flags);
   if (command === 'observations') return commandObservations(flags);
+  if (command === 'timeline') return commandTimeline(flags);
   process.stderr.write(`Unknown session command: ${command}\n`);
   usage();
   process.exitCode = 1;
