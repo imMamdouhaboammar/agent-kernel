@@ -1,4 +1,4 @@
-// test/structured-search.mjs — Structured local index and source fallback.
+// test/structured-search.mjs — Structured local index, scoring, budgets, and source fallback.
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -15,14 +15,25 @@ function runPublic(env, ...args) {
   });
 }
 
-function writeJson(filePath, value) {
-  mkdirSync(join(filePath, '..'), { recursive: true });
-  writeFileSync(filePath, JSON.stringify(value, null, 2) + '\n');
-}
-
 export async function run() {
   const { env, kernelHome } = makeEnv();
   runCli(env, 'init', '--sync');
+
+  const projectNotesPath = join(kernelHome, 'source', 'memories', 'project-notes.json');
+  writeFileSync(projectNotesPath, JSON.stringify([
+    {
+      id: 'approved_file_memory',
+      type: 'project-note',
+      scope: 'project',
+      level: 'standard',
+      status: 'approved',
+      text: 'Inspect src/cli.mjs before edits.',
+      files: ['src/cli.mjs'],
+      tags: ['cli'],
+      createdAt: '2026-07-10T09:50:00.000Z',
+      updatedAt: '2026-07-10T09:50:00.000Z'
+    }
+  ], null, 2) + '\n');
 
   const failuresPath = join(kernelHome, 'source', 'failures', 'failure-lessons.json');
   mkdirSync(join(kernelHome, 'source', 'failures'), { recursive: true });
@@ -34,6 +45,7 @@ export async function run() {
       rootCause: 'Missing local import in src/cli.mjs',
       fixRecipe: ['Restore the import and run npm test'],
       files: ['src/cli.mjs'],
+      occurrences: 4,
       evidence: { command: 'npm test', filesTouched: ['src/cli.mjs'] },
       updatedAt: '2026-07-10T10:00:00.000Z'
     }
@@ -58,7 +70,8 @@ export async function run() {
     text: 'npm test failed before the import was restored',
     command: 'npm test',
     files: ['src/cli.mjs'],
-    timestamp: '2026-07-10T10:02:00.000Z'
+    linkedCommits: ['abc123'],
+    timestamp: new Date().toISOString()
   }) + '\n');
 
   const rebuild = JSON.parse(runPublic(env, 'reindex'));
@@ -66,22 +79,39 @@ export async function run() {
     throw new Error(`reindex returned unexpected counts: ${JSON.stringify(rebuild)}`);
   }
 
-  const failure = JSON.parse(runPublic(env, 'search', 'ERR_MODULE_NOT_FOUND', '--type', 'failure', '--json'));
+  const failure = JSON.parse(runPublic(env, 'search', 'ERR_MODULE_NOT_FOUND', '--type', 'failure', '--debug', '--json'));
   if (failure.results.length !== 1 || failure.results[0].id !== 'failure_search_smoke') {
     throw new Error(`failure search missed indexed record: ${JSON.stringify(failure)}`);
   }
-
-  const fileSearch = JSON.parse(runPublic(env, 'search', 'src/cli.mjs', '--files', '--json'));
-  if (!fileSearch.results.some((item) => item.id === 'failure_search_smoke')) {
-    throw new Error(`file search missed failure record: ${JSON.stringify(fileSearch)}`);
+  const failureSignals = failure.results[0].signals.map((signal) => signal.name);
+  if (!failureSignals.includes('exact-error') || !failureSignals.includes('failure-recurrence')) {
+    throw new Error(`failure scoring was not explainable: ${JSON.stringify(failure.results[0])}`);
   }
-  if (!fileSearch.results.some((item) => item.id === 'obs_search_smoke')) {
-    throw new Error(`file search missed session observation: ${JSON.stringify(fileSearch)}`);
+
+  const fileSearch = JSON.parse(runPublic(env, 'search', 'src/cli.mjs', '--files', '--explain', '--json'));
+  if (fileSearch.results[0]?.id !== 'approved_file_memory') {
+    throw new Error(`approved exact-file memory was not ranked first: ${JSON.stringify(fileSearch)}`);
+  }
+  if (!fileSearch.results[0].signals.some((signal) => signal.name === 'approved-memory')) {
+    throw new Error(`approved memory priority was not explained: ${JSON.stringify(fileSearch.results[0])}`);
+  }
+  if (fileSearch.sections.approvedMemory.length !== 1 || !fileSearch.sections.rawObservations.some((item) => item.id === 'obs_search_smoke')) {
+    throw new Error(`search sections did not separate approved memory and observations: ${JSON.stringify(fileSearch.sections)}`);
+  }
+
+  const repeat = JSON.parse(runPublic(env, 'search', 'src/cli.mjs', '--files', '--explain', '--json'));
+  if (repeat.results.map((item) => item.id).join(',') !== fileSearch.results.map((item) => item.id).join(',')) {
+    throw new Error('ranking changed across identical searches');
   }
 
   const commandSearch = JSON.parse(runPublic(env, 'search', 'npm test', '--commands', '--json'));
   if (!commandSearch.results.some((item) => item.id === 'failure_search_smoke')) {
     throw new Error(`command search missed failure record: ${JSON.stringify(commandSearch)}`);
+  }
+
+  const budgeted = JSON.parse(runPublic(env, 'search', 'src/cli.mjs', '--files', '--explain', '--budget', '300', '--json'));
+  if (budgeted.budgetUsed > 300 || budgeted.rendered.length > 300) {
+    throw new Error(`search exceeded budget: ${JSON.stringify(budgeted)}`);
   }
 
   const sourceBefore = readFileSync(failuresPath, 'utf8');
