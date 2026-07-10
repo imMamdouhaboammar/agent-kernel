@@ -4,7 +4,7 @@
 //   1. A recurring pattern creates a normal pending proposal with evidence refs.
 //   2. The proposal text is concise and remains editable JSON in the inbox.
 //   3. No memory is approved or published automatically.
-//   4. MCP cannot approve the proposal without the explicit approval env flag.
+//   4. MCP cannot approve the proposal without the explicit approval env flags.
 //   5. Failure hooks cannot approve or publish the pending proposal.
 //   6. The user can reject or approve through the normal CLI flow.
 
@@ -122,7 +122,8 @@ export async function run() {
   }
 
   const mcpAttempt = callMcp(env, 'agent_kernel_approve_memory', { id: proposed.proposalId, publish: true });
-  if (mcpAttempt.ok !== false || !String(mcpAttempt.error || '').includes('disabled')) {
+  const approvalError = String(mcpAttempt.error || '').toLowerCase();
+  if (mcpAttempt.ok !== false || (!approvalError.includes('disabled') && !approvalError.includes('not enabled'))) {
     throw new Error(`MCP bypassed or misreported the approval boundary: ${JSON.stringify(mcpAttempt)}`);
   }
   if (!fs.existsSync(pendingPath)) throw new Error('MCP removed the pending proposal without approval permission');
