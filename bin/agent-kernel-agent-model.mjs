@@ -35,16 +35,16 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function normalizeId(value) {
+export function normalizeAgentId(value) {
   return String(value || 'unknown-agent').trim().toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'unknown-agent';
 }
 
 function record(input, createdAt = nowIso()) {
   const trustLevel = TRUST_LEVELS.includes(input.trustLevel) ? input.trustLevel : 'read-only';
   return {
-    agentId: normalizeId(input.agentId),
+    agentId: normalizeAgentId(input.agentId),
     displayName: String(input.displayName || input.agentId || 'Unknown agent'),
-    aliases: [...new Set((input.aliases || []).map(normalizeId).filter(Boolean))],
+    aliases: [...new Set((input.aliases || []).map(normalizeAgentId).filter(Boolean))],
     surface: String(input.surface || 'custom'),
     trustLevel,
     allowedActions: [...ACTIONS_BY_TRUST[trustLevel]],
@@ -67,7 +67,7 @@ function readJson(filePath, fallback) {
   try { return JSON.parse(fs.readFileSync(filePath, 'utf8')); } catch { return fallback; }
 }
 
-function writeRegistry(value) {
+export function saveAgentRegistry(value) {
   const filePath = registryPath();
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   const temporary = `${filePath}.tmp-${process.pid}-${Date.now()}`;
@@ -80,33 +80,76 @@ export function loadAgentRegistry() {
   const existing = readJson(filePath, null);
   if (!existing || !Array.isArray(existing.agents)) {
     const created = defaultRegistry();
-    writeRegistry(created);
+    saveAgentRegistry(created);
     return created;
   }
-  const known = new Set(existing.agents.map((item) => normalizeId(item.agentId)));
+  const known = new Set(existing.agents.map((item) => normalizeAgentId(item.agentId)));
   let changed = false;
   for (const builtIn of BUILT_INS) {
-    if (known.has(normalizeId(builtIn.agentId))) continue;
+    if (known.has(normalizeAgentId(builtIn.agentId))) continue;
     existing.agents.push(record({ ...builtIn, builtIn: true }));
     changed = true;
   }
   existing.version = 1;
   if (changed) {
     existing.updatedAt = nowIso();
-    writeRegistry(existing);
+    saveAgentRegistry(existing);
   }
   return existing;
 }
 
-function findAgent(registry, value) {
-  const wanted = normalizeId(value);
-  return registry.agents.find((item) => normalizeId(item.agentId) === wanted || (item.aliases || []).map(normalizeId).includes(wanted));
+export function findAgentIdentity(registry, value) {
+  const wanted = normalizeAgentId(value);
+  return registry.agents.find((item) => normalizeAgentId(item.agentId) === wanted || (item.aliases || []).map(normalizeAgentId).includes(wanted));
+}
+
+export function getAgentIdentity(value) {
+  const registry = loadAgentRegistry();
+  const found = findAgentIdentity(registry, value);
+  return found ? { ...found } : null;
+}
+
+export function upsertAgentIdentity(input, options = {}) {
+  const registry = loadAgentRegistry();
+  const wanted = normalizeAgentId(input.agentId);
+  const existingIndex = registry.agents.findIndex((item) => normalizeAgentId(item.agentId) === wanted);
+  const existing = existingIndex >= 0 ? registry.agents[existingIndex] : null;
+  if (existing?.builtIn && options.allowBuiltInUpdate !== true) {
+    throw new Error(`Built-in agent requires an explicit set operation: ${wanted}`);
+  }
+  const timestamp = nowIso();
+  const next = record({
+    ...existing,
+    ...input,
+    agentId: wanted,
+    builtIn: existing?.builtIn === true,
+    createdAt: existing?.createdAt || timestamp,
+    updatedAt: timestamp
+  });
+  if (existingIndex >= 0) registry.agents[existingIndex] = next;
+  else registry.agents.push(next);
+  registry.agents.sort((a, b) => a.agentId.localeCompare(b.agentId));
+  registry.updatedAt = timestamp;
+  saveAgentRegistry(registry);
+  return next;
+}
+
+export function removeAgentIdentity(value) {
+  const registry = loadAgentRegistry();
+  const wanted = normalizeAgentId(value);
+  const existing = findAgentIdentity(registry, wanted);
+  if (!existing) return null;
+  if (existing.builtIn) throw new Error(`Built-in agent cannot be removed: ${existing.agentId}`);
+  registry.agents = registry.agents.filter((item) => item.agentId !== existing.agentId);
+  registry.updatedAt = nowIso();
+  saveAgentRegistry(registry);
+  return existing;
 }
 
 export function resolveAgentIdentity(value, options = {}) {
   const registry = loadAgentRegistry();
-  const wanted = normalizeId(value);
-  const found = findAgent(registry, wanted);
+  const wanted = normalizeAgentId(value);
+  const found = findAgentIdentity(registry, wanted);
   if (found) return { ...found, requestedId: wanted, known: true };
 
   const trustLevel = ['observe', 'capture', 'session'].includes(options.action) ? 'capture-only' : 'read-only';
@@ -120,7 +163,7 @@ export function resolveAgentIdentity(value, options = {}) {
   });
   registry.agents.push(created);
   registry.updatedAt = nowIso();
-  writeRegistry(registry);
+  saveAgentRegistry(registry);
   return { ...created, requestedId: wanted, known: false };
 }
 
@@ -129,7 +172,7 @@ export function agentCan(identity, action) {
 }
 
 export function enrichIdentityRecord(item, identity, options = {}) {
-  const createdBy = identity?.agentId || normalizeId(options.fallback || 'unknown-agent');
+  const createdBy = identity?.agentId || normalizeAgentId(options.fallback || 'unknown-agent');
   return {
     ...item,
     agentId: item.agentId || createdBy,
@@ -145,7 +188,7 @@ export function enrichIdentityRecord(item, identity, options = {}) {
 }
 
 export function agentIdFromRecord(item) {
-  return normalizeId(
+  return normalizeAgentId(
     item?.agentId ||
     item?.createdBy ||
     item?.agent ||
