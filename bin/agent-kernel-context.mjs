@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { identifyProject } from './agent-kernel-project-model.mjs';
 
 const VERSION = '1.0.0';
 const SECRET_PATTERNS = [
@@ -48,9 +49,7 @@ function parseFlags(argv) {
       if (eq >= 0) out[raw.slice(0, eq)] = raw.slice(eq + 1);
       else if (argv[i + 1] && !argv[i + 1].startsWith('-')) out[raw] = argv[++i];
       else out[raw] = true;
-    } else {
-      out._.push(arg);
-    }
+    } else out._.push(arg);
   }
   return out;
 }
@@ -72,7 +71,25 @@ function normalizeFiles(flags) {
   return [...new Set(files)];
 }
 
-function loadApprovedMemory() {
+function projectCandidates(item) {
+  return [
+    item?.projectId,
+    item?.project,
+    item?.metadata?.projectId,
+    item?.source?.projectId,
+    item?.evidence?.projectId
+  ].filter((value) => typeof value === 'string' && value.trim()).map((value) => value.trim().toLowerCase());
+}
+
+function matchesProject(item, projectId) {
+  if (!projectId) return true;
+  const wanted = projectId.toLowerCase();
+  const candidates = projectCandidates(item);
+  if (candidates.length) return candidates.includes(wanted);
+  return item?.scope === 'global';
+}
+
+function loadApprovedMemory(projectId) {
   const p = contextPaths();
   if (!exists(p.memories)) return [];
   const items = [];
@@ -81,30 +98,31 @@ function loadApprovedMemory() {
     const value = readJson(path.join(p.memories, name), []);
     if (!Array.isArray(value)) continue;
     for (const item of value) {
-      if (item && item.status === 'approved') items.push({ ...item, bucket: name.replace(/\.json$/, '') });
+      if (item && item.status === 'approved' && matchesProject(item, projectId)) items.push({ ...item, bucket: name.replace(/\.json$/, '') });
     }
   }
   return items;
 }
 
-function loadPendingProposals() {
+function loadPendingProposals(projectId) {
   const p = contextPaths();
   if (!exists(p.pending)) return [];
   return fs.readdirSync(p.pending).sort()
     .filter((name) => name.endsWith('.json'))
     .map((name) => readJson(path.join(p.pending, name), null))
-    .filter(Boolean)
+    .filter((item) => item && item.status !== 'rejected' && matchesProject(item, projectId))
     .map((item) => ({ ...item, status: 'pending', approved: false }));
 }
 
-function loadFailureLessons() {
+function loadFailureLessons(projectId) {
   const value = readJson(contextPaths().failures, []);
-  return Array.isArray(value) ? value : [];
+  return Array.isArray(value) ? value.filter((item) => item && item.status !== 'rejected' && matchesProject(item, projectId)) : [];
 }
 
-function loadEpisodes() {
+function loadEpisodes(projectId) {
   const value = readJson(contextPaths().episodeIndex, []);
-  return Array.isArray(value) ? value : [];
+  const items = Array.isArray(value) ? value : (Array.isArray(value?.episodes) ? value.episodes : []);
+  return items.filter((item) => item && item.status !== 'rejected' && matchesProject(item, projectId));
 }
 
 function itemText(item) {
@@ -141,15 +159,17 @@ function buildContext(flags) {
   const files = normalizeFiles(flags);
   const limit = Math.max(1, Math.min(Number(flags.limit || 8), 20));
   const budget = Math.max(100, Math.min(Number(flags.budget || 1200), 12000));
+  let projectId = String(flags.projectId || flags['project-id'] || '').trim();
+  if (!projectId && flags.project) projectId = identifyProject(String(flags.project)).projectId;
   const sections = {
-    approvedRules: relevant(loadApprovedMemory(), query, files, limit),
-    failureLessons: relevant(loadFailureLessons(), query, files, limit),
-    episodes: relevant(loadEpisodes(), query, files, limit),
+    approvedRules: relevant(loadApprovedMemory(projectId), query, files, limit),
+    failureLessons: relevant(loadFailureLessons(projectId), query, files, limit),
+    episodes: relevant(loadEpisodes(projectId), query, files, limit),
     guardWarnings: [],
-    pendingProposals: relevant(loadPendingProposals(), query, files, limit)
+    pendingProposals: relevant(loadPendingProposals(projectId), query, files, limit)
   };
   const context = renderContext(sections, budget);
-  return { version: VERSION, home: kernelHome(), query, files, budget, budgetUsed: context.length, context, sections };
+  return { version: VERSION, home: kernelHome(), projectId: projectId || null, query, files, budget, budgetUsed: context.length, context, sections };
 }
 
 function renderContext(sections, budget) {
@@ -176,7 +196,7 @@ function printMarkdown(result) {
 }
 
 function usage() {
-  process.stdout.write(`agent-kernel-context ${VERSION}\n\nUsage:\n  agent-kernel context --query <text> [--file path] [--budget 1200] [--json]\n  agent-kernel context <query text> [--files a,b] [--limit 8]\n`);
+  process.stdout.write(`agent-kernel-context ${VERSION}\n\nUsage:\n  agent-kernel context --query <text> [--project-id id] [--file path] [--budget 1200] [--json]\n  agent-kernel context <query text> [--project .] [--files a,b] [--limit 8]\n`);
 }
 
 function main() {
