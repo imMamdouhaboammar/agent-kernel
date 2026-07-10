@@ -25,6 +25,7 @@ import { run as runPublicCliSession } from './public-cli-session.mjs';
 import { run as runPublicCliObservation } from './public-cli-observation.mjs';
 import { run as runPublicCliContext } from './public-cli-context.mjs';
 import { run as runFileContext } from './file-context.mjs';
+import { run as runFileReferences } from './file-references.mjs';
 import { run as runWrapperRouting } from './wrapper-routing.mjs';
 import { run as runAgentPropose } from './agent-propose.mjs';
 import { run as runFailureLessons } from './failure-lessons.mjs';
@@ -50,6 +51,7 @@ const tests = [
   ['public-cli-observation', runPublicCliObservation],
   ['public-cli-context', runPublicCliContext],
   ['file-context', runFileContext],
+  ['file-references', runFileReferences],
   ['wrapper-routing', runWrapperRouting],
   ['agent-propose', runAgentPropose],
   ['failure-lessons', runFailureLessons],
