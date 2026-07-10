@@ -9,10 +9,12 @@ const searchPath = path.join(here, 'agent-kernel-search.mjs');
 const mcpPath = path.join(here, 'agent-kernel-mcp.mjs');
 const commitPath = path.join(here, 'agent-kernel-commit.mjs');
 const failurePatternsPath = path.join(here, 'agent-kernel-failure-patterns.mjs');
+const patternProposalPath = path.join(here, 'agent-kernel-pattern-proposal.mjs');
 const args = process.argv.slice(2);
 const command = args[0];
 const commitLinkHook = command === 'git-hook' && args[1] === 'install' && args.includes('--commit-link');
 const failurePatterns = command === 'failure' && args[1] === 'patterns';
+const patternProposal = command === 'failure' && args[1] === 'propose-pattern';
 const target = command === 'search' || command === 'reindex'
   ? searchPath
   : command === 'mcp'
@@ -21,7 +23,9 @@ const target = command === 'search' || command === 'reindex'
       ? commitPath
       : failurePatterns
         ? failurePatternsPath
-        : wrapperPath;
+        : patternProposal
+          ? patternProposalPath
+          : wrapperPath;
 const targetArgs = args;
 const result = childProcess.spawnSync(process.execPath, [target, ...targetArgs], {
   cwd: process.cwd(),
