@@ -19,6 +19,10 @@ Use it to understand the current runtime, connect agent surfaces, update memory 
 | I want to change Failure Lessons | `FAILURE_LESSONS_PROTOCOL.md` | `hooks/FAILURE_LESSONS_HOOK.md` |
 | I want to change hooks | `hooks/CLAUDE_HOOKS_BEST_PRACTICES.md` | `hooks/FAILURE_LESSONS_HOOK.md` |
 | I want to change MCP tools | `MCP_SERVER.md` | `MEMORY_PROTOCOL.md`, `ARCHITECTURE_NOW.md` |
+| I want to connect Claude Code | `integrations/CLAUDE_CODE_LIVE_CONTEXT.md` | `MCP_SERVER.md`, `SAFE_LINKING.md` |
+| I want to connect Codex | `integrations/CODEX_LIVE_CONTEXT.md` | `MCP_SERVER.md`, `SAFE_LINKING.md` |
+| I want to connect Cursor | `integrations/CURSOR_LIVE_CONTEXT.md` | `MCP_SERVER.md`, `SAFE_LINKING.md` |
+| I want to connect OpenCode | `integrations/OPENCODE_LIVE_CONTEXT.md` | `MCP_SERVER.md`, `SAFE_LINKING.md` |
 | I want to connect another agent | `INTEGRATIONS.md` | `SAFE_LINKING.md` |
 | I want to plan portable knowledge sharing | `BUNDLE_KB.md` | `MEMORY_PROTOCOL.md`, `OPERATING_MODEL.md` |
 | I want to review hardening history | `audits/REPO-HARDENING-AUDIT.md` | `CHANGELOG.md` at repo root |
@@ -34,7 +38,8 @@ For a new reader, follow this order:
 3. `OPERATING_MODEL.md` for the propose, approve, publish, capture, promote workflow.
 4. `ARCHITECTURE_NOW.md` for the actual current runtime shape.
 5. `SAFE_LINKING.md` before linking Agent Kernel into an existing project.
-6. `TROUBLESHOOTING.md` if setup, linking, hooks, MCP, or memory behave unexpectedly.
+6. The relevant file under `integrations/` for exact client setup and rollback.
+7. `TROUBLESHOOTING.md` if setup, linking, hooks, MCP, or memory behave unexpectedly.
 
 This order is deliberately practical. It gets a user from install to safe project adoption before asking them to understand every protocol.
 
@@ -47,7 +52,7 @@ This order is deliberately practical. It gets a user from install to safe projec
 - `MEMORY_PROTOCOL.md` documents durable memory, proposals, approval, publish, and sync.
 - `FAILURE_LESSONS_PROTOCOL.md` documents the error-to-skill loop.
 - `BUNDLE_KB.md` documents the planned portable knowledge bundle format and command contract.
-- `MCP_SERVER.md` documents the local stdio MCP server and the trust boundary.
+- `MCP_SERVER.md` documents the local stdio MCP server, context tools, and trust boundary.
 - `STRICT_MODE.md` documents guard and enforcement behavior.
 - `JSON_FIRST_STORAGE.md` documents the JSON-first storage model.
 
@@ -58,7 +63,11 @@ This order is deliberately practical. It gets a user from install to safe projec
 - `INSTALL_AND_AGENT_SETUP.md` gives the safest install and agent setup flow.
 - `SAFE_LINKING.md` explains `agent-kernel-safe-link`, marked blocks, backups, and idempotent project linking.
 - `TROUBLESHOOTING.md` gives symptom-based diagnosis for install, memory home, safe-link, hooks, MCP, Failure Lessons, docs drift, and releases.
-- `INTEGRATIONS.md` covers Claude Code, Codex, Cursor, OpenCode, Antigravity, Gemini CLI, Skills.sh, marketplace metadata, and the ECC bundle.
+- `INTEGRATIONS.md` covers the general integration surface across agents.
+- `integrations/CLAUDE_CODE_LIVE_CONTEXT.md` covers Claude Code files, MCP, hooks, optional runtime, and rollback.
+- `integrations/CODEX_LIVE_CONTEXT.md` covers Codex `AGENTS.md`, MCP CLI and TOML setup, optional runtime, and rollback.
+- `integrations/CURSOR_LIVE_CONTEXT.md` covers Cursor rules, `.cursor/mcp.json`, optional runtime, and rollback.
+- `integrations/OPENCODE_LIVE_CONTEXT.md` covers `AGENTS.md`, `opencode.jsonc`, optional runtime, and rollback.
 - `hooks/FAILURE_LESSONS_HOOK.md` covers automatic failure capture from Claude Code.
 - `hooks/CLAUDE_HOOKS_BEST_PRACTICES.md` covers hook event selection, exec-form commands, matcher discipline, output discipline, and security boundaries.
 
@@ -130,3 +139,4 @@ When changing behavior, update docs in the same PR.
 | New bundle behavior | `BUNDLE_KB.md`, `MEMORY_PROTOCOL.md`, `OPERATING_MODEL.md`, `README.md`, tests |
 | New hook | `hooks/CLAUDE_HOOKS_BEST_PRACTICES.md`, `INTEGRATIONS.md`, example settings |
 | New MCP tool | `MCP_SERVER.md`, tests, README if user-facing |
+| New client integration | Matching file under `integrations/`, `docs/README.md`, and `INTEGRATIONS.md` when the support matrix changes |
