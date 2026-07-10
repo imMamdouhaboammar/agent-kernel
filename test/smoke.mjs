@@ -36,6 +36,7 @@ import { run as runFailureLessons } from './failure-lessons.mjs';
 import { run as runPublicCliFailurePatterns } from './public-cli-failure-patterns.mjs';
 import { run as runPublicCliPatternProposal } from './public-cli-pattern-proposal.mjs';
 import { run as runPublicCliAgentIdentity } from './public-cli-agent-identity.mjs';
+import { run as runPublicCliRegistries } from './public-cli-registries.mjs';
 import { run as runModeConfig } from './mode-config.mjs';
 import { run as runAgentWriteModes } from './agent-write-modes.mjs';
 import { run as runPackageFiles } from './package-files.mjs';
@@ -69,6 +70,7 @@ const tests = [
   ['public-cli-failure-patterns', runPublicCliFailurePatterns],
   ['public-cli-pattern-proposal', runPublicCliPatternProposal],
   ['public-cli-agent-identity', runPublicCliAgentIdentity],
+  ['public-cli-registries', runPublicCliRegistries],
   ['mode-config', runModeConfig],
   ['agent-write-modes', runAgentWriteModes],
   ['package-files', runPackageFiles]
