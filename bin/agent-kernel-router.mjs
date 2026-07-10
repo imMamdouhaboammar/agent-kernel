@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const wrapperPath = path.join(here, 'agent-kernel.mjs');
 const searchPath = path.join(here, 'agent-kernel-search.mjs');
-const mcpPath = path.join(here, 'agent-kernel-mcp.mjs');
+const mcpPath = path.join(here, 'agent-kernel-mcp-safe.mjs');
 const commitPath = path.join(here, 'agent-kernel-commit.mjs');
 const failurePatternsPath = path.join(here, 'agent-kernel-failure-patterns.mjs');
 const patternProposalPath = path.join(here, 'agent-kernel-pattern-proposal.mjs');
