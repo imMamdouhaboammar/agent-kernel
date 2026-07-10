@@ -4,8 +4,9 @@
   "description": "Local-first governance kernel for AI coding agents — shared memory, rule distribution, approval inbox, episodic memory archive, MCP tools, and strict enforcement hooks.",
   "type": "module",
   "bin": {
-    "agent-kernel": "./bin/agent-kernel.mjs",
-    "ak": "./bin/agent-kernel.mjs",
+    "agent-kernel": "./bin/agent-kernel-router.mjs",
+    "ak": "./bin/agent-kernel-router.mjs",
+    "agent-kernel-search": "./bin/agent-kernel-search.mjs",
     "agent-kernel-safe-link": "./bin/agent-kernel-safe-link.mjs",
     "agent-kernel-safe-git-hook": "./bin/agent-kernel-safe-git-hook.mjs",
     "agent-kernel-agent-propose": "./bin/agent-kernel-agent-propose.mjs",
