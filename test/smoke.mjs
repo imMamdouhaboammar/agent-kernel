@@ -33,6 +33,7 @@ import { run as runClaudeContextHook } from './claude-context-hook.mjs';
 import { run as runWrapperRouting } from './wrapper-routing.mjs';
 import { run as runAgentPropose } from './agent-propose.mjs';
 import { run as runFailureLessons } from './failure-lessons.mjs';
+import { run as runPublicCliFailurePatterns } from './public-cli-failure-patterns.mjs';
 import { run as runModeConfig } from './mode-config.mjs';
 import { run as runAgentWriteModes } from './agent-write-modes.mjs';
 import { run as runPackageFiles } from './package-files.mjs';
@@ -63,6 +64,7 @@ const tests = [
   ['wrapper-routing', runWrapperRouting],
   ['agent-propose', runAgentPropose],
   ['failure-lessons', runFailureLessons],
+  ['public-cli-failure-patterns', runPublicCliFailurePatterns],
   ['mode-config', runModeConfig],
   ['agent-write-modes', runAgentWriteModes],
   ['package-files', runPackageFiles]
