@@ -10,16 +10,16 @@ permissions:
 jobs:
   mcp-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - run: npm ci
       - run: npm run build
-      - name: Run isolated MCP test
+      - name: Run full smoke suite
         shell: bash
         run: |
           set +e
-          node --input-type=module -e "import('./test/mcp.mjs').then(m => m.run()).then(() => console.log('mcp test: OK')).catch(error => { console.error(error.stack || error); process.exit(1); })" > mcp-debug.log 2>&1
+          npm test > mcp-debug.log 2>&1
           status=$?
           echo "exit_status=$status" >> mcp-debug.log
           exit 0
