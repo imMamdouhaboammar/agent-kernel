@@ -10,6 +10,17 @@ The source of truth remains local:
 
 Integrations compile or expose that state to each agent. Generated files are delivery surfaces, not canonical memory.
 
+## Detailed live context guides
+
+Use these guides for exact generated-file, MCP, optional daemon, trust, limitation, and rollback instructions:
+
+```text
+docs/integrations/CLAUDE_CODE_LIVE_CONTEXT.md
+docs/integrations/CODEX_LIVE_CONTEXT.md
+docs/integrations/CURSOR_LIVE_CONTEXT.md
+docs/integrations/OPENCODE_LIVE_CONTEXT.md
+```
+
 ---
 
 ## Recommended adoption order
@@ -30,6 +41,14 @@ This path protects existing `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, Cursor rules,
 
 Use `agent-kernel link . --hooks` only when you intentionally want the main CLI linker behavior.
 
+The optional runtime daemon is not required for generated files or MCP:
+
+```bash
+agent-kernel daemon start
+agent-kernel daemon status
+agent-kernel daemon stop
+```
+
 ---
 
 ## Claude Code
@@ -38,17 +57,17 @@ Recommended setup:
 
 ```bash
 agent-kernel init --sync --enforce
-agent-kernel mcp install claude
 agent-kernel-safe-link . --dry-run
 agent-kernel-safe-link .
-agent-kernel-safe-git-hook . --dry-run
-agent-kernel-safe-git-hook .
+claude mcp add --transport stdio --scope user agent-kernel-memory -- agent-kernel mcp serve
+claude mcp list
 ```
 
 Typical global files:
 
 ```text
 ~/.claude/CLAUDE.md
+~/.claude.json
 ~/.claude/settings.json
 ```
 
@@ -65,14 +84,16 @@ Claude integration may include:
 |---|---|
 | `CLAUDE.md` | Compiled durable guidance |
 | `AGENTS.md` | Cross-agent fallback guidance |
-| MCP server | Search/read/propose memory through local Agent Kernel tools |
-| `PreToolUse` hooks | Guard commands before execution |
+| MCP server | Search memory, request context, and create pending proposals |
+| `PreToolUse` hooks | Guard commands and protected paths before execution |
 | `PostToolUseFailure` hooks | Capture Failure Lessons after failed tool calls |
 
-Failure capture should use `PostToolUseFailure` rather than broad `PostToolUse`.
+Failure capture should use `PostToolUseFailure` rather than broad `PostToolUse` when failure-specific evidence is required.
 
 See:
 
+- `docs/integrations/CLAUDE_CODE_LIVE_CONTEXT.md`
+- `docs/hooks/CLAUDE_CONTEXT_AND_FAILURE_HOOK.md`
 - `docs/hooks/FAILURE_LESSONS_HOOK.md`
 - `docs/hooks/CLAUDE_HOOKS_BEST_PRACTICES.md`
 
@@ -86,12 +107,15 @@ Recommended setup:
 agent-kernel sync
 agent-kernel-safe-link . --dry-run
 agent-kernel-safe-link .
+codex mcp add agent-kernel-memory -- agent-kernel mcp serve
+codex mcp list
 ```
 
 Typical files:
 
 ```text
 ~/.codex/AGENTS.md
+~/.codex/config.toml
 AGENTS.md
 .codex/AGENTS.md
 .codex/config.toml
@@ -100,9 +124,14 @@ AGENTS.md
 .agents/skills/agent-kernel/agents/openai.yaml
 ```
 
-Codex should read `AGENTS.md` and repo-local Codex guidance where available. If Codex identifies a durable new rule, it should create a pending proposal rather than editing generated files.
+Codex should read `AGENTS.md` and request compact MCP context where useful. If Codex identifies a durable new rule, it should create a pending proposal rather than editing generated files.
 
-The repo-local ECC bundle adds a Codex baseline with role configs for exploration, review, and docs research. Keep private credentials and private MCP server details in user-level Codex config, not in this repository.
+Agent Kernel does not claim native Codex blocking hooks. Hook enforcement depends on the host environment or an external wrapper.
+
+See:
+
+- `docs/integrations/CODEX_LIVE_CONTEXT.md`
+- `docs/adapters/CODEX.md`
 
 ---
 
@@ -119,16 +148,36 @@ Typical files:
 
 ```text
 .cursor/rules/00-agent-kernel.mdc
+.cursor/mcp.json
 AGENTS.md
 ```
 
-Cursor should read compiled rules and project notes. If the agent identifies a durable new rule, it should create a pending proposal rather than editing generated files.
+Example MCP configuration:
 
-Suggested agent instruction:
+```json
+{
+  "mcpServers": {
+    "agent-kernel-memory": {
+      "command": "agent-kernel",
+      "args": ["mcp", "serve"]
+    }
+  }
+}
+```
+
+Cursor should read compiled rules and ask MCP for project or file context. If it identifies a durable new rule, it should create a pending proposal rather than editing generated files.
+
+Agent Kernel does not currently ship a native Cursor hook adapter.
+
+Suggested proposal command:
 
 ```bash
 agent-kernel-agent-propose --from cursor --reason "<reason>" --text "<memory>"
 ```
+
+See:
+
+- `docs/integrations/CURSOR_LIVE_CONTEXT.md`
 
 ---
 
@@ -141,19 +190,41 @@ agent-kernel-safe-link . --dry-run
 agent-kernel-safe-link .
 ```
 
-Typical file:
+Typical files:
 
 ```text
 AGENTS.md
+opencode.jsonc
 ```
 
-Any agent that reads `AGENTS.md` can consume the compiled Agent Kernel guidance.
+Example OpenCode MCP configuration:
 
-Suggested agent instruction:
+```jsonc
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "agent-kernel-memory": {
+      "type": "local",
+      "command": ["agent-kernel", "mcp", "serve"],
+      "enabled": true
+    }
+  }
+}
+```
+
+Any agent that reads `AGENTS.md` can consume the compiled Agent Kernel guidance. OpenCode can also request compact context through MCP.
+
+Agent Kernel does not currently ship a native OpenCode hook adapter.
+
+Suggested proposal command:
 
 ```bash
 agent-kernel-agent-propose --from opencode --reason "<reason>" --text "<memory>"
 ```
+
+See:
+
+- `docs/integrations/OPENCODE_LIVE_CONTEXT.md`
 
 ---
 
@@ -240,10 +311,13 @@ Treat these as workflow acceleration assets. Do not store secrets in them.
 
 ## Integration rules
 
-1. Generated guidance is disposable. Edit source memory, not generated files.
-2. Agents may propose memory. Users approve memory.
+1. Generated guidance is disposable. Edit source memory through the governed workflow, not generated files.
+2. Agents may capture evidence and propose memory. Users approve memory.
 3. Failure Lessons capture local evidence first, then create pending proposals when useful.
 4. Hooks should be narrow and event-specific.
 5. MCP approval remains disabled unless the user explicitly enables it.
 6. Repo-local configs are reviewable execution surfaces. Keep them minimal and auditable.
 7. Existing project instructions are user-owned. Use safe-link first unless replacement is intentional.
+8. The daemon is optional and local-only by default.
+9. Do not claim native hooks for a client unless Agent Kernel ships and tests that adapter.
+10. Keep secrets out of repository-local integration configuration.
