@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import childProcess from 'node:child_process';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { agentCan, enrichIdentityRecord, resolveAgentIdentity } from './agent-kernel-agent-model.mjs';
 
 function print(message = '') {
   process.stdout.write(String(message) + '\n');
@@ -54,6 +56,25 @@ function cliCommand() {
   return ['agent-kernel'];
 }
 
+function kernelHome() {
+  return process.env.AGENT_KERNEL_HOME || path.join(os.homedir(), '.agent-kernel');
+}
+
+function proposalIdFrom(output) {
+  return String(output || '').match(/Created pending memory proposal:\s*(\S+)/)?.[1] || '';
+}
+
+function readJson(filePath, fallback) {
+  try { return JSON.parse(fs.readFileSync(filePath, 'utf8')); } catch { return fallback; }
+}
+
+function writeJsonAtomic(filePath, value) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  const temporary = `${filePath}.tmp-${process.pid}-${Date.now()}`;
+  fs.writeFileSync(temporary, JSON.stringify(value, null, 2) + '\n', 'utf8');
+  fs.renameSync(temporary, filePath);
+}
+
 function usage() {
   print(`agent-kernel-agent-propose\n\nUsage:\n  agent-kernel-agent-propose --from codex --reason "User corrected this twice" --text "Always use pnpm here."\n  echo "Always use pnpm here." | agent-kernel-agent-propose --from cursor --reason "User asked to remember it"\n\nCreates a pending memory proposal. It does not approve or publish the memory.\n`);
 }
@@ -70,6 +91,12 @@ function main() {
   const level = String(flags.level || 'standard').trim();
   const targets = String(flags.targets || 'all').trim();
   const tags = String(flags.tags || '').trim();
+  const identity = resolveAgentIdentity(from, { action: 'propose' });
+
+  if (!agentCan(identity, 'propose')) {
+    fail(`Agent ${identity.agentId} has trust level ${identity.trustLevel} and cannot create proposals.`);
+    return;
+  }
 
   if (!text || text.length < 8) {
     fail('Proposal text is required and must be at least 8 characters.');
@@ -80,7 +107,7 @@ function main() {
   const args = [
     ...baseArgs,
     'propose',
-    '--from', from,
+    '--from', identity.agentId,
     '--type', type,
     '--scope', scope,
     '--level', level,
@@ -95,6 +122,22 @@ function main() {
     stdio: ['ignore', 'pipe', 'pipe'],
     env: process.env
   });
+  const proposalId = proposalIdFrom(out);
+  if (proposalId) {
+    const proposalPath = path.join(kernelHome(), 'inbox', 'pending', `${proposalId}.json`);
+    const proposal = readJson(proposalPath, null);
+    if (proposal) {
+      const enriched = enrichIdentityRecord(proposal, identity, { fallback: from });
+      enriched.source = {
+        ...(proposal.source || {}),
+        proposedBy: proposal.source?.proposedBy || identity.agentId,
+        createdBy: identity.agentId,
+        agentId: identity.agentId,
+        trustLevel: identity.trustLevel
+      };
+      writeJsonAtomic(proposalPath, enriched);
+    }
+  }
   process.stdout.write(out);
 }
 
