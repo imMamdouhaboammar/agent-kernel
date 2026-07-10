@@ -34,6 +34,7 @@ import { run as runWrapperRouting } from './wrapper-routing.mjs';
 import { run as runAgentPropose } from './agent-propose.mjs';
 import { run as runFailureLessons } from './failure-lessons.mjs';
 import { run as runPublicCliFailurePatterns } from './public-cli-failure-patterns.mjs';
+import { run as runPublicCliPatternProposal } from './public-cli-pattern-proposal.mjs';
 import { run as runModeConfig } from './mode-config.mjs';
 import { run as runAgentWriteModes } from './agent-write-modes.mjs';
 import { run as runPackageFiles } from './package-files.mjs';
@@ -65,6 +66,7 @@ const tests = [
   ['agent-propose', runAgentPropose],
   ['failure-lessons', runFailureLessons],
   ['public-cli-failure-patterns', runPublicCliFailurePatterns],
+  ['public-cli-pattern-proposal', runPublicCliPatternProposal],
   ['mode-config', runModeConfig],
   ['agent-write-modes', runAgentWriteModes],
   ['package-files', runPackageFiles]
