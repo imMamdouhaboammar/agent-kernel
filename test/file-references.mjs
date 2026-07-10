@@ -70,7 +70,7 @@ export async function run() {
     project,
     'propose',
     '--from',
-    'test-agent',
+    'codex',
     '--type',
     'rule',
     '--text',
@@ -93,7 +93,7 @@ export async function run() {
     'failure',
     'capture',
     '--from',
-    'test-agent',
+    'codex',
     '--type',
     'test-failure',
     '--signature',
@@ -151,7 +151,7 @@ export async function run() {
     throw new Error(`episode index did not preserve files: ${JSON.stringify(compactEpisode)}`);
   }
 
-  const sessionOut = runPublic(env, project, 'session', 'start', '--agent', 'test-agent', '--project', project, '--json');
+  const sessionOut = runPublic(env, project, 'session', 'start', '--agent', 'codex', '--project', project, '--json');
   const session = JSON.parse(sessionOut);
   runPublic(
     env,
