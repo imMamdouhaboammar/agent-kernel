@@ -10,14 +10,14 @@ permissions:
 jobs:
   identity-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Run isolated identity test
+      - name: Run full smoke suite
         shell: bash
         run: |
           set +e
-          node --input-type=module -e "import('./test/public-cli-agent-identity.mjs').then(m => m.run()).then(() => console.log('identity test: OK')).catch(error => { console.error(error.stack || error); process.exit(1); })" > identity-debug.log 2>&1
+          npm test > identity-debug.log 2>&1
           status=$?
           echo "exit_status=$status" >> identity-debug.log
           exit 0
