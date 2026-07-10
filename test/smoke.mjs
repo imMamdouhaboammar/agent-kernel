@@ -23,6 +23,7 @@ import { run as runPublicCliDaemon } from './public-cli-daemon.mjs';
 import { run as runPublicCliRuntimeDoctor } from './public-cli-runtime-doctor.mjs';
 import { run as runPublicCliSession } from './public-cli-session.mjs';
 import { run as runPublicCliSessionTimeline } from './public-cli-session-timeline.mjs';
+import { run as runPublicCliCommitLinks } from './public-cli-commit-links.mjs';
 import { run as runPublicCliObservation } from './public-cli-observation.mjs';
 import { run as runPublicCliContext } from './public-cli-context.mjs';
 import { run as runFileContext } from './file-context.mjs';
@@ -52,6 +53,7 @@ const tests = [
   ['public-cli-runtime-doctor', runPublicCliRuntimeDoctor],
   ['public-cli-session', runPublicCliSession],
   ['public-cli-session-timeline', runPublicCliSessionTimeline],
+  ['public-cli-commit-links', runPublicCliCommitLinks],
   ['public-cli-observation', runPublicCliObservation],
   ['public-cli-context', runPublicCliContext],
   ['file-context', runFileContext],
