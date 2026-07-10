@@ -88,6 +88,7 @@ function tokens(value) {
 function normalizedRecord(type, item, source) {
   const files = stringArray(item.files || item.evidence?.filesTouched);
   const commands = stringArray(item.commands || item.command || item.evidence?.command);
+  const commits = stringArray(item.commits || item.linkedCommits || item.commit || item.commitSha);
   const title = item.title || item.errorSignature || item.text || item.summary || item.id || type;
   const body = [
     item.text,
@@ -108,9 +109,12 @@ function normalizedRecord(type, item, source) {
     text: compact(body, 4000),
     files,
     commands,
+    commits,
+    errorSignature: compact(item.errorSignature || '', 180),
     tags: stringArray(item.tags),
     project: item.project || item.projectId || '',
     agent: item.agent || item.agentId || item.source?.proposedBy || item.source?.createdBy || '',
+    occurrences: Math.max(0, Number(item.occurrences || 0)),
     createdAt: item.createdAt || item.startedAt || item.timestamp || null,
     updatedAt: item.updatedAt || item.lastSeenAt || item.endedAt || item.timestamp || item.createdAt || null
   };
@@ -220,24 +224,120 @@ function loadAll() {
   };
 }
 
+function addSignal(signals, name, points, detail) {
+  signals.push({ name, points, detail });
+  return points;
+}
+
+function exactOrContains(values, query) {
+  const wanted = String(query || '').toLowerCase();
+  const normalized = values.map((value) => String(value).toLowerCase());
+  if (normalized.includes(wanted)) return 'exact';
+  if (normalized.some((value) => value.includes(wanted))) return 'partial';
+  return null;
+}
+
 function scoreRecord(record, query, flags) {
   const terms = tokens(query).filter((term) => term.length > 1);
   const fileOnly = flags.files === true;
   const commandOnly = flags.commands === true;
-  const hay = `${record.id} ${record.title} ${record.text} ${record.tags.join(' ')} ${record.project} ${record.agent}`.toLowerCase();
-  const fileHay = record.files.join(' ').toLowerCase();
-  const commandHay = record.commands.join(' ').toLowerCase();
+  const signals = [];
+  const hay = `${record.id} ${record.title} ${record.text}`.toLowerCase();
+  const queryLower = String(query).toLowerCase();
   let score = 0;
+
   for (const term of terms) {
     let matched = false;
-    if (!fileOnly && !commandOnly && hay.includes(term)) { score += 3; matched = true; }
-    if (!commandOnly && fileHay.includes(term)) { score += 7; matched = true; }
-    if (!fileOnly && commandHay.includes(term)) { score += 6; matched = true; }
-    if (!matched) return 0;
+    if (!fileOnly && !commandOnly && hay.includes(term)) {
+      score += addSignal(signals, 'text-match', 3, term);
+      matched = true;
+    }
+    if (!commandOnly && record.files.some((value) => value.toLowerCase().includes(term))) {
+      score += addSignal(signals, 'file-match', 7, term);
+      matched = true;
+    }
+    if (!fileOnly && record.commands.some((value) => value.toLowerCase().includes(term))) {
+      score += addSignal(signals, 'command-match', 6, term);
+      matched = true;
+    }
+    if (!fileOnly && !commandOnly && record.errorSignature.toLowerCase().includes(term)) {
+      score += addSignal(signals, 'error-match', 8, term);
+      matched = true;
+    }
+    if (!fileOnly && !commandOnly && record.tags.some((value) => value.toLowerCase().includes(term))) {
+      score += addSignal(signals, 'tag-match', 4, term);
+      matched = true;
+    }
+    if (!fileOnly && !commandOnly && String(record.project).toLowerCase().includes(term)) {
+      score += addSignal(signals, 'project-match', 3, term);
+      matched = true;
+    }
+    if (!fileOnly && !commandOnly && String(record.agent).toLowerCase().includes(term)) {
+      score += addSignal(signals, 'agent-match', 2, term);
+      matched = true;
+    }
+    if (!fileOnly && !commandOnly && record.commits.some((value) => value.toLowerCase().includes(term))) {
+      score += addSignal(signals, 'commit-match', 5, term);
+      matched = true;
+    }
+    if (!matched) return { score: 0, signals: [] };
   }
-  if (!terms.length) score = 1;
-  if (record.status === 'approved') score += 1;
-  return score;
+
+  const fileMatch = exactOrContains(record.files, queryLower);
+  if (!commandOnly && fileMatch === 'exact') score += addSignal(signals, 'exact-file', 18, query);
+  const commandMatch = exactOrContains(record.commands, queryLower);
+  if (!fileOnly && commandMatch === 'exact') score += addSignal(signals, 'exact-command', 16, query);
+  if (!fileOnly && !commandOnly && record.errorSignature.toLowerCase() === queryLower) score += addSignal(signals, 'exact-error', 20, query);
+  if (!fileOnly && !commandOnly && record.tags.some((value) => value.toLowerCase() === queryLower)) score += addSignal(signals, 'exact-tag', 10, query);
+  if (!fileOnly && !commandOnly && String(record.project).toLowerCase() === queryLower) score += addSignal(signals, 'exact-project', 8, query);
+  if (!fileOnly && !commandOnly && String(record.agent).toLowerCase() === queryLower) score += addSignal(signals, 'exact-agent', 5, query);
+  if (!fileOnly && !commandOnly && record.commits.some((value) => value.toLowerCase() === queryLower)) score += addSignal(signals, 'exact-commit', 12, query);
+
+  if (record.type === 'memory' && record.status === 'approved') score += addSignal(signals, 'approved-memory', 6, 'approved');
+  if (record.type === 'failure' && record.occurrences > 1) {
+    const recurrence = Math.min(record.occurrences, 10);
+    score += addSignal(signals, 'failure-recurrence', recurrence, String(record.occurrences));
+  }
+  if (record.type === 'session' && record.updatedAt) {
+    const ageDays = Math.max(0, (Date.now() - Date.parse(record.updatedAt)) / 86400000);
+    if (Number.isFinite(ageDays) && ageDays <= 30) score += addSignal(signals, 'recent-session', ageDays <= 7 ? 4 : 2, `${Math.round(ageDays)}d`);
+  }
+  if (!terms.length) score = addSignal(signals, 'default', 1, 'empty-token-query');
+  return { score, signals };
+}
+
+function resultSections(results) {
+  return {
+    approvedMemory: results.filter((item) => item.type === 'memory' && item.status === 'approved'),
+    failureLessons: results.filter((item) => item.type === 'failure'),
+    episodes: results.filter((item) => item.type === 'episode'),
+    rawObservations: results.filter((item) => item.type === 'session' || (item.type === 'memory' && item.status !== 'approved'))
+  };
+}
+
+function renderResults(results, explain) {
+  const lines = [];
+  for (const item of results) {
+    lines.push(`[${item.type}] ${item.title}`);
+    lines.push(`id=${item.id} score=${item.score} updated=${item.updatedAt || ''}`);
+    if (item.files.length) lines.push(`files=${item.files.join(', ')}`);
+    if (item.commands.length) lines.push(`commands=${item.commands.join(' | ')}`);
+    if (explain) lines.push(`why=${item.signals.map((signal) => `${signal.name}+${signal.points}(${signal.detail})`).join(', ')}`);
+    if (item.text) lines.push(compact(item.text, 320));
+    lines.push('');
+  }
+  return lines.join('\n').trim();
+}
+
+function applyBudget(results, budget, explain) {
+  if (!Number.isFinite(budget)) return results;
+  const accepted = [];
+  for (const result of results) {
+    const candidate = [...accepted, result];
+    if (renderResults(candidate, explain).length > budget) break;
+    accepted.push(result);
+  }
+  return accepted;
 }
 
 function search(flags) {
@@ -247,31 +347,36 @@ function search(flags) {
   let records = loaded.records;
   if (flags.type) records = records.filter((record) => record.type === String(flags.type));
   const limit = Math.max(1, Math.min(Number(flags.limit || 20), 100));
-  const results = records
-    .map((record) => ({ ...record, score: scoreRecord(record, query, flags) }))
+  const explain = flags.debug === true || flags.explain === true;
+  const budget = flags.budget === undefined ? Infinity : Math.max(100, Math.min(Number(flags.budget || 1200), 12000));
+  let results = records
+    .map((record) => ({ ...record, ...scoreRecord(record, query, flags) }))
     .filter((record) => record.score > 0)
-    .sort((a, b) => b.score - a.score || String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))
+    .sort((a, b) => b.score - a.score || String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')) || a.id.localeCompare(b.id))
     .slice(0, limit);
-  return { version: VERSION, query, filters: { type: flags.type || null, files: flags.files === true, commands: flags.commands === true }, indexSources: loaded.sources, count: results.length, results };
+  results = applyBudget(results, budget, explain);
+  const rendered = renderResults(results, explain);
+  return {
+    version: VERSION,
+    query,
+    filters: { type: flags.type || null, files: flags.files === true, commands: flags.commands === true },
+    budget: Number.isFinite(budget) ? budget : null,
+    budgetUsed: rendered.length,
+    explain,
+    indexSources: loaded.sources,
+    count: results.length,
+    sections: resultSections(results),
+    results,
+    rendered
+  };
 }
 
 function printResults(result) {
-  if (!result.results.length) {
-    process.stdout.write('No matching local records.\n');
-    return;
-  }
-  for (const item of result.results) {
-    process.stdout.write(`[${item.type}] ${item.title}\n`);
-    process.stdout.write(`id=${item.id} score=${item.score} updated=${item.updatedAt || ''}\n`);
-    if (item.files.length) process.stdout.write(`files=${item.files.join(', ')}\n`);
-    if (item.commands.length) process.stdout.write(`commands=${item.commands.join(' | ')}\n`);
-    if (item.text) process.stdout.write(`${compact(item.text, 320)}\n`);
-    process.stdout.write('\n');
-  }
+  process.stdout.write((result.rendered || 'No matching local records.') + '\n');
 }
 
 function usage() {
-  process.stdout.write(`agent-kernel-search ${VERSION}\n\nUsage:\n  agent-kernel reindex\n  agent-kernel search "ERR_MODULE_NOT_FOUND"\n  agent-kernel search "safe-link duplicate block" --type failure\n  agent-kernel search "src/cli.mjs" --files\n  agent-kernel search "npm test" --commands\n`);
+  process.stdout.write(`agent-kernel-search ${VERSION}\n\nUsage:\n  agent-kernel reindex\n  agent-kernel search "ERR_MODULE_NOT_FOUND"\n  agent-kernel search "safe-link duplicate block" --type failure\n  agent-kernel search "src/cli.mjs" --files\n  agent-kernel search "npm test" --commands\n  agent-kernel search "src/cli.mjs" --explain --budget 1200\n`);
 }
 
 function main() {
