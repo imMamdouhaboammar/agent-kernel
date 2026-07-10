@@ -11,12 +11,20 @@ const commitPath = path.join(here, 'agent-kernel-commit.mjs');
 const failurePatternsPath = path.join(here, 'agent-kernel-failure-patterns.mjs');
 const patternProposalPath = path.join(here, 'agent-kernel-pattern-proposal.mjs');
 const identityCommandPath = path.join(here, 'agent-kernel-identity-command.mjs');
+const registryPath = path.join(here, 'agent-kernel-registry.mjs');
 const args = process.argv.slice(2);
 const command = args[0];
 const commitLinkHook = command === 'git-hook' && args[1] === 'install' && args.includes('--commit-link');
 const failurePatterns = command === 'failure' && args[1] === 'patterns';
 const patternProposal = command === 'failure' && args[1] === 'propose-pattern';
-const identityAware = command === 'propose' || command === 'session' || (command === 'search' && args.some((arg) => arg === '--agent' || arg.startsWith('--agent=')));
+const searchIdentityOrProject = command === 'search' && args.some((arg) =>
+  arg === '--agent' || arg.startsWith('--agent=') ||
+  arg === '--project' || arg.startsWith('--project=') ||
+  arg === '--project-id' || arg.startsWith('--project-id=') ||
+  arg === '--projectId' || arg.startsWith('--projectId=')
+);
+const identityAware = command === 'propose' || command === 'session' || searchIdentityOrProject;
+const registryCommand = command === 'agent' || command === 'project';
 const target = command === 'reindex' || (command === 'search' && !identityAware)
   ? searchPath
   : command === 'mcp'
@@ -27,9 +35,11 @@ const target = command === 'reindex' || (command === 'search' && !identityAware)
         ? failurePatternsPath
         : patternProposal
           ? patternProposalPath
-          : identityAware
-            ? identityCommandPath
-            : wrapperPath;
+          : registryCommand
+            ? registryPath
+            : identityAware
+              ? identityCommandPath
+              : wrapperPath;
 const targetArgs = args;
 const result = childProcess.spawnSync(process.execPath, [target, ...targetArgs], {
   cwd: process.cwd(),
