@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { agentCan, agentIdFromRecord, enrichIdentityRecord, resolveAgentIdentity } from './agent-kernel-agent-model.mjs';
+import { identifyProject } from './agent-kernel-project-model.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const distCliPath = path.resolve(here, '..', 'dist', 'cli.mjs');
@@ -124,13 +125,16 @@ function commandSessionStart(args) {
   const flags = parseFlags(args);
   const requestedAgent = String(flags.agent || flags.from || flags._[0] || 'unknown-agent');
   const identity = resolveAgentIdentity(requestedAgent, { action: 'session' });
-  const forwarded = hasFlag(args, '--trust') ? args : [...args, '--trust', identity.trustLevel];
+  const projectPath = String(flags.project || flags.cwd || flags._[1] || '.');
+  const project = identifyProject(projectPath);
+  let forwarded = hasFlag(args, '--trust') ? [...args] : [...args, '--trust', identity.trustLevel];
+  if (!hasFlag(forwarded, '--projectId') && !hasFlag(forwarded, '--project-id')) forwarded.push('--projectId', project.projectId);
   const output = runNode(sessionPath, ['start', ...forwarded]);
   const id = sessionIdFromOutput(output);
   if (id) {
     const filePath = sessionFile(id);
     const session = readJson(filePath, null);
-    if (session) writeJsonAtomic(filePath, enrichIdentityRecord(session, identity, { fallback: requestedAgent }));
+    if (session) writeJsonAtomic(filePath, { ...enrichIdentityRecord(session, identity, { fallback: requestedAgent }), projectId: project.projectId });
   }
   process.stdout.write(output);
 }
@@ -147,9 +151,11 @@ function loadSessions() {
 
 function commandSessionList(args) {
   const flags = parseFlags(args);
-  const wanted = String(flags.agent || '').toLowerCase();
+  const wantedAgent = String(flags.agent || '').toLowerCase();
+  const wantedProject = String(flags.projectId || flags['project-id'] || '').toLowerCase();
   let sessions = loadSessions();
-  if (wanted) sessions = sessions.filter((session) => agentIdFromRecord(session) === wanted);
+  if (wantedAgent) sessions = sessions.filter((session) => agentIdFromRecord(session) === wantedAgent);
+  if (wantedProject) sessions = sessions.filter((session) => String(session.projectId || '').toLowerCase() === wantedProject);
   if (flags.json) {
     process.stdout.write(JSON.stringify({ sessions }, null, 2) + '\n');
     return;
@@ -185,7 +191,7 @@ function commandSession(args) {
   const action = args[0] || 'help';
   const rest = args.slice(1);
   if (action === 'start') return commandSessionStart(rest);
-  if (action === 'list' && hasFlag(rest, '--agent')) return commandSessionList(rest);
+  if (action === 'list' && (hasFlag(rest, '--agent') || hasFlag(rest, '--project-id') || hasFlag(rest, '--projectId'))) return commandSessionList(rest);
   if (action === 'observations' && hasFlag(rest, '--agent')) return commandSessionObservations(rest);
   const output = runNode(sessionPath, [action, ...rest]);
   process.stdout.write(output);
@@ -195,7 +201,7 @@ function renderSearchResults(results, explain) {
   const lines = [];
   for (const item of results) {
     lines.push(`[${item.type}] ${item.title}`);
-    lines.push(`id=${item.id} score=${item.score} agent=${item.agent || ''} updated=${item.updatedAt || ''}`);
+    lines.push(`id=${item.id} score=${item.score} agent=${item.agent || ''} project=${item.project || ''} updated=${item.updatedAt || ''}`);
     if (item.files?.length) lines.push(`files=${item.files.join(', ')}`);
     if (explain && item.signals?.length) lines.push(`why=${item.signals.map((signal) => `${signal.name}+${signal.points}(${signal.detail})`).join(', ')}`);
     if (item.text) lines.push(String(item.text).slice(0, 320));
@@ -214,15 +220,24 @@ function sections(results) {
 }
 
 function commandSearch(args) {
-  const wanted = String(flagValue(args, '--agent', '')).toLowerCase();
+  const wantedAgent = String(flagValue(args, '--agent', '')).toLowerCase();
+  let wantedProject = String(flagValue(args, '--project-id', flagValue(args, '--projectId', ''))).toLowerCase();
+  const projectPath = flagValue(args, '--project', '');
+  if (!wantedProject && projectPath) wantedProject = identifyProject(projectPath).projectId.toLowerCase();
   const requestedLimit = Math.max(1, Math.min(Number(flagValue(args, '--limit', '20')), 100));
   let forwarded = stripFlag(args, '--agent');
+  forwarded = stripFlag(forwarded, '--project');
+  forwarded = stripFlag(forwarded, '--project-id');
+  forwarded = stripFlag(forwarded, '--projectId');
   forwarded = stripFlag(forwarded, '--limit');
   forwarded = stripFlag(forwarded, '--budget');
   if (!hasFlag(forwarded, '--json')) forwarded.push('--json');
   forwarded.push('--limit', '100');
   const result = JSON.parse(runNode(searchPath, ['search', ...forwarded]));
-  let results = result.results.filter((item) => agentIdFromRecord(item) === wanted).slice(0, requestedLimit);
+  let results = result.results;
+  if (wantedAgent) results = results.filter((item) => agentIdFromRecord(item) === wantedAgent);
+  if (wantedProject) results = results.filter((item) => String(item.project || '').toLowerCase() === wantedProject);
+  results = results.slice(0, requestedLimit);
   const explain = result.explain === true;
   const budgetRaw = flagValue(args, '--budget', '');
   const budget = budgetRaw ? Math.max(100, Math.min(Number(budgetRaw), 12000)) : null;
@@ -237,7 +252,7 @@ function commandSearch(args) {
   const rendered = renderSearchResults(results, explain);
   const filtered = {
     ...result,
-    filters: { ...(result.filters || {}), agent: wanted },
+    filters: { ...(result.filters || {}), agent: wantedAgent || null, projectId: wantedProject || null },
     budget,
     budgetUsed: rendered.length,
     count: results.length,
