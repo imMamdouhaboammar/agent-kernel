@@ -56,8 +56,10 @@ export async function run() {
   if (custom.agentId !== 'my-custom-agent' || custom.trustLevel !== 'capture-only') {
     throw new Error(`unknown session agent did not default conservatively: ${JSON.stringify(custom)}`);
   }
-  if (custom.agentIdentity?.agentId !== 'my-custom-agent') {
-    throw new Error(`session omitted embedded identity: ${JSON.stringify(custom)}`);
+  const customSessionPath = path.join(kernelHome, 'runtime', 'sessions', `${custom.id}.json`);
+  const persistedCustom = JSON.parse(fs.readFileSync(customSessionPath, 'utf8'));
+  if (persistedCustom.agentIdentity?.agentId !== 'my-custom-agent' || persistedCustom.createdBy !== 'my-custom-agent') {
+    throw new Error(`persisted session omitted embedded identity: ${JSON.stringify(persistedCustom)}`);
   }
 
   runPublic(
