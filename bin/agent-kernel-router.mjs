@@ -6,10 +6,15 @@ import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const wrapperPath = path.join(here, 'agent-kernel.mjs');
 const searchPath = path.join(here, 'agent-kernel-search.mjs');
+const mcpPath = path.join(here, 'agent-kernel-mcp.mjs');
 const args = process.argv.slice(2);
 const command = args[0];
-const target = command === 'search' || command === 'reindex' ? searchPath : wrapperPath;
-const targetArgs = target === searchPath ? args : args;
+const target = command === 'search' || command === 'reindex'
+  ? searchPath
+  : command === 'mcp'
+    ? mcpPath
+    : wrapperPath;
+const targetArgs = args;
 const result = childProcess.spawnSync(process.execPath, [target, ...targetArgs], {
   cwd: process.cwd(),
   env: process.env,
