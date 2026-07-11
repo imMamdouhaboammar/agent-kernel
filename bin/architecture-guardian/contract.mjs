@@ -2,6 +2,17 @@ import path from 'node:path';
 import { finding } from './findings.mjs';
 import { matchesAny, normalizeRelative } from './common.mjs';
 
+function expectedFileFindings(files, contract) {
+  const missing = (contract.expectedFiles || []).filter((expected) => !files.some((file) => matchesAny(file, [expected])));
+  if (!missing.length) return [];
+  return [finding({
+    ruleId: 'contract-expected-files', type: 'expected-file', severity: 'warning', confidence: 1,
+    title: 'Expected change files are missing',
+    message: `The active contract expected changes matching: ${missing.join(', ')}.`,
+    files, evidence: { expectedFiles: contract.expectedFiles, missing }, enforcement: 'review',
+    remediation: 'Complete the expected files or revise the reviewed contract before closing the change.'
+  })];
+}
 function testCompanionFindings(files, contract, policy) {
   if (policy.rules?.testCompanion?.enabled !== true || !contract?.requiredTests?.length) return [];
   const changedTests = files.filter((file) => /(^|\/)(test|tests|__tests__)(\/|$)|\.(test|spec)\.[^.]+$/.test(file));
@@ -55,6 +66,7 @@ export function evaluateContract(files, contract, policy) {
       remediation: 'Split the work into smaller independently reviewable changes.'
     }));
   }
+  result.push(...expectedFileFindings(normalized, contract));
   result.push(...testCompanionFindings(normalized, contract, policy));
   return result;
 }
