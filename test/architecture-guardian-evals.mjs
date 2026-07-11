@@ -11,8 +11,21 @@ const cli = path.join(repoRoot, 'bin', 'agent-kernel-architecture.mjs');
 const hook = path.join(repoRoot, 'bin', 'agent-kernel-architecture-hook.mjs');
 const fixtures = path.join(testDir, 'fixtures', 'architecture-guardian');
 function writeJson(file, value) { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, JSON.stringify(value, null, 2) + '\n'); }
-function run(project, args, input = null) {
-  return childProcess.spawnSync(process.execPath, args, { cwd: project, input, encoding: 'utf8', stdio: ['pipe','pipe','pipe'] });
+function writeFiles(project, files = {}) {
+  for (const [relative, content] of Object.entries(files)) {
+    const target = path.join(project, relative);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, content);
+  }
+}
+function run(project, args, input = null, env = {}) {
+  return childProcess.spawnSync(process.execPath, args, {
+    cwd: project,
+    env: { ...process.env, ...env },
+    input,
+    encoding: 'utf8',
+    stdio: ['pipe','pipe','pipe']
+  });
 }
 function typeSet(items) { return [...new Set((items || []).map((item) => item.type))].sort(); }
 
@@ -23,11 +36,7 @@ export async function runArchitectureGuardianEvals() {
     const scenario = JSON.parse(fs.readFileSync(path.join(source, 'scenario.json'), 'utf8'));
     const expected = JSON.parse(fs.readFileSync(path.join(source, 'expected.json'), 'utf8'));
     const project = fs.mkdtempSync(path.join(os.tmpdir(), `ag-eval-${id}-`));
-    for (const [relative, content] of Object.entries(scenario.files || {})) {
-      const target = path.join(project, relative);
-      fs.mkdirSync(path.dirname(target), { recursive: true });
-      fs.writeFileSync(target, content);
-    }
+    writeFiles(project, scenario.files);
     childProcess.execFileSync('git', ['init'], { cwd: project, stdio: 'ignore' });
     writeJson(path.join(project, '.agent-kernel/architecture/policy.json'), scenario.policy);
     if (scenario.contract) writeJson(path.join(project, '.agent-kernel/architecture/change-contract.json'), scenario.contract);
@@ -35,13 +44,19 @@ export async function runArchitectureGuardianEvals() {
     if (scenario.baselineBeforeCheck) {
       const baseline = run(project, [cli, 'baseline', project, '--json']);
       assert.equal(baseline.status, 0, `${id}: baseline failed\n${baseline.stderr}`);
+      writeFiles(project, scenario.mutationsAfterBaseline);
     }
     let result;
     if (scenario.mode === 'reuse') result = run(project, [cli, 'reuse', scenario.query, project, '--json']);
     else if (scenario.mode === 'hook') {
       const payload = { hook_event_name: 'PreToolUse', tool_name: 'Write', cwd: project, tool_input: { file_path: path.join(project, scenario.hookFile) } };
-      result = run(project, [hook], JSON.stringify(payload));
-    } else result = run(project, [cli, 'check', project, '--files', (scenario.changedFiles || []).join(','), '--json']);
+      const hookMode = expected.decision === 'deny' ? 'strict' : 'review';
+      result = run(project, [hook], JSON.stringify(payload), { AGENT_KERNEL_ARCHITECTURE_MODE: hookMode });
+    } else {
+      const args = [cli, 'check', project, '--files', (scenario.changedFiles || []).join(','), '--json'];
+      if (expected.exit === 2) args.push('--strict');
+      result = run(project, args);
+    }
     assert.equal(result.status, expected.exit, `${id}: unexpected exit\nstdout=${result.stdout}\nstderr=${result.stderr}`);
     const parsed = JSON.parse(result.stdout || '{}');
     if (scenario.mode === 'reuse') {
