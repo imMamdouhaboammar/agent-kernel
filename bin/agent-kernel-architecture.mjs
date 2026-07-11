@@ -13,7 +13,10 @@ import { formatReport } from './architecture-guardian/report.mjs';
 import { searchReuse } from './architecture-guardian/reuse.mjs';
 import { validateContract, validatePolicy } from './architecture-guardian/validation.mjs';
 
-function output(value, json) { process.stdout.write(json ? JSON.stringify(value, null, 2) + '\n' : String(value)); }
+function output(value, json) {
+  const structured = json || typeof value !== 'string';
+  process.stdout.write(structured ? JSON.stringify(value, null, 2) + '\n' : value);
+}
 function usage() {
   output(`agent-kernel architecture\n\nCommands:\n  init [project]\n  discover [project]\n  baseline [project]\n  diff [project]\n  check [project] [--files a,b] [--base ref] [--strict|--review]\n  reuse <query> [project]\n  contract init|show|validate|close [project]\n  exception add|list|revoke [project]\n  policy validate [project]\n  doctor [project]\n`, false);
 }
