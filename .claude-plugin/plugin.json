@@ -3,7 +3,7 @@
   "name": "agent-kernel",
   "displayName": "Agent Kernel",
   "version": "1.0.0",
-  "description": "Local-first governance kernel for AI coding agents — shared memory, rule distribution, approval inbox, episodic memory archive, MCP tools, hooks, and a deterministic policy guard. Gives every coding agent persistent local memory across sessions.",
+  "description": "Local-first governance kernel for AI coding agents — shared memory, architecture conformance, rule distribution, approval inbox, episodic memory archive, MCP tools, hooks, and deterministic policy guards.",
   "author": {
     "name": "Mamdouh Aboammar",
     "email": "mamdouhfces1997@gmail.com"
@@ -16,6 +16,9 @@
     "ai-agents",
     "memory",
     "governance",
+    "architecture-conformance",
+    "architecture-guardrails",
+    "vibe-coding",
     "claude-code",
     "codex",
     "cursor",
@@ -27,6 +30,7 @@
     "policy-guard"
   ],
   "skills": [
-    "./"
+    "./",
+    "./skills/architecture-guardian"
   ]
 }
