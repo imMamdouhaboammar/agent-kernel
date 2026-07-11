@@ -58,6 +58,16 @@ export async function run() {
     assert.equal(doctor.status, 2, 'doctor should report malformed policy JSON');
     const report = JSON.parse(doctor.stdout);
     assert.equal(report.checks.find((item) => item.id === 'policy-valid').ok, false);
+    const payload = { hook_event_name: 'PreToolUse', tool_name: 'Write', cwd: project, tool_input: { file_path: path.join(project, 'src/value.ts') } };
+    const hookResult = childProcess.spawnSync(process.execPath, [hook], {
+      cwd: project,
+      input: JSON.stringify(payload),
+      encoding: 'utf8',
+      stdio: ['pipe','pipe','pipe']
+    });
+    assert.equal(hookResult.status, 0, hookResult.stderr);
+    const hookOutput = JSON.parse(hookResult.stdout);
+    assert.equal(hookOutput.hookSpecificOutput.permissionDecision, 'deny', 'hook must deny when governance state cannot be validated');
   }
   {
     const project = tmp(); initGit(project);
