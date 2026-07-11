@@ -22,7 +22,7 @@ export const DEFAULT_POLICY = {
 
 export const DEFAULT_CONTRACT = {
   version: 1,
-  status: 'active',
+  status: 'draft',
   task: '',
   owner: 'unassigned',
   allowedFiles: [],
