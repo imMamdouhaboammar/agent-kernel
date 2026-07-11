@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { createBaseline, architectureDiff, readBaseline } from './architecture-guardian/baseline.mjs';
 import { architecturePaths } from './architecture-guardian/paths.mjs';
-import { csv, parseFlags, projectRoot, readJson, writeJsonAtomic } from './architecture-guardian/common.mjs';
-import { loadContract, loadPolicy, readContractDocument, readPolicyDocument, writeDefaultPolicy } from './architecture-guardian/config.mjs';
+import { csv, parseFlags, projectRoot, readJsonDocument, writeJsonAtomic } from './architecture-guardian/common.mjs';
+import { loadContract, loadPolicy, readContractState, readPolicyState, writeDefaultPolicy } from './architecture-guardian/config.mjs';
 import { closeContract, createContract } from './architecture-guardian/contract-store.mjs';
 import { discoverArchitecture } from './architecture-guardian/discovery.mjs';
 import { architectureDoctor } from './architecture-guardian/doctor.mjs';
@@ -25,8 +25,10 @@ function failValidation(result) {
   output(result, true);
   if (!result.ok) process.exitCode = 2;
 }
-function missingDocument(name) {
-  return { ok: false, issues: [{ path: '$', message: `${name} file is missing` }] };
+function validationFromState(state, name, validator) {
+  if (!state.ok) return { ok: false, issues: [{ path: '$', message: `invalid JSON: ${state.error}` }] };
+  if (!state.exists) return { ok: false, issues: [{ path: '$', message: `${name} file is missing` }] };
+  return validator(state.value);
 }
 function requestedMode(flags) {
   if (flags.strict && flags.review) throw new Error('Use either --strict or --review, not both.');
@@ -54,10 +56,7 @@ function main() {
       requiredTests: flags.tests, notes: flags.notes
     }), flags.json);
     if (action === 'show') return output(loadContract(root), flags.json);
-    if (action === 'validate') {
-      const raw = readContractDocument(root);
-      return failValidation(raw === null ? missingDocument('contract') : validateContract(raw));
-    }
+    if (action === 'validate') return failValidation(validationFromState(readContractState(root), 'contract', validateContract));
     if (action === 'close') return output(closeContract(root), flags.json);
     throw new Error(`Unknown contract action: ${action || ''}`);
   }
@@ -75,17 +74,16 @@ function main() {
   if (command === 'policy') {
     const action = flags._[1];
     const root = rootFor(flags, 2);
-    if (action === 'validate') {
-      const raw = readPolicyDocument(root);
-      return failValidation(raw === null ? missingDocument('policy') : validatePolicy(raw));
-    }
+    if (action === 'validate') return failValidation(validationFromState(readPolicyState(root), 'policy', validatePolicy));
     throw new Error(`Unknown policy action: ${action || ''}`);
   }
   const root = rootFor(flags, 1);
   const paths = architecturePaths(root);
   if (command === 'init') {
     const policyResult = writeDefaultPolicy(root, Boolean(flags.force));
-    if (!readJson(paths.exceptions, null)) writeJsonAtomic(paths.exceptions, { version: 1, exceptions: [] });
+    const exceptionsState = readJsonDocument(paths.exceptions);
+    if (!exceptionsState.ok) throw new Error(`Invalid JSON at ${paths.exceptions}: ${exceptionsState.error}`);
+    if (!exceptionsState.exists) writeJsonAtomic(paths.exceptions, { version: 1, exceptions: [] });
     return output({ ...policyResult, exceptionsFile: paths.exceptions }, flags.json);
   }
   if (command === 'discover') {
