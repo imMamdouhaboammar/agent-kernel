@@ -1,4 +1,4 @@
-import { nowIso, readJson, shortHash, sortObject } from './common.mjs';
+import { nowIso, readJsonStrict, shortHash, sortObject } from './common.mjs';
 
 export function createBaseline(map, findings) {
   return {
@@ -45,4 +45,4 @@ export function architectureDiff(map, baseline) {
     cycles: diff(before.cycles || [], map.cycles || [])
   };
 }
-export function readBaseline(file) { return readJson(file, null); }
+export function readBaseline(file) { return readJsonStrict(file, null); }
