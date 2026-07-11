@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Architecture Baseline",
+  "type": "object",
+  "required": ["version", "createdAt", "mapFingerprint", "findingFingerprints", "architecture"],
+  "properties": {
+    "version": { "const": 1 },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "mapFingerprint": { "type": "string" },
+    "findingFingerprints": { "type": "array", "items": { "type": "string" } },
+    "architecture": { "type": "object" }
+  }
+}
