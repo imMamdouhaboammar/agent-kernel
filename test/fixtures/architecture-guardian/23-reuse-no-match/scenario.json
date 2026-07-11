@@ -1,0 +1,1 @@
+{"id":"23-reuse-no-match","mode":"reuse","policy":{"version":1},"query":"galaxy orbital propulsion","files":{"src/customer/validate-email.ts":"export function validateCustomerEmail() { return true }\n"}}
