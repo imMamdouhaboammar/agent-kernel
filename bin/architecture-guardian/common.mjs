@@ -14,6 +14,8 @@ export const DEFAULT_IGNORES = [
   '.venv/**', 'venv/**', '__pycache__/**', '.agent-kernel/architecture/reports/**'
 ];
 
+export const DEFAULT_CHANGE_IGNORES = ['.agent-kernel/architecture/**'];
+
 export function nowIso() { return new Date().toISOString(); }
 export function slash(value) { return String(value || '').replace(/\\/g, '/'); }
 export function normalizeRelative(value) {
@@ -23,6 +25,25 @@ export function normalizeRelative(value) {
 export function ensureDir(dir) { fs.mkdirSync(dir, { recursive: true }); }
 export function readJson(filePath, fallback = null) {
   try { return JSON.parse(fs.readFileSync(filePath, 'utf8')); } catch { return fallback; }
+}
+export function readJsonDocument(filePath) {
+  let text;
+  try {
+    text = fs.readFileSync(filePath, 'utf8');
+  } catch (error) {
+    if (error?.code === 'ENOENT') return { exists: false, ok: true, value: null, error: null };
+    return { exists: false, ok: false, value: null, error: error?.message || String(error) };
+  }
+  try {
+    return { exists: true, ok: true, value: JSON.parse(text), error: null };
+  } catch (error) {
+    return { exists: true, ok: false, value: null, error: error?.message || String(error) };
+  }
+}
+export function readJsonStrict(filePath, fallback = null) {
+  const document = readJsonDocument(filePath);
+  if (!document.ok) throw new Error(`Invalid JSON at ${filePath}: ${document.error}`);
+  return document.exists ? document.value : fallback;
 }
 export function readText(filePath, fallback = '') {
   try { return fs.readFileSync(filePath, 'utf8'); } catch { return fallback; }
@@ -118,8 +139,14 @@ export function walkCodeFiles(root, options = {}) {
   }
   return files.sort();
 }
+function filterChangedFiles(values, ignores) {
+  return [...new Set(values.map(normalizeRelative).filter(Boolean))]
+    .filter((file) => !matchesAny(file, ignores))
+    .sort();
+}
 export function changedFiles(root, options = {}) {
-  if (options.files?.length) return [...new Set(options.files.map(normalizeRelative).filter(Boolean))].sort();
+  const ignores = [...DEFAULT_CHANGE_IGNORES, ...(options.ignore || [])];
+  if (options.files?.length) return filterChangedFiles(options.files, ignores);
   const base = String(options.base || '').trim();
   const commands = [
     base ? ['diff', '--name-only', '--diff-filter=ACMRTUXB', `${base}...HEAD`] : ['diff', '--name-only', '--diff-filter=ACMRTUXB'],
@@ -130,10 +157,10 @@ export function changedFiles(root, options = {}) {
   for (const args of commands) {
     try {
       const output = childProcess.execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
-      values.push(...output.split(/\r?\n/).map(normalizeRelative).filter(Boolean));
+      values.push(...output.split(/\r?\n/));
     } catch {}
   }
-  return [...new Set(values)].sort();
+  return filterChangedFiles(values, ignores);
 }
 export function severityRank(value) {
   return { info: 0, warning: 1, medium: 2, high: 3, critical: 4 }[String(value || '').toLowerCase()] ?? 1;
