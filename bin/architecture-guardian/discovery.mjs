@@ -36,8 +36,8 @@ export function discoverArchitecture(root, policy) {
         edges.push({ from: file, to: target, specifier, fromLayer: layer, toLayer: assignLayer(target, policy) });
         adjacency.get(file).push(target);
       } else {
-        const dependency = packageName(specifier);
-        if (dependency) externalImports.push({ from: file, package: dependency, specifier });
+        const dependency = packageName(specifier, language);
+        if (dependency) externalImports.push({ from: file, language, package: dependency, specifier });
       }
     }
   }
