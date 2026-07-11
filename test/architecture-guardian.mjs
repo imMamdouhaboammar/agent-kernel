@@ -13,13 +13,18 @@ const hook = path.join(repoRoot, 'bin', 'agent-kernel-architecture-hook.mjs');
 function tmp() { return fs.mkdtempSync(path.join(os.tmpdir(), 'ag-test-')); }
 function write(file, text) { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); }
 function json(file, value) { write(file, JSON.stringify(value, null, 2)); }
-function runCommand(project, ...args) {
-  return childProcess.spawnSync(process.execPath, [cli, ...args, '--json'], { cwd: project, encoding: 'utf8', stdio: ['ignore','pipe','pipe'] });
+function runCommandRaw(project, ...args) {
+  return childProcess.spawnSync(process.execPath, [cli, ...args], { cwd: project, encoding: 'utf8', stdio: ['ignore','pipe','pipe'] });
 }
+function runCommand(project, ...args) { return runCommandRaw(project, ...args, '--json'); }
 function initGit(project) {
   childProcess.execFileSync('git', ['init'], { cwd: project, stdio: 'ignore' });
   childProcess.execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: project });
   childProcess.execFileSync('git', ['config', 'user.name', 'Test'], { cwd: project });
+}
+function commitAll(project, message = 'fixture') {
+  childProcess.execFileSync('git', ['add', '.'], { cwd: project, stdio: 'ignore' });
+  childProcess.execFileSync('git', ['commit', '-m', message], { cwd: project, stdio: 'ignore' });
 }
 
 export async function run() {
@@ -31,10 +36,28 @@ export async function run() {
   }
   {
     const project = tmp(); initGit(project);
+    const result = runCommandRaw(project, 'init', project);
+    assert.equal(result.status, 0, result.stderr);
+    const parsed = JSON.parse(result.stdout);
+    assert.equal(parsed.created, true, 'structured commands should remain readable without --json');
+  }
+  {
+    const project = tmp(); initGit(project);
     json(path.join(project, '.agent-kernel/architecture/policy.json'), { version: 1, mode: 42, confidenceThreshold: 0.8, blockOn: ['high'], layers: [], forbiddenDependencies: [] });
     const result = runCommand(project, 'policy', 'validate', project);
     assert.equal(result.status, 2, 'raw policy validation should reject invalid mode types');
     assert.equal(JSON.parse(result.stdout).ok, false);
+  }
+  {
+    const project = tmp(); initGit(project);
+    write(path.join(project, '.agent-kernel/architecture/policy.json'), '{ invalid');
+    const check = runCommand(project, 'check', project);
+    assert.equal(check.status, 1, 'checks must fail closed when policy JSON is malformed');
+    assert.match(check.stderr, /Invalid JSON/);
+    const doctor = runCommand(project, 'doctor', project);
+    assert.equal(doctor.status, 2, 'doctor should report malformed policy JSON');
+    const report = JSON.parse(doctor.stdout);
+    assert.equal(report.checks.find((item) => item.id === 'policy-valid').ok, false);
   }
   {
     const project = tmp(); initGit(project);
@@ -52,6 +75,18 @@ export async function run() {
     const result = runCommand(project, 'reuse', 'validate email', project);
     assert.equal(result.status, 0, result.stderr);
     assert.equal(JSON.parse(result.stdout)[0].symbol, 'validateCustomerEmail');
+  }
+  {
+    const project = tmp(); initGit(project);
+    write(path.join(project, 'src/value.ts'), 'export const value = 1;\n');
+    commitAll(project);
+    const init = runCommand(project, 'init', project);
+    assert.equal(init.status, 0, init.stderr);
+    json(path.join(project, '.agent-kernel/architecture/policy.json'), { version: 1, requireContractForWrites: true });
+    json(path.join(project, '.agent-kernel/architecture/change-contract.json'), { version: 1, status: 'active', task: 'no source change', owner: 'team', allowedFiles: ['src/**'], forbiddenFiles: [], expectedFiles: [], allowedNewDependencies: [], requiredTests: [], notes: [] });
+    const check = runCommand(project, 'check', project, '--strict');
+    assert.equal(check.status, 0, check.stderr);
+    assert.equal(JSON.parse(check.stdout).summary.changedFiles, 0, 'local architecture state must not count as application scope drift');
   }
   {
     const project = tmp(); initGit(project);
