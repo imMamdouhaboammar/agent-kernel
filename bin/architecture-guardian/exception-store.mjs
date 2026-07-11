@@ -1,10 +1,12 @@
 import { architecturePaths } from './paths.mjs';
-import { csv, nowIso, readJson, shortHash, writeJsonAtomic } from './common.mjs';
+import { csv, nowIso, readJsonStrict, shortHash, writeJsonAtomic } from './common.mjs';
 import { validateExceptionsDocument } from './validation.mjs';
 
 function document(root) {
-  const value = readJson(architecturePaths(root).exceptions, { version: 1, exceptions: [] });
-  return value && typeof value === 'object' && Array.isArray(value.exceptions) ? value : { version: 1, exceptions: [] };
+  const value = readJsonStrict(architecturePaths(root).exceptions, { version: 1, exceptions: [] });
+  const validation = validateExceptionsDocument(value);
+  if (!validation.ok) throw new Error(validation.issues.map((issue) => `${issue.path}: ${issue.message}`).join('\n'));
+  return value;
 }
 export function listExceptions(root) { return document(root); }
 export function addException(root, input = {}) {
