@@ -1,0 +1,1 @@
+{"id":"05-cycle-three-node","mode":"check","policy":{"version":1},"changedFiles":["src/c.ts"],"files":{"src/a.ts":"import './b.ts'; export const a = 1;\n","src/b.ts":"import './c.ts'; export const b = 1;\n","src/c.ts":"import './a.ts'; export const c = 1;\n"}}
