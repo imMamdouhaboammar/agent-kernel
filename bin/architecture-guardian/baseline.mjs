@@ -6,7 +6,13 @@ export function createBaseline(map, findings) {
     createdAt: nowIso(),
     mapFingerprint: map.fingerprint,
     findingFingerprints: [...new Set(findings.map((item) => item.fingerprint))].sort(),
-    architecture: sortObject({ nodes: map.nodes, edges: map.edges, externalPackages: map.externalPackages, cycles: map.cycles })
+    architecture: sortObject({
+      nodes: map.nodes,
+      edges: map.edges,
+      externalPackages: map.externalPackages,
+      externalImports: map.externalImports,
+      cycles: map.cycles
+    })
   };
 }
 export function classifyAgainstBaseline(findings, baseline) {
@@ -18,7 +24,7 @@ export function classifyAgainstBaseline(findings, baseline) {
   };
 }
 export function architectureDiff(map, baseline) {
-  const before = baseline?.architecture || { nodes: [], edges: [], externalPackages: [], cycles: [] };
+  const before = baseline?.architecture || { nodes: [], edges: [], externalPackages: [], externalImports: [], cycles: [] };
   const key = (value) => shortHash(sortObject(value), 20);
   function diff(beforeItems, afterItems) {
     const beforeMap = new Map(beforeItems.map((item) => [key(item), item]));
@@ -35,6 +41,7 @@ export function architectureDiff(map, baseline) {
       added: (map.externalPackages || []).filter((item) => !(before.externalPackages || []).includes(item)),
       removed: (before.externalPackages || []).filter((item) => !(map.externalPackages || []).includes(item))
     },
+    externalImports: diff(before.externalImports || [], map.externalImports || []),
     cycles: diff(before.cycles || [], map.cycles || [])
   };
 }
