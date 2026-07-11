@@ -1,0 +1,1 @@
+{"id":"31-missing-expected-file","mode":"check","policy":{"version":1},"contract":{"version":1,"status":"active","task":"feature","owner":"team","allowedFiles":["src/**","test/**"],"forbiddenFiles":[],"expectedFiles":["src/a.ts","test/a.test.ts"],"allowedNewDependencies":[],"requiredTests":[],"notes":[]},"changedFiles":["src/a.ts"],"files":{"src/a.ts":"export const a = 1;\n"}}
