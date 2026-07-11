@@ -1,0 +1,1 @@
+{"id":"03-forbidden-pair","mode":"check","policy":{"version":1,"forbiddenDependencies":[{"id":"ui-no-db","from":["src/ui/**"],"to":["src/db/**"],"severity":"critical","enforcement":"block"}]},"changedFiles":["src/ui/page.ts"],"files":{"src/db/client.ts":"export const db = 1;\n","src/ui/page.ts":"import { db } from '../db/client.ts'; export const page = db;\n"}}
