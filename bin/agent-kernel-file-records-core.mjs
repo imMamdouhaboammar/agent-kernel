@@ -10,7 +10,7 @@ const distCliPath = path.resolve(here, '..', 'dist', 'cli.mjs');
 const failurePath = path.resolve(here, 'agent-kernel-failure.mjs');
 const sessionPath = path.resolve(here, 'agent-kernel-session.mjs');
 const fileContextPath = path.resolve(here, 'agent-kernel-file-context.mjs');
-const VERSION = '1.0.0';
+const VERSION = '1.8.0';
 
 function kernelHome() {
   return process.env.AGENT_KERNEL_HOME || path.join(os.homedir(), '.agent-kernel');
@@ -62,12 +62,22 @@ function inside(root, target) {
   return relative === '' || (!relative.startsWith('..' + path.sep) && relative !== '..' && !path.isAbsolute(relative));
 }
 
+function realpathOrSelf(value) {
+  if (!value) return value;
+  try { return fs.realpathSync.native(value); } catch { /* fall through */ }
+  const parent = path.dirname(value);
+  const base = path.basename(value);
+  try { return path.join(fs.realpathSync.native(parent), base); } catch { return value; }
+}
+
 function normalizeFile(value, root = projectRoot(), base = process.cwd()) {
   const raw = String(value || '').trim();
   if (!raw) return '';
   const resolved = path.isAbsolute(raw) ? path.normalize(raw) : path.resolve(base, raw);
-  if (inside(root, resolved)) {
-    const relative = slash(path.relative(root, resolved));
+  const realRoot = realpathOrSelf(root);
+  const realResolved = realpathOrSelf(resolved);
+  if (inside(realRoot, realResolved)) {
+    const relative = slash(path.relative(realRoot, realResolved));
     return relative || '.';
   }
   return slash(resolved);

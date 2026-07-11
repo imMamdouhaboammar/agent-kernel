@@ -165,9 +165,19 @@ export function changedFiles(root, options = {}) {
 export function severityRank(value) {
   return { info: 0, warning: 1, medium: 2, high: 3, critical: 4 }[String(value || '').toLowerCase()] ?? 1;
 }
+function realpathOrSelf(value) {
+  if (!value) return value;
+  try { return fs.realpathSync.native(value); } catch { /* fall through */ }
+  const parent = path.dirname(value);
+  const base = path.basename(value);
+  try { return path.join(fs.realpathSync.native(parent), base); } catch { return value; }
+}
+
 export function safeRelative(root, filePath) {
   const absolute = path.resolve(root, filePath);
-  const relative = normalizeRelative(path.relative(root, absolute));
+  const realRoot = realpathOrSelf(root);
+  const realAbsolute = realpathOrSelf(absolute);
+  const relative = normalizeRelative(path.relative(realRoot, realAbsolute));
   if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) return null;
   return relative;
 }

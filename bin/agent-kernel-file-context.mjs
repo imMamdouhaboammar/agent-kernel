@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-const VERSION = '1.0.0';
+const VERSION = '1.8.0';
 const DEFAULT_BUDGET = 1800;
 const MAX_BUDGET = 20000;
 const MAX_ITEMS_PER_SECTION = 20;
@@ -75,12 +75,22 @@ function inside(root, target) {
   return rel === '' || (!rel.startsWith('..' + path.sep) && rel !== '..' && !path.isAbsolute(rel));
 }
 
+function realpathOrSelf(value) {
+  if (!value) return value;
+  try { return fs.realpathSync.native(value); } catch { /* fall through */ }
+  const parent = path.dirname(value);
+  const base = path.basename(value);
+  try { return path.join(fs.realpathSync.native(parent), base); } catch { return value; }
+}
+
 function normalizePath(value, projectRoot, base = projectRoot) {
   const raw = String(value || '').trim();
   if (!raw) return '';
   const resolved = path.isAbsolute(raw) ? path.normalize(raw) : path.resolve(base || projectRoot, raw);
-  if (inside(projectRoot, resolved)) {
-    const rel = slash(path.relative(projectRoot, resolved));
+  const realRoot = realpathOrSelf(projectRoot);
+  const realResolved = realpathOrSelf(resolved);
+  if (inside(realRoot, realResolved)) {
+    const rel = slash(path.relative(realRoot, realResolved));
     return rel || '.';
   }
   return slash(resolved);

@@ -1,153 +1,86 @@
-```markdown
-# agent-kernel Development Patterns
-
-> Auto-generated skill from repository analysis
-
-## Overview
-
-This skill teaches you the core development patterns, coding conventions, and workflows used in the `agent-kernel` TypeScript codebase. The repository is structured around modular CLI features, hook adapters, and clear documentation practices. You'll learn how to add new features, document protocols and hooks, fix bugs, and write tests following the project's conventions.
-
-## Coding Conventions
-
-**File Naming**
-- Use kebab-case for all files.
-  - Example: `agent-kernel-failure-lessons.mjs`
-
-**Import Style**
-- Use relative imports.
-  ```typescript
-  import { someFunction } from '../utils/helper';
-  ```
-
-**Export Style**
-- Use named exports.
-  ```typescript
-  export function runAgent() { ... }
-  ```
-
-**Commit Messages**
-- Follow Conventional Commits.
-  - Prefixes: `docs:`, `feat:`, `fix:`, `testdata:`, `test:`, `chore:`
-  - Example: `feat: add failure lessons CLI entry point`
-
-**Documentation**
-- Protocols: `docs/<FEATURE>_PROTOCOL.md`
-- Hook usage: `docs/hooks/<FEATURE>_HOOK.md`
-- General documentation: `AGENTS.md`
-
-**Examples & Test Data**
-- Place in `examples/` directory.
-  - Example: `examples/failure-lessons-example.json`
-
-## Workflows
-
-### Feature Development with CLI, Hook, Docs, Tests
-**Trigger:** When adding a new major feature or module  
-**Command:** `/new-feature-module`
-
-1. **Create CLI entry point**  
-   - Add `bin/agent-kernel-<feature>.mjs`
-2. **Implement hook adapter**  
-   - Add `bin/agent-kernel-<feature>-hook.mjs`
-3. **Document the feature protocol**  
-   - Write `docs/<FEATURE>_PROTOCOL.md`
-4. **Document hook usage**  
-   - Write `docs/hooks/<FEATURE>_HOOK.md`
-5. **Add example/test data**  
-   - Add `examples/<feature>-example.json`
-   - Add `examples/<feature>-settings.json`
-6. **Write smoke or integration test**  
-   - Add `test/<feature>.mjs`
-7. **Expose new CLI bins**  
-   - Update `package.json` to include new CLI commands
-8. **Route new subcommand in main CLI**  
-   - Update `bin/agent-kernel.mjs`
-9. **Document feature in AGENTS.md**
-
-**Example:**
-```bash
-# Add CLI entry point
-touch bin/agent-kernel-failure-lessons.mjs
-
-# Implement hook
-touch bin/agent-kernel-failure-lessons-hook.mjs
-
-# Document protocol and hook
-touch docs/FAILURE_LESSONS_PROTOCOL.md
-touch docs/hooks/FAILURE_LESSONS_HOOK.md
-
-# Add example data
-touch examples/failure-lessons-example.json
-touch examples/failure-lessons-settings.json
-
-# Write test
-touch test/failure-lessons.mjs
-```
-
+---
+name: agent-kernel
+description: |
+  Local-first governance, memory, architecture conformance, and safety layer for AI coding agents.
+  Use this skill to install Agent Kernel, capture durable rules and Failure Lessons,
+  share memory across Claude Code, Codex, Cursor, OpenCode, Antigravity, and Gemini CLI,
+  enforce architecture conformance, search episodes, run change contracts, install hooks,
+  configure MCP, or make multiple coding agents follow the same standards.
+  Triggers: remember this rule, save this workflow, capture this failure, search past
+  episodes, learn from this error, prevent architecture drift, search before creating a
+  service, create a change contract, baseline existing debt, install agent guidance,
+  safe-link this repo, configure MCP, add a guard policy.
 ---
 
-### Feature Bugfix Followup
-**Trigger:** When you add a new CLI or feature file and immediately fix a typo or bug in it  
-**Command:** `/feature-fixup`
+# Agent Kernel — Claude Skill
 
-1. **Add new CLI or feature file**  
-   - Example: `bin/agent-kernel-<feature>.mjs`
-2. **Commit a fix to the same file**  
-   - Example: Fix typo or logic bug in the just-added file
+This skill gives Claude Code the Agent Kernel workflow for local-first governance,
+shared memory, and architecture conformance.
 
-**Example:**
+Canonical install:
+
 ```bash
-# Initial add
-git add bin/agent-kernel-failure-lessons.mjs
-git commit -m "feat: add failure lessons CLI"
-
-# Immediate fix
-# (edit file)
-git add bin/agent-kernel-failure-lessons.mjs
-git commit -m "fix: correct typo in failure lessons CLI"
+npm install -g @mamdouh-aboammar/agent-kernel
+agent-kernel --version
 ```
 
----
+The full surface and command map live in the canonical skill at
+[`SKILL.md`](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/SKILL.md).
+Read that file for trigger phrases, command surface, mental model, and safety rules.
 
-### Feature Documentation Split
-**Trigger:** When documenting a new feature and its hook adapter  
-**Command:** `/document-feature-hooks`
+For architecture conformance work, also load the dedicated
+[`architecture-guardian`](../architecture-guardian/SKILL.md) skill before any
+non-trivial code change.
 
-1. **Create or update protocol documentation**  
-   - `docs/<FEATURE>_PROTOCOL.md`
-2. **Create or update hook documentation**  
-   - `docs/hooks/<FEATURE>_HOOK.md`
+Common Claude-side entry points:
 
-**Example:**
 ```bash
-touch docs/FAILURE_LESSONS_PROTOCOL.md
-touch docs/hooks/FAILURE_LESSONS_HOOK.md
+# Approve a rule the user just asked you to remember
+agent-kernel remember "Never store raw tokens in JSON memory." \
+  --type policy --level critical --publish
+
+# Search past debugging before retrying a failing command
+agent-kernel failure search "ERR_MODULE_NOT_FOUND"
+
+# Capture this failure as a lesson
+agent-kernel failure capture \
+  --from claude --type test-failure \
+  --command "npm test" --exit-code 1 \
+  --text "<error output>" \
+  --root-cause "<why>" --fix "<known fix>"
+
+# Architecture: discover, reuse, check before commit
+agent-kernel architecture doctor .
+agent-kernel architecture discover . --json
+agent-kernel architecture reuse "<capability>" . --json
+agent-kernel architecture check . --json
 ```
 
-## Testing Patterns
+Claude PreToolUse hook for Architecture Guardian:
 
-- **Test Files:** Use `*.test.*` or `test/<feature>.mjs` naming.
-- **Framework:** Not explicitly specified; likely uses Node.js or a minimal runner.
-- **Placement:** All tests go in the `test/` directory.
-- **Style:** Integration or smoke tests are preferred for new features.
-
-**Example:**
-```typescript
-// test/failure-lessons.mjs
-import { runFailureLessons } from '../bin/agent-kernel-failure-lessons.mjs';
-
-describe('Failure Lessons CLI', () => {
-  it('should process example data', () => {
-    // test logic here
-  });
-});
+```bash
+agent-kernel architecture init .
+# Add this to .claude/settings.json hooks.PreToolUse:
+#   matcher: "Write|Edit|MultiEdit"
+#   command: "agent-kernel-architecture-hook"
 ```
 
-## Commands
+Safety rules for Claude:
 
-| Command                | Purpose                                         |
-|------------------------|-------------------------------------------------|
-| /new-feature-module    | Scaffold a new feature with CLI, hook, docs, tests |
-| /feature-fixup         | Quickly follow up a new feature with a bugfix   |
-| /document-feature-hooks| Split and update protocol/hook documentation    |
-```
+- Do not approve or publish memory unless the user explicitly asks.
+- Do not silently broaden architecture policy, baseline, contract, or exception scope.
+- Do not store secrets, `.env` values, MCP credentials, or local auth files in repo-local config.
+- Do not bypass an existing public interface to reach infrastructure directly.
+- Search Failure Lessons and architecture reuse candidates before repeating work.
+- Use safe-link before modifying existing project guidance files.
+- Treat hooks as narrow, auditable lifecycle adapters.
+
+Full documentation:
+
+- [docs/README.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/README.md)
+- [docs/ARCHITECTURE_GUARDIAN.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/ARCHITECTURE_GUARDIAN.md)
+- [docs/AGENT_RUNBOOK.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/AGENT_RUNBOOK.md)
+- [docs/FAILURE_LESSONS_PROTOCOL.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/FAILURE_LESSONS_PROTOCOL.md)
+- [docs/MCP_SERVER.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/MCP_SERVER.md)
+
+License: MIT
