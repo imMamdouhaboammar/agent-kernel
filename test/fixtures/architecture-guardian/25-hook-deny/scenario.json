@@ -1,0 +1,1 @@
+{"id":"25-hook-deny","mode":"hook","policy":{"version":1,"requireContractForWrites":true},"contract":{"version":1,"status":"active","task":"feature","owner":"team","allowedFiles":["src/allowed.ts"],"forbiddenFiles":[],"expectedFiles":[],"allowedNewDependencies":[],"requiredTests":[],"notes":[]},"hookFile":"src/outside.ts","files":{"src/allowed.ts":"export const a=1;\n"}}
