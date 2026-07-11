@@ -96,7 +96,10 @@ export async function run() {
   const projectB = path.join(homeDir, 'project-after-move');
   fs.renameSync(projectA, projectB);
   const moved = JSON.parse(runPublic(env, projectB, 'project', 'identify', '.', '--json'));
-  if (moved.projectId !== identified.projectId || moved.root !== projectB) {
+  const canonicalize = (value) => {
+    try { return fs.realpathSync.native(value); } catch { return path.resolve(value); }
+  };
+  if (moved.projectId !== identified.projectId || canonicalize(moved.root) !== canonicalize(projectB)) {
     throw new Error(`project identity changed after moving the directory: ${JSON.stringify({ identified, moved })}`);
   }
 
@@ -107,11 +110,11 @@ export async function run() {
     throw new Error(`explicit project ID was not stable: ${JSON.stringify(reidentified)}`);
   }
   const listedProjects = JSON.parse(runPublic(env, projectB, 'project', 'list', '--json'));
-  if (!listedProjects.projects.some((project) => project.projectId === 'stable-project-id' && project.root === projectB)) {
+  if (!listedProjects.projects.some((project) => project.projectId === 'stable-project-id' && canonicalize(project.root) === canonicalize(projectB))) {
     throw new Error(`project list omitted the updated project: ${JSON.stringify(listedProjects)}`);
   }
   const shownProject = JSON.parse(runPublic(env, projectB, 'project', 'show', 'stable-project-id', '--json'));
-  if (shownProject.root !== projectB) throw new Error(`project show returned stale root: ${JSON.stringify(shownProject)}`);
+  if (canonicalize(shownProject.root) !== canonicalize(projectB)) throw new Error(`project show returned stale root: ${JSON.stringify(shownProject)}`);
 
   const session = JSON.parse(runPublic(
     env,
