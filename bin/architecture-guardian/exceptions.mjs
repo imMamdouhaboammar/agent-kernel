@@ -1,9 +1,15 @@
 import { architecturePaths } from './paths.mjs';
-import { matchesAny, nowIso, readJson } from './common.mjs';
+import { matchesAny, nowIso, readJsonStrict } from './common.mjs';
+import { validateExceptionsDocument } from './validation.mjs';
 
 export function loadExceptions(root) {
-  const value = readJson(architecturePaths(root).exceptions, { version: 1, exceptions: [] });
-  return Array.isArray(value) ? value : Array.isArray(value?.exceptions) ? value.exceptions : [];
+  const value = readJsonStrict(architecturePaths(root).exceptions, { version: 1, exceptions: [] });
+  const document = Array.isArray(value) ? { version: 1, exceptions: value } : value;
+  const validation = validateExceptionsDocument(document);
+  if (!validation.ok) {
+    throw new Error(validation.issues.map((issue) => `${issue.path}: ${issue.message}`).join('\n'));
+  }
+  return document.exceptions;
 }
 function active(exception, now = nowIso()) {
   if (exception.status === 'revoked') return false;
