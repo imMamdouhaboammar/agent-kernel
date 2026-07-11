@@ -13,7 +13,8 @@ export function loadExceptions(root) {
 }
 function active(exception, now = nowIso()) {
   if (exception.status === 'revoked') return false;
-  return !exception.expiresAt || exception.expiresAt >= now;
+  if (!exception.expiresAt) return true;
+  return Date.parse(exception.expiresAt) >= Date.parse(now);
 }
 function matches(exception, finding) {
   if (exception.ruleId && exception.ruleId !== finding.ruleId) return false;
