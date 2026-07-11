@@ -1,6 +1,20 @@
 import path from 'node:path';
+import { builtinModules } from 'node:module';
 import { languageForFile } from './language.mjs';
 import { normalizeRelative, unique } from './common.mjs';
+
+const NODE_BUILTINS = new Set(builtinModules.flatMap((name) => [name, `node:${name}`]));
+const PYTHON_STDLIB = new Set([
+  'abc','argparse','array','asyncio','base64','binascii','bisect','builtins','calendar','cmath','collections',
+  'concurrent','contextlib','contextvars','copy','csv','dataclasses','datetime','decimal','difflib','email','enum',
+  'errno','faulthandler','fnmatch','fractions','functools','gc','getopt','getpass','gettext','glob','graphlib','gzip',
+  'hashlib','heapq','hmac','html','http','importlib','inspect','io','ipaddress','itertools','json','logging','lzma',
+  'math','mimetypes','multiprocessing','numbers','operator','os','pathlib','pickle','pkgutil','platform','plistlib',
+  'pprint','profile','pstats','queue','random','re','reprlib','secrets','selectors','shelve','shlex','shutil','signal',
+  'site','socket','sqlite3','ssl','statistics','string','struct','subprocess','sys','tempfile','textwrap','threading',
+  'time','timeit','trace','traceback','tracemalloc','types','typing','unittest','urllib','uuid','venv','warnings',
+  'wave','weakref','webbrowser','xml','zipfile','zipimport','zlib'
+]);
 
 function stripJsComments(text) {
   return String(text || '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
@@ -66,10 +80,26 @@ export function extractImports(file, text) {
   return extractor ? extractor(String(text || '')) : [];
 }
 
-export function packageName(specifier) {
+export function packageName(specifier, language = 'javascript') {
   if (!specifier || specifier.startsWith('.') || specifier.startsWith('/') || specifier.startsWith('#')) return null;
-  if (specifier.startsWith('@')) return specifier.split('/').slice(0, 2).join('/');
-  return specifier.split('/')[0];
+  if (language === 'javascript' || language === 'typescript') {
+    const root = specifier.startsWith('@') ? specifier.split('/').slice(0, 2).join('/') : specifier.split('/')[0];
+    if (NODE_BUILTINS.has(specifier) || NODE_BUILTINS.has(root) || NODE_BUILTINS.has(`node:${root}`)) return null;
+    return root;
+  }
+  if (language === 'python') {
+    const root = specifier.split('.')[0];
+    return PYTHON_STDLIB.has(root) ? null : root;
+  }
+  if (language === 'go') {
+    const first = specifier.split('/')[0];
+    return first.includes('.') ? specifier : null;
+  }
+  if (language === 'rust') {
+    const root = specifier.split('::')[0].replace(/[^A-Za-z0-9_]/g, '');
+    return ['crate','self','super','std','core','alloc'].includes(root) ? null : root || null;
+  }
+  return null;
 }
 
 export function resolveLocalImport(fromFile, specifier, allFiles) {
