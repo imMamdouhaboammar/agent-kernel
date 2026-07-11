@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "status": "active",
+  "task": "Describe the reviewed change",
+  "owner": "team-or-domain",
+  "allowedFiles": ["src/feature/**", "test/feature/**"],
+  "forbiddenFiles": ["src/auth/**"],
+  "expectedFiles": ["src/feature/index.ts", "test/feature/index.test.ts"],
+  "allowedNewDependencies": [],
+  "requiredTests": ["feature behavior", "regression case"],
+  "notes": []
+}
