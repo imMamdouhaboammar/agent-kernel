@@ -1,0 +1,9 @@
+# Generated Architecture Guardian evidence
+.agent-kernel/architecture/current-map.json
+.agent-kernel/architecture/reports/
+
+# Keep these reviewable when the team chooses to version them:
+# .agent-kernel/architecture/policy.json
+# .agent-kernel/architecture/baseline.json
+# .agent-kernel/architecture/change-contract.json
+# .agent-kernel/architecture/exceptions.json

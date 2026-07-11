@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Architecture Conformance Report",
+  "type": "object",
+  "required": ["version", "generatedAt", "mode", "status", "summary", "candidateBlockingFindings", "blockingFindings", "newFindings", "preExistingFindings", "suppressed"],
+  "properties": {
+    "version": { "const": 1 },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "mode": { "enum": ["review", "strict"] },
+    "status": { "enum": ["passed", "review", "failed"] },
+    "summary": { "type": "object" },
+    "candidateBlockingFindings": { "type": "array" },
+    "blockingFindings": { "type": "array" },
+    "newFindings": { "type": "array" },
+    "preExistingFindings": { "type": "array" },
+    "suppressed": { "type": "array" }
+  }
+}

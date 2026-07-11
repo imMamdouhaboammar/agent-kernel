@@ -1,0 +1,1 @@
+{"id":"07-denied-package","mode":"check","policy":{"version":1,"deniedExternalPackages":["left-pad"]},"changedFiles":["src/a.ts"],"files":{"src/a.ts":"import pad from 'left-pad'; export const a = pad;\n"}}

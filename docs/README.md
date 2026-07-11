@@ -2,7 +2,7 @@
 
 This folder is the canonical documentation set for Agent Kernel.
 
-Use it to understand the current runtime, connect agent surfaces, update memory behavior, review hook safety, troubleshoot setup, decide which doc must change when behavior changes, and plan portable knowledge sharing.
+Use it to understand the current runtime, connect agent surfaces, update memory behavior, review hook safety, prevent architectural drift, troubleshoot setup, decide which doc must change when behavior changes, and plan portable knowledge sharing.
 
 ---
 
@@ -12,12 +12,13 @@ Use it to understand the current runtime, connect agent surfaces, update memory 
 |---|---|---|
 | I want to install and use Agent Kernel | `INSTALL_AND_AGENT_SETUP.md` | `OPERATING_MODEL.md`, `SAFE_LINKING.md` |
 | I want to understand how the system works | `OPERATING_MODEL.md` | `ARCHITECTURE_NOW.md` |
-| I want to debug a setup or runtime problem | `TROUBLESHOOTING.md` | Relevant setup, hook, MCP, or protocol doc |
+| I want to prevent architecture drift in AI-generated code | `ARCHITECTURE_GUARDIAN.md` | `architecture-guardian/COMMAND_REFERENCE.md`, `skills/architecture-guardian/references/` |
+| I want to debug a setup or runtime problem | `TROUBLESHOOTING.md` | Relevant setup, hook, MCP, architecture, or protocol doc |
 | I am an AI agent working on this repo | `AGENT_RUNBOOK.md` | `AGENTS.md`, `ARCHITECTURE_NOW.md` |
 | I want to change runtime behavior | `ARCHITECTURE_NOW.md` | Relevant protocol doc and tests |
 | I want to add or change memory behavior | `MEMORY_PROTOCOL.md` | `JSON_FIRST_STORAGE.md` |
 | I want to change Failure Lessons | `FAILURE_LESSONS_PROTOCOL.md` | `hooks/FAILURE_LESSONS_HOOK.md` |
-| I want to change hooks | `hooks/CLAUDE_HOOKS_BEST_PRACTICES.md` | `hooks/FAILURE_LESSONS_HOOK.md` |
+| I want to change hooks | `hooks/CLAUDE_HOOKS_BEST_PRACTICES.md` | `hooks/FAILURE_LESSONS_HOOK.md`, `ARCHITECTURE_GUARDIAN.md` |
 | I want to change MCP tools | `MCP_SERVER.md` | `MEMORY_PROTOCOL.md`, `ARCHITECTURE_NOW.md` |
 | I want to connect Claude Code | `integrations/CLAUDE_CODE_LIVE_CONTEXT.md` | `MCP_SERVER.md`, `SAFE_LINKING.md` |
 | I want to connect Codex | `integrations/CODEX_LIVE_CONTEXT.md` | `MCP_SERVER.md`, `SAFE_LINKING.md` |
@@ -37,9 +38,10 @@ For a new reader, follow this order:
 2. `INSTALL_AND_AGENT_SETUP.md` for the safest setup path.
 3. `OPERATING_MODEL.md` for the propose, approve, publish, capture, promote workflow.
 4. `ARCHITECTURE_NOW.md` for the actual current runtime shape.
-5. `SAFE_LINKING.md` before linking Agent Kernel into an existing project.
-6. The relevant file under `integrations/` for exact client setup and rollback.
-7. `TROUBLESHOOTING.md` if setup, linking, hooks, MCP, or memory behave unexpectedly.
+5. `ARCHITECTURE_GUARDIAN.md` when AI agents will make non-trivial code changes.
+6. `SAFE_LINKING.md` before linking Agent Kernel into an existing project.
+7. The relevant file under `integrations/` for exact client setup and rollback.
+8. `TROUBLESHOOTING.md` if setup, linking, hooks, MCP, architecture checks, or memory behave unexpectedly.
 
 This order is deliberately practical. It gets a user from install to safe project adoption before asking them to understand every protocol.
 
@@ -48,6 +50,11 @@ This order is deliberately practical. It gets a user from install to safe projec
 ## Runtime docs
 
 - `ARCHITECTURE_NOW.md` documents the real current runtime. It is the source to check before editing code.
+- `ARCHITECTURE_GUARDIAN.md` documents dependency boundaries, change contracts, baselines, exceptions, reuse-first search, reports, and architecture hooks.
+- `architecture-guardian/COMMAND_REFERENCE.md` lists the complete Architecture Guardian command surface.
+- `architecture-guardian/MIGRATION_GUIDE.md` explains staged adoption from review mode to CI enforcement.
+- `architecture-guardian/REPORTING.md` explains conformance reports and regression classification.
+- `architecture-guardian/SECURITY.md` documents scanner trust and safety boundaries.
 - `OPERATING_MODEL.md` explains the day-to-day governance loop and where each type of knowledge belongs.
 - `MEMORY_PROTOCOL.md` documents durable memory, proposals, approval, publish, and sync.
 - `FAILURE_LESSONS_PROTOCOL.md` documents the error-to-skill loop.
@@ -62,7 +69,7 @@ This order is deliberately practical. It gets a user from install to safe projec
 
 - `INSTALL_AND_AGENT_SETUP.md` gives the safest install and agent setup flow.
 - `SAFE_LINKING.md` explains `agent-kernel-safe-link`, marked blocks, backups, and idempotent project linking.
-- `TROUBLESHOOTING.md` gives symptom-based diagnosis for install, memory home, safe-link, hooks, MCP, Failure Lessons, docs drift, and releases.
+- `TROUBLESHOOTING.md` gives symptom-based diagnosis for install, memory home, safe-link, hooks, MCP, Failure Lessons, Architecture Guardian, docs drift, and releases.
 - `INTEGRATIONS.md` covers the general integration surface across agents.
 - `integrations/CLAUDE_CODE_LIVE_CONTEXT.md` covers Claude Code files, MCP, hooks, optional runtime, and rollback.
 - `integrations/CODEX_LIVE_CONTEXT.md` covers Codex `AGENTS.md`, MCP CLI and TOML setup, optional runtime, and rollback.
@@ -70,6 +77,7 @@ This order is deliberately practical. It gets a user from install to safe projec
 - `integrations/OPENCODE_LIVE_CONTEXT.md` covers `AGENTS.md`, `opencode.jsonc`, optional runtime, and rollback.
 - `hooks/FAILURE_LESSONS_HOOK.md` covers automatic failure capture from Claude Code.
 - `hooks/CLAUDE_HOOKS_BEST_PRACTICES.md` covers hook event selection, exec-form commands, matcher discipline, output discipline, and security boundaries.
+- `skills/architecture-guardian/templates/claude-hooks.json` provides a narrow `PreToolUse` scope enforcement example.
 
 ---
 
@@ -86,19 +94,28 @@ This order is deliberately practical. It gets a user from install to safe projec
 
 - `AGENT_RUNBOOK.md` gives AI coding agents a safe workflow for inspecting, editing, validating, and summarizing work on this repository.
 - `AGENTS.md` at repo root gives repo-level instructions for AGENTS.md-compatible agents.
+- `skills/architecture-guardian/SKILL.md` is the canonical Architecture Guardian orchestrator skill.
+- `.claude/skills/architecture-guardian/SKILL.md` and `.agents/skills/architecture-guardian/SKILL.md` expose concise repo-local entry points.
 
-Agents should read the runbook before making non-trivial changes. It explains runtime boundaries, generated-file boundaries, memory proposal rules, Failure Lessons behavior, hook boundaries, MCP boundaries, and PR summary expectations.
+Agents should read the runbook before making non-trivial changes. It explains runtime boundaries, generated-file boundaries, memory proposal rules, Failure Lessons behavior, architecture conformance, hook boundaries, MCP boundaries, and PR summary expectations.
 
 ---
 
 ## Schema docs
 
 - `schemas/failure-lesson.schema.json` defines the stored Failure Lesson shape.
+- `skills/architecture-guardian/schemas/` defines policy, architecture map, change contract, baseline, exception, and conformance report formats.
 
 Memory and proposal schemas live under the runtime memory home when initialized:
 
 ```text
 ~/.agent-kernel/source/schemas/
+```
+
+Architecture Guardian project state lives under:
+
+```text
+<project>/.agent-kernel/architecture/
 ```
 
 ---
@@ -134,6 +151,7 @@ When changing behavior, update docs in the same PR.
 |---|---|
 | New core command | `README.md`, `ARCHITECTURE_NOW.md`, relevant protocol doc, smoke test docs if needed |
 | New helper binary | `README.md`, `ARCHITECTURE_NOW.md`, relevant setup or protocol doc |
+| New architecture rule, detector, contract, baseline, exception, or report behavior | `ARCHITECTURE_GUARDIAN.md`, focused reference, schema or template, tests, `ARCHITECTURE_NOW.md` |
 | New memory type | `MEMORY_PROTOCOL.md`, `OPERATING_MODEL.md`, `README.md`, `SKILL.md` |
 | New Failure Lessons behavior | `FAILURE_LESSONS_PROTOCOL.md`, `OPERATING_MODEL.md`, `hooks/FAILURE_LESSONS_HOOK.md`, tests |
 | New bundle behavior | `BUNDLE_KB.md`, `MEMORY_PROTOCOL.md`, `OPERATING_MODEL.md`, `README.md`, tests |

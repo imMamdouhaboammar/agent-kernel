@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-kernel.dev/schemas/architecture-policy.schema.json",
+  "title": "Architecture Guardian Policy",
+  "type": "object",
+  "required": ["version", "mode", "confidenceThreshold", "blockOn"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "mode": { "enum": ["review", "strict"] },
+    "confidenceThreshold": { "type": "number", "minimum": 0, "maximum": 1 },
+    "blockOn": { "type": "array", "items": { "enum": ["info", "warning", "medium", "high", "critical"] } },
+    "ignore": { "type": "array", "items": { "type": "string" } },
+    "sourceRoots": { "type": "array", "items": { "type": "string" } },
+    "maxFilesPerChange": { "type": "integer", "minimum": 1 },
+    "requireContractForWrites": { "type": "boolean" },
+    "enforceExternalAllowlist": { "type": "boolean" },
+    "allowedExternalPackages": { "type": "array", "items": { "type": "string" } },
+    "deniedExternalPackages": { "type": "array", "items": { "type": "string" } },
+    "forbiddenDependencies": { "type": "array" },
+    "layers": { "type": "array" },
+    "rules": { "type": "object" }
+  }
+}

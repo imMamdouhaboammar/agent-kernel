@@ -1,0 +1,1 @@
+{"id":"37-go-stdlib-ignored","mode":"check","policy":{"version":1,"enforceExternalAllowlist":true,"allowedExternalPackages":[]},"changedFiles":["src/a.go"],"files":{"src/a.go":"package main\nimport (\n  \"fmt\"\n  \"net/http\"\n)\nfunc main() { fmt.Println(http.MethodGet) }\n"}}

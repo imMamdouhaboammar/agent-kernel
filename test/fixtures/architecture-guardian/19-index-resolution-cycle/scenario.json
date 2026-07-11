@@ -1,0 +1,1 @@
+{"id":"19-index-resolution-cycle","mode":"check","policy":{"version":1},"changedFiles":["src/feature/index.ts"],"files":{"src/a.ts":"import './feature'; export const a = 1;\n","src/feature/index.ts":"import '../a.ts'; export const f = 1;\n"}}

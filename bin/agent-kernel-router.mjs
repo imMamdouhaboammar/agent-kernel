@@ -12,6 +12,7 @@ const failurePatternsPath = path.join(here, 'agent-kernel-failure-patterns.mjs')
 const patternProposalPath = path.join(here, 'agent-kernel-pattern-proposal.mjs');
 const identityCommandPath = path.join(here, 'agent-kernel-identity-command.mjs');
 const registryPath = path.join(here, 'agent-kernel-registry.mjs');
+const architecturePath = path.join(here, 'agent-kernel-architecture.mjs');
 const args = process.argv.slice(2);
 const command = args[0];
 const commitLinkHook = command === 'git-hook' && args[1] === 'install' && args.includes('--commit-link');
@@ -25,22 +26,24 @@ const searchIdentityOrProject = command === 'search' && args.some((arg) =>
 );
 const identityAware = command === 'propose' || command === 'session' || searchIdentityOrProject;
 const registryCommand = command === 'agent' || command === 'project';
-const target = command === 'reindex' || (command === 'search' && !identityAware)
-  ? searchPath
-  : command === 'mcp'
-    ? mcpPath
-    : command === 'commit' || commitLinkHook
-      ? commitPath
-      : failurePatterns
-        ? failurePatternsPath
-        : patternProposal
-          ? patternProposalPath
-          : registryCommand
-            ? registryPath
-            : identityAware
-              ? identityCommandPath
-              : wrapperPath;
-const targetArgs = args;
+const target = command === 'architecture'
+  ? architecturePath
+  : command === 'reindex' || (command === 'search' && !identityAware)
+    ? searchPath
+    : command === 'mcp'
+      ? mcpPath
+      : command === 'commit' || commitLinkHook
+        ? commitPath
+        : failurePatterns
+          ? failurePatternsPath
+          : patternProposal
+            ? patternProposalPath
+            : registryCommand
+              ? registryPath
+              : identityAware
+                ? identityCommandPath
+                : wrapperPath;
+const targetArgs = command === 'architecture' ? args.slice(1) : args;
 const result = childProcess.spawnSync(process.execPath, [target, ...targetArgs], {
   cwd: process.cwd(),
   env: process.env,

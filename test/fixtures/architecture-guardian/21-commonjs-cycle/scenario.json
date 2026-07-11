@@ -1,0 +1,1 @@
+{"id":"21-commonjs-cycle","mode":"check","policy":{"version":1},"changedFiles":["src/a.cjs"],"files":{"src/a.cjs":"require('./b.cjs'); module.exports = 1;\n","src/b.cjs":"require('./a.cjs'); module.exports = 2;\n"}}

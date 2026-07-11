@@ -26,6 +26,7 @@ import { run as runPublicCliSessionTimeline } from './public-cli-session-timelin
 import { run as runPublicCliCommitLinks } from './public-cli-commit-links.mjs';
 import { run as runPublicCliObservation } from './public-cli-observation.mjs';
 import { run as runPublicCliContext } from './public-cli-context.mjs';
+import { run as runPublicCliArchitecture } from './public-cli-architecture.mjs';
 import { run as runFileContext } from './file-context.mjs';
 import { run as runFileReferences } from './file-references.mjs';
 import { run as runStructuredSearch } from './structured-search.mjs';
@@ -39,6 +40,7 @@ import { run as runPublicCliAgentIdentity } from './public-cli-agent-identity.mj
 import { run as runPublicCliRegistries } from './public-cli-registries.mjs';
 import { run as runModeConfig } from './mode-config.mjs';
 import { run as runAgentWriteModes } from './agent-write-modes.mjs';
+import { run as runArchitectureGuardian } from './architecture-guardian.mjs';
 import { run as runPackageFiles } from './package-files.mjs';
 
 const tests = [
@@ -60,6 +62,7 @@ const tests = [
   ['public-cli-commit-links', runPublicCliCommitLinks],
   ['public-cli-observation', runPublicCliObservation],
   ['public-cli-context', runPublicCliContext],
+  ['public-cli-architecture', runPublicCliArchitecture],
   ['file-context', runFileContext],
   ['file-references', runFileReferences],
   ['structured-search', runStructuredSearch],
@@ -73,6 +76,7 @@ const tests = [
   ['public-cli-registries', runPublicCliRegistries],
   ['mode-config', runModeConfig],
   ['agent-write-modes', runAgentWriteModes],
+  ['architecture-guardian', runArchitectureGuardian],
   ['package-files', runPackageFiles]
 ];
 

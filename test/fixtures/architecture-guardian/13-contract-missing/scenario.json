@@ -1,0 +1,1 @@
+{"id":"13-contract-missing","mode":"check","policy":{"version":1,"requireContractForWrites":true},"changedFiles":["src/a.ts"],"files":{"src/a.ts":"export const a = 1;\n"}}

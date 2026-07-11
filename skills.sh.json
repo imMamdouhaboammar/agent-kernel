@@ -10,15 +10,24 @@
       ]
     },
     {
+      "title": "Architecture conformance",
+      "description": "Dependency boundaries, change contracts, reuse-first search, baselines, scoped exceptions, and architecture drift gates.",
+      "skills": [
+        "architecture-guardian"
+      ]
+    },
+    {
       "title": "Cross-agent rule distribution",
       "description": "Compile one JSON-first memory source into AGENTS.md / CLAUDE.md / .cursor/rules / GEMINI.md — every agent, same rules.",
       "skills": [
-        "agent-kernel"
+        "agent-kernel",
+        "architecture-guardian"
       ]
     }
   ],
   "featured": [
-    "agent-kernel"
+    "agent-kernel",
+    "architecture-guardian"
   ],
   "metadata": {
     "repository": "https://github.com/imMamdouhaboammar/agent-kernel",
@@ -29,6 +38,9 @@
       "agentic-coding",
       "memory",
       "governance",
+      "architecture-conformance",
+      "architecture-guardrails",
+      "vibe-coding",
       "ai-coding",
       "claude-code",
       "codex",

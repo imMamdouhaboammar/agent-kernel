@@ -1,0 +1,1 @@
+{"id":"34-node-builtins-ignored","mode":"check","policy":{"version":1,"enforceExternalAllowlist":true,"allowedExternalPackages":[]},"changedFiles":["src/a.ts"],"files":{"src/a.ts":"import fs from 'node:fs'; import path from 'path'; export const a = [fs, path];\n"}}

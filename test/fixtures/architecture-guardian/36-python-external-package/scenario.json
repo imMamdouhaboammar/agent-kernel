@@ -1,0 +1,1 @@
+{"id":"36-python-external-package","mode":"check","policy":{"version":1,"deniedExternalPackages":["requests"]},"changedFiles":["src/a.py"],"files":{"src/a.py":"import requests\nvalue = requests.get\n"}}

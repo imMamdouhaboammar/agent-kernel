@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Architecture Change Contract",
+  "type": "object",
+  "required": ["version", "status", "task", "owner", "allowedFiles", "forbiddenFiles", "expectedFiles", "allowedNewDependencies", "requiredTests", "notes"],
+  "properties": {
+    "version": { "const": 1 },
+    "status": { "enum": ["draft", "active", "closed"] },
+    "task": { "type": "string" },
+    "owner": { "type": "string" },
+    "allowedFiles": { "type": "array", "items": { "type": "string" } },
+    "forbiddenFiles": { "type": "array", "items": { "type": "string" } },
+    "expectedFiles": { "type": "array", "items": { "type": "string" } },
+    "allowedNewDependencies": { "type": "array", "items": { "type": "string" } },
+    "requiredTests": { "type": "array", "items": { "type": "string" } },
+    "notes": { "type": "array", "items": { "type": "string" } }
+  }
+}

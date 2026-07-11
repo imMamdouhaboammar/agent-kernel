@@ -18,12 +18,15 @@
     "agent-kernel-session": "./bin/agent-kernel-session.mjs",
     "agent-kernel-context": "./bin/agent-kernel-context.mjs",
     "agent-kernel-mode": "./bin/agent-kernel-mode.mjs",
-    "agent-kernel-agent-write": "./bin/agent-kernel-agent-write.mjs"
+    "agent-kernel-agent-write": "./bin/agent-kernel-agent-write.mjs",
+    "agent-kernel-architecture": "./bin/agent-kernel-architecture.mjs",
+    "agent-kernel-architecture-hook": "./bin/agent-kernel-architecture-hook.mjs"
   },
   "files": [
     "dist",
     "docs",
     "examples",
+    "skills",
     "README.md",
     "CHANGELOG.md",
     "LICENSE",
@@ -63,6 +66,9 @@
     "error-to-skill",
     "agent-rules",
     "skills-sh",
+    "architecture-conformance",
+    "architecture-guardrails",
+    "vibe-coding",
     "minimax",
     "mavis"
   ],

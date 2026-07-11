@@ -10,16 +10,17 @@ Agent Kernel is a local-first governance kernel for coding agents. The core runt
 src/cli.mjs  ->  scripts/build.mjs  ->  dist/cli.mjs
 ```
 
-The npm executable is exposed through `bin/agent-kernel.mjs`, which routes to `dist/cli.mjs` after build. Focused helper binaries live in `bin/` when the behavior is intentionally outside the current single-file runtime.
+The npm executable is exposed through `bin/agent-kernel-router.mjs`, which routes core commands to the built CLI and focused command families to dedicated helper binaries. Focused helpers live in `bin/` when their behavior is intentionally outside the current single-file runtime.
 
-That means there are two command surfaces today:
+That means there are three runtime surfaces today:
 
 | Surface | Location | Purpose |
 |---|---|---|
 | Core CLI | `src/cli.mjs` / `dist/cli.mjs` | Memory, proposals, compile/sync/link, episodes, guard, MCP, status |
-| Helper binaries | `bin/*.mjs` | Safe link/git hook helpers, agent proposal wrapper, mode/write helpers, Failure Lessons capture/hook |
+| Focused helper commands | `bin/*.mjs` | Safe linking, runtime sessions, Failure Lessons, registries, Architecture Guardian, and hooks |
+| Architecture engine modules | `bin/architecture-guardian/*.mjs` | Dependency discovery, policy checks, contracts, baselines, exceptions, reuse search, and reporting |
 
-The `src/{adapters,commands,core,hooks}/` folders are still placeholders. They document the future modular layout, but files placed there are not imported by the runtime today.
+The `src/{adapters,commands,core,hooks}/` folders are still placeholders. They document the future core modular layout, but files placed there are not imported by the runtime today. Architecture Guardian is deliberately implemented as a wired helper subsystem under `bin/architecture-guardian/`, not inside those placeholders.
 
 ## Runtime data flow
 
@@ -36,9 +37,11 @@ agent-kernel / ak
   +--> episodes:          ~/.agent-kernel/episodes/{archive,index.json,sources.json}
   +--> compiled output:   ~/.agent-kernel/dist/{AGENTS.md,CLAUDE.md,cursor-rule.mdc,...}
   +--> append-only logs:  ~/.agent-kernel/logs/*.jsonl
+  +--> project architecture state:
+       <project>/.agent-kernel/architecture/{policy,map,baseline,contract,exceptions,reports}
 ```
 
-Generated files in `~/.agent-kernel/dist/` are disposable outputs. The source of truth is the JSON under `~/.agent-kernel/source/`, the proposal inbox, and the episode/failure archives.
+Generated files in `~/.agent-kernel/dist/` are disposable outputs. The source of truth is the JSON under `~/.agent-kernel/source/`, the proposal inbox, the episode/failure archives, and reviewed project-local Architecture Guardian policy state.
 
 ## What the CLI does
 
@@ -48,10 +51,27 @@ Generated files in `~/.agent-kernel/dist/` are disposable outputs. The source of
 | Approval workflow | `propose`, `inbox`, `approve`, `reject`, `publish` | `inbox/*`, then `source/memories/*` after approval |
 | Episodes | `episode add/sync/search/show/stats/reindex` | `episodes/archive/*.json`, `episodes/index.json` |
 | Failure Lessons | `failure capture/learn/list/search/show/propose/promote/validate` | `source/failures/failure-lessons.json` |
+| Architecture conformance | `architecture init/discover/baseline/diff/check/reuse/contract/exception/policy/doctor` | `<project>/.agent-kernel/architecture/*` |
 | Agent output | `compile`, `sync`, `link` | `dist/*`, project-local agent files |
-| Enforcement | `guard`, `enforce install`, `git-hook install` | deny patterns, secret patterns, hook configs |
+| Enforcement | `guard`, `enforce install`, `git-hook install`, Architecture Guardian `PreToolUse` hook | deny patterns, architecture policy, change contract, hook configs |
 | MCP | `mcp serve/config/install` | stdio MCP server over the local kernel state |
-| Diagnostics | `doctor`, `status` | current filesystem and config state |
+| Diagnostics | `doctor`, `status`, `architecture doctor` | current filesystem and config state |
+
+## Architecture Guardian flow
+
+Architecture Guardian implements a closed local control loop:
+
+```text
+project files + policy + active contract
+  -> deterministic architecture map
+  -> dependency, cycle, package, and scope evaluation
+  -> confidence filtering
+  -> scoped exception filtering
+  -> baseline classification
+  -> conformance report
+```
+
+Only new unsuppressed blocking findings fail a check. Known baseline debt remains visible but does not become the responsibility of an unrelated change. The reuse command searches existing symbols before an agent introduces a second implementation. The Claude hook checks write scope before `Write`, `Edit`, or `MultiEdit`; content-dependent dependency checks run after files exist.
 
 ## Files that matter
 
@@ -59,7 +79,10 @@ Generated files in `~/.agent-kernel/dist/` are disposable outputs. The source of
 |---|---|
 | `src/cli.mjs` | Core single-file CLI source. Edit this for core runtime commands. |
 | `dist/cli.mjs` | Built CLI copied from `src/cli.mjs` by `scripts/build.mjs`. Do not hand-edit. |
-| `bin/agent-kernel.mjs` | Public wrapper for `agent-kernel` and `ak`. |
+| `bin/agent-kernel-router.mjs` | Public router for `agent-kernel` and `ak`. |
+| `bin/agent-kernel-architecture.mjs` | Architecture Guardian command surface. |
+| `bin/agent-kernel-architecture-hook.mjs` | Claude `PreToolUse` scope adapter. |
+| `bin/architecture-guardian/*.mjs` | Focused architecture analysis and policy modules. |
 | `bin/agent-kernel-failure.mjs` | Failure Lessons CLI helper. |
 | `bin/agent-kernel-failure-hook.mjs` | Claude hook adapter for failed tool payloads. |
 | `bin/agent-kernel-agent-propose.mjs` | Safe agent proposal wrapper. |
@@ -69,11 +92,14 @@ Generated files in `~/.agent-kernel/dist/` are disposable outputs. The source of
 | `scripts/lint-modes.mjs` | Mode/write helper sanity checks. |
 | `scripts/check-version.mjs` | Version single-source-of-truth check. |
 | `test/smoke.mjs` | Test orchestrator that imports focused test modules. |
-| `test/*.mjs` | Focused smoke modules for init, memory, episodes, MCP, safe-link, modes, Failure Lessons, etc. |
+| `test/architecture-guardian.mjs` | Focused Architecture Guardian smoke coverage. |
+| `test/architecture-guardian-evals.mjs` | Data-driven Architecture Guardian torture bench. |
+| `test/fixtures/architecture-guardian/` | Positive and negative architecture scenarios. |
 | `docs/` | Architecture, memory, MCP, hooks, Failure Lessons, integration docs. |
+| `skills/architecture-guardian/` | Canonical skill, references, schemas, and templates. |
 | `.claude/` | Repo-local ECC artifacts and Claude workflow scaffolds. |
 | `.codex/` | Repo-local Codex baseline and role configs. |
-| `.agents/skills/` | Codex-facing generated repository skill. |
+| `.agents/skills/` | Codex-facing repository skills. |
 | `.claude-plugin/` | Claude Code marketplace metadata. |
 | `SKILL.md` | Root Skills.sh / Claude skill discovery file. |
 | `skills.sh.json` | Skills.sh grouping metadata. |
@@ -89,7 +115,7 @@ src/core/
 src/hooks/
 ```
 
-They exist to reserve the future architecture. Do not add production code there unless the modularization work also wires them into `src/cli.mjs`, the build process, and the test suite.
+They exist to reserve the future core architecture. Do not add production code there unless the modularization work also wires them into `src/cli.mjs`, the build process, and the test suite.
 
 ## Testing model
 
@@ -99,7 +125,9 @@ They exist to reserve the future architecture. Do not add production code there 
 node scripts/check-version.mjs && node test/smoke.mjs
 ```
 
-`test/smoke.mjs` is an orchestrator. It imports focused modules such as `test/init.mjs`, `test/memory.mjs`, `test/episode.mjs`, `test/mcp.mjs`, `test/failure-lessons.mjs`, and package-file checks.
+`test/smoke.mjs` is an orchestrator. It imports focused modules such as `test/init.mjs`, `test/memory.mjs`, `test/episode.mjs`, `test/mcp.mjs`, `test/failure-lessons.mjs`, `test/architecture-guardian.mjs`, and package-file checks.
+
+Architecture Guardian additionally runs 26 data-driven scenarios covering correct silence and correct enforcement: valid layers, forbidden dependency direction, cycles, commented imports, package policy, contracts, baseline debt, exception expiry, import variants, reuse search, test evidence, and hook allow/deny behavior.
 
 A new feature should add or update a focused test module, then wire it through `test/smoke.mjs`.
 
@@ -109,16 +137,19 @@ Claude hooks are integration adapters, not hidden agents.
 
 Current guidance:
 
-- use `PreToolUse` for blocking dangerous commands before execution
+- use `PreToolUse` for blocking dangerous commands or writes outside an active architecture contract
 - use `PostToolUseFailure` for Failure Lessons capture
 - prefer exec-form hook commands with `command` + `args`
 - return structured JSON with `additionalContext` where Claude should receive context
 - never approve or publish memory from a hook
+- do not pretend a pre-write hook can validate content that does not exist yet
 
 See:
 
 - `docs/hooks/FAILURE_LESSONS_HOOK.md`
 - `docs/hooks/CLAUDE_HOOKS_BEST_PRACTICES.md`
+- `docs/ARCHITECTURE_GUARDIAN.md`
+- `skills/architecture-guardian/templates/claude-hooks.json`
 
 ## MCP model
 
@@ -130,13 +161,16 @@ Approval through MCP remains disabled by default. The safer workflow is:
 agent proposes -> user reviews inbox -> user approves -> kernel publishes
 ```
 
+Architecture Guardian currently uses CLI and hook surfaces. It does not add hidden MCP approval or policy mutation tools.
+
 ## ECC bundle
 
-The repository now includes repo-local ECC artifacts for Claude Code and Codex:
+The repository includes repo-local ECC artifacts for Claude Code and Codex:
 
 ```text
 .claude/ecc-tools.json
 .claude/skills/agent-kernel/SKILL.md
+.claude/skills/architecture-guardian/SKILL.md
 .claude/commands/*.md
 .claude/identity.json
 .claude/homunculus/instincts/inherited/agent-kernel-instincts.yaml
@@ -144,6 +178,7 @@ The repository now includes repo-local ECC artifacts for Claude Code and Codex:
 .codex/config.toml
 .codex/agents/*.toml
 .agents/skills/agent-kernel/SKILL.md
+.agents/skills/architecture-guardian/SKILL.md
 .agents/skills/agent-kernel/agents/openai.yaml
 ```
 
@@ -151,7 +186,7 @@ Treat these as repo-local workflow scaffolds and generated skills. Keep secrets,
 
 ## Modularization plan
 
-The planned target layout remains:
+The planned target layout for the core CLI remains:
 
 ```text
 src/core/paths.mjs
@@ -173,13 +208,14 @@ src/commands/status.mjs
 src/cli.mjs
 ```
 
-Until that extraction lands, edit the current runtime surface, not the aspirational folders.
+Until that extraction lands, edit the current runtime surface, not the aspirational folders. Focused helper subsystems may remain under `bin/` when they are explicitly routed, packaged, documented, and tested.
 
 ## CI
 
-The CI workflow currently covers:
+The CI workflow covers:
 
 - build + lint + smoke on Node 18/20/22
+- Architecture Guardian unit and 26-scenario eval coverage through smoke
 - TypeScript typecheck
 - manifest validation for Skills.sh and Claude marketplace files
 - docs sanity checks

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Architecture Map",
+  "type": "object",
+  "required": ["version", "generatedAt", "fileCount", "nodes", "edges", "cycles", "externalPackages", "externalImports", "fingerprint"],
+  "properties": {
+    "version": { "const": 1 },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "fileCount": { "type": "integer", "minimum": 0 },
+    "nodes": { "type": "array" },
+    "edges": { "type": "array" },
+    "cycles": { "type": "array" },
+    "externalPackages": { "type": "array", "items": { "type": "string" } },
+    "externalImports": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "package", "specifier"],
+        "properties": {
+          "from": { "type": "string" },
+          "package": { "type": "string" },
+          "specifier": { "type": "string" }
+        }
+      }
+    },
+    "fingerprint": { "type": "string" }
+  }
+}
