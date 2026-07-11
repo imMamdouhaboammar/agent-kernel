@@ -168,7 +168,7 @@ bundle-report.json
 {
   "schema": "agent-kernel.bundle.v1",
   "created_at": "2026-07-09T00:00:00.000Z",
-  "agent_kernel_version": "1.0.0",
+  "agent_kernel_version": "1.8.0",
   "scope": "approved",
   "redaction": {
     "enabled": true,

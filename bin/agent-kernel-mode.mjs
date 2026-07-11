@@ -37,7 +37,7 @@ function fail(message) {
 
 function defaultConfig() {
   return {
-    version: '1.0.0',
+    version: '1.8.0',
     createdAt: new Date().toISOString(),
     generatedBy: 'agent-kernel',
     agentWriteMode: 'approval',

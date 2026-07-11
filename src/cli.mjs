@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 import childProcess from 'node:child_process';
 import readline from 'node:readline';
 
-const VERSION = '1.0.0';
+const VERSION = '1.8.0';
 const MARKER_START = '<!-- agent-kernel:start -->';
 const MARKER_END = '<!-- agent-kernel:end -->';
 const DEFAULT_AGENTS = ['claude', 'codex', 'cursor', 'antigravity', 'gemini'];
@@ -28,6 +28,20 @@ const DEFAULT_SECRET_PATTERNS = [
 const EXCLUDE_DIRS = new Set(['.git', 'node_modules', 'dist', 'build', '.next', '.turbo', '.cache', 'coverage', '.agent-kernel']);
 const EPISODIC_EXCLUSION_MARKER = '<INSTRUCTIONS-TO-EPISODIC-MEMORY>DO NOT INDEX THIS CHAT</INSTRUCTIONS-TO-EPISODIC-MEMORY>';
 const EPISODE_TEXT_LIMIT = 120000;
+const EPISODE_REDACTION_PATTERNS = [
+  ...DEFAULT_SECRET_PATTERNS,
+  '(' + 'OPENAI_API_KEY|ANTHROPIC_API_KEY|SUPABASE_SERVICE_ROLE_KEY' + ')\\s*=\\s*[^\\s\\n]+',
+  'github_' + 'pat_[A-Za-z0-9_]{20,}',
+  'xox' + '[abposr]-[A-Za-z0-9-]{10,}'
+];
+
+function redactEpisodeText(value) {
+  let text = String(value || '');
+  for (const pattern of EPISODE_REDACTION_PATTERNS) {
+    try { text = text.replace(new RegExp(pattern, 'gi'), '[REDACTED_SECRET]'); } catch {}
+  }
+  return text;
+}
 
 function homeDir() {
   return process.env.AGENT_KERNEL_HOME || path.join(os.homedir(), '.agent-kernel');
@@ -482,23 +496,23 @@ function episodePathFor(idValue) {
 }
 
 function normalizeEpisode(input) {
-  const text = String(input.text || '').slice(0, EPISODE_TEXT_LIMIT);
+  const text = redactEpisodeText(input.text || '').slice(0, EPISODE_TEXT_LIMIT);
   const sourceHash = input.sourceHash || sha256(`${input.sourcePath || ''}\n${text}`);
   const episodeId = input.id || `episode_${sourceHash.slice(0, 16)}`;
   const createdAt = input.createdAt || nowIso();
   return {
     id: episodeId,
     type: 'episode',
-    title: input.title || titleFromText(text),
-    summary: input.summary || '',
+    title: redactEpisodeText(input.title || titleFromText(text)).slice(0, 200),
+    summary: redactEpisodeText(input.summary || ''),
     agent: input.agent || 'manual',
-    project: input.project || '',
+    project: redactEpisodeText(input.project || ''),
     sourcePath: input.sourcePath || '',
     sourceHash,
     sourceMtimeMs: input.sourceMtimeMs || null,
     messageCount: input.messageCount || null,
     text,
-    tags: Array.isArray(input.tags) ? input.tags : String(input.tags || '').split(',').map(s => s.trim()).filter(Boolean),
+    tags: Array.isArray(input.tags) ? input.tags.map(redactEpisodeText) : redactEpisodeText(String(input.tags || '')).split(',').map(s => s.trim()).filter(Boolean),
     createdAt,
     updatedAt: input.updatedAt || createdAt,
     version: 1
@@ -959,6 +973,7 @@ function commandLink(flags = {}) {
   const p = kernelPaths();
   const agents = readText(path.join(p.dist, 'AGENTS.md'));
   writeText(path.join(root, 'AGENTS.md'), `${agents}\n\n## Project bridge\n\nLinked project: ${root}\nLinked at: ${nowIso()}\n`);
+  writeText(path.join(root, 'CLAUDE.md'), readText(path.join(p.dist, 'CLAUDE.md')));
   writeText(path.join(root, '.cursor', 'rules', '00-agent-kernel.mdc'), renderCursorRule(loadApproved()));
   writeText(path.join(root, '.agents', 'agents.md'), renderAntigravityAgents(loadApproved()));
   writeText(path.join(root, 'GEMINI.md'), renderGeminiMd(loadApproved()));

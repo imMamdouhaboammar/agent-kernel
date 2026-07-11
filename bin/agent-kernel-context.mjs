@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { identifyProject } from './agent-kernel-project-model.mjs';
 
-const VERSION = '1.0.0';
+const VERSION = '1.8.0';
 const SECRET_PATTERNS = [
   /OPENAI_API_KEY\s*=\s*["'][^"']+["']/gi,
   /ANTHROPIC_API_KEY\s*=\s*["'][^"']+["']/gi,
