@@ -1,14 +1,26 @@
 import { architecturePaths } from './paths.mjs';
 import { DEFAULT_CONTRACT, DEFAULT_POLICY } from './defaults.mjs';
-import { readJson, writeJsonAtomic } from './common.mjs';
+import { readJsonDocument, writeJsonAtomic } from './common.mjs';
 
 function object(value) { return value && typeof value === 'object' && !Array.isArray(value) ? value : {}; }
+function valueOrThrow(state, file) {
+  if (!state.ok) throw new Error(`Invalid JSON at ${file}: ${state.error}`);
+  return state.exists ? state.value : null;
+}
 
+export function readPolicyState(root) {
+  return readJsonDocument(architecturePaths(root).policy);
+}
+export function readContractState(root, explicitFile = null) {
+  return readJsonDocument(explicitFile || architecturePaths(root).contract);
+}
 export function readPolicyDocument(root) {
-  return readJson(architecturePaths(root).policy, null);
+  const file = architecturePaths(root).policy;
+  return valueOrThrow(readPolicyState(root), file);
 }
 export function readContractDocument(root, explicitFile = null) {
-  return readJson(explicitFile || architecturePaths(root).contract, null);
+  const file = explicitFile || architecturePaths(root).contract;
+  return valueOrThrow(readContractState(root, explicitFile), file);
 }
 export function loadPolicy(root) {
   const raw = object(readPolicyDocument(root));
@@ -26,8 +38,9 @@ export function loadPolicy(root) {
 }
 export function writeDefaultPolicy(root, force = false) {
   const file = architecturePaths(root).policy;
-  const existing = readPolicyDocument(root);
-  if (existing && !force) return { file, created: false, policy: loadPolicy(root) };
+  const state = readPolicyState(root);
+  if (!state.ok && !force) throw new Error(`Invalid JSON at ${file}: ${state.error}`);
+  if (state.exists && !force) return { file, created: false, policy: loadPolicy(root) };
   writeJsonAtomic(file, DEFAULT_POLICY);
   return { file, created: true, policy: DEFAULT_POLICY };
 }
