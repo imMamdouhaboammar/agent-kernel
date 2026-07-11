@@ -1,16 +1,16 @@
 import fs from 'node:fs';
 import { architecturePaths } from './paths.mjs';
-import { loadContract, loadPolicy } from './config.mjs';
+import { readContractDocument, readPolicyDocument } from './config.mjs';
 import { readJson } from './common.mjs';
 import { validateContract, validateExceptionsDocument, validatePolicy } from './validation.mjs';
 
 export function architectureDoctor(root) {
   const paths = architecturePaths(root);
   const policyExists = fs.existsSync(paths.policy);
-  const policy = loadPolicy(root);
-  const policyValidation = validatePolicy(policy);
+  const policyRaw = readPolicyDocument(root);
+  const policyValidation = policyExists ? validatePolicy(policyRaw) : { ok: false, issues: [{ path: '$', message: 'policy file is missing' }] };
   const contractExists = fs.existsSync(paths.contract);
-  const contractValidation = contractExists ? validateContract(loadContract(root)) : { ok: true, issues: [] };
+  const contractValidation = contractExists ? validateContract(readContractDocument(root)) : { ok: true, issues: [] };
   const exceptionsExists = fs.existsSync(paths.exceptions);
   const exceptionsRaw = exceptionsExists ? readJson(paths.exceptions, null) : { version: 1, exceptions: [] };
   const exceptionsValidation = validateExceptionsDocument(exceptionsRaw);
