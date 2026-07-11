@@ -4,8 +4,14 @@ import { readJson, writeJsonAtomic } from './common.mjs';
 
 function object(value) { return value && typeof value === 'object' && !Array.isArray(value) ? value : {}; }
 
+export function readPolicyDocument(root) {
+  return readJson(architecturePaths(root).policy, null);
+}
+export function readContractDocument(root, explicitFile = null) {
+  return readJson(explicitFile || architecturePaths(root).contract, null);
+}
 export function loadPolicy(root) {
-  const raw = object(readJson(architecturePaths(root).policy, {}));
+  const raw = object(readPolicyDocument(root));
   return {
     ...DEFAULT_POLICY,
     ...raw,
@@ -18,17 +24,15 @@ export function loadPolicy(root) {
     allowedExternalPackages: Array.isArray(raw.allowedExternalPackages) ? raw.allowedExternalPackages : []
   };
 }
-
 export function writeDefaultPolicy(root, force = false) {
   const file = architecturePaths(root).policy;
-  const existing = readJson(file, null);
+  const existing = readPolicyDocument(root);
   if (existing && !force) return { file, created: false, policy: loadPolicy(root) };
   writeJsonAtomic(file, DEFAULT_POLICY);
   return { file, created: true, policy: DEFAULT_POLICY };
 }
-
 export function loadContract(root, explicitFile = null) {
   const file = explicitFile || architecturePaths(root).contract;
-  const raw = object(readJson(file, {}));
+  const raw = object(readContractDocument(root, explicitFile));
   return { ...DEFAULT_CONTRACT, ...raw, file };
 }
