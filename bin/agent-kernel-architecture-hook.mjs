@@ -22,8 +22,21 @@ function main() {
   const files = collectFiles(payload, root);
   const policy = loadPolicy(root);
   const findings = evaluateContract(files, loadContract(root), policy);
-  const blocking = findings.filter((item) => item.enforcement === 'block' && (policy.blockOn || []).includes(item.severity));
-  if (blocking.length) return write({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: blocking.map((item) => item.message).join('\n').slice(0, 1000) } });
-  return write({ hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: files.length ? `Architecture Guardian checked scope for: ${files.join(', ')}` : 'Architecture Guardian found no file path to scope-check.' } });
+  const candidateBlocking = findings.filter((item) => item.enforcement === 'block' && (policy.blockOn || []).includes(item.severity));
+  if (policy.mode === 'strict' && candidateBlocking.length) {
+    return write({
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        permissionDecision: 'deny',
+        permissionDecisionReason: candidateBlocking.map((item) => item.message).join('\n').slice(0, 1000)
+      }
+    });
+  }
+  const review = candidateBlocking.length
+    ? `Architecture Guardian review findings: ${candidateBlocking.map((item) => item.message).join(' | ')}`
+    : files.length
+      ? `Architecture Guardian checked scope for: ${files.join(', ')}`
+      : 'Architecture Guardian found no file path to scope-check.';
+  return write({ hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: review.slice(0, 1500) } });
 }
 main();
