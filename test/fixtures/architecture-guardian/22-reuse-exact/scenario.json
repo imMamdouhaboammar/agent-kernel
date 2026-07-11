@@ -1,0 +1,1 @@
+{"id":"22-reuse-exact","mode":"reuse","policy":{"version":1},"query":"validate customer email","files":{"src/customer/validate-email.ts":"export function validateCustomerEmail() { return true }\n"}}
