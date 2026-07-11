@@ -1,4 +1,5 @@
 node_modules/
+.agent-kernel/
 .agent-kernel-runtime/
 .agent-kernel-backups/
 agent-kernel-export/
@@ -7,6 +8,7 @@ agent-kernel-export/
 *.log
 dist/*.map
 coverage/
+*.tgz
 
 # Local secrets and credentials
 .env
