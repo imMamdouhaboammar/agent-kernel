@@ -1,39 +1,37 @@
 ---
 name: agent-kernel
 description: |
-  Local-first governance, memory, and safety layer for AI coding agents. Use Agent Kernel
-  when the user wants Claude Code, Codex, Cursor, OpenCode, Antigravity, Gemini CLI, or
-  AGENTS.md-compatible agents to share persistent project rules, preferences, workflows,
-  Failure Lessons, episodic memory, approval inbox proposals, generated guidance files,
-  MCP tools, hooks, and deterministic guardrails. Best triggers include: remember this rule,
-  save this workflow, propose memory, search past episodes, capture this failure, learn from
-  this error, turn this bug into a reusable lesson, install agent guidance, safe-link this repo,
-  set up Claude or Codex instructions, audit agent rules, configure MCP, add a guard policy,
-  or make multiple coding agents follow the same standards without repeating context.
+  Local-first governance, memory, architecture conformance, and safety layer for AI coding agents.
+  Use Agent Kernel when the user wants Claude Code, Codex, Cursor, OpenCode, Antigravity,
+  Gemini CLI, or AGENTS.md-compatible agents to share persistent rules, preferences, workflows,
+  Failure Lessons, episodic memory, approval inbox proposals, generated guidance files, MCP tools,
+  hooks, deterministic command guards, or reviewed architecture boundaries. Best triggers include:
+  remember this rule, save this workflow, propose memory, search past episodes, capture this failure,
+  learn from this error, prevent architecture drift, search before creating a service, create a change
+  contract, baseline existing debt, install agent guidance, safe-link this repo, configure MCP, add a
+  guard policy, or make multiple coding agents follow the same standards without repeating context.
 ---
 
 # Agent Kernel
 
 Agent Kernel is a local-first governance kernel for AI coding agents.
 
-It gives agents one shared source of truth for durable rules, project preferences, workflows, notes, debugging lessons, generated instruction files, hooks, MCP tools, and safety checks.
+It gives agents one shared source of truth for durable rules, project preferences, workflows, debugging lessons, architecture policies, generated instruction files, hooks, MCP tools, and safety checks.
 
-Use this skill when the user wants to make AI coding agents more consistent, safer, and less stateless across projects and sessions.
+Use this skill when the user wants coding agents to remain consistent across projects and sessions, or when working code must also respect reviewed architectural boundaries.
 
 ---
 
 ## What this skill provides
 
-Agent Kernel provides:
-
 1. Shared JSON-first memory at `~/.agent-kernel/source/memories/*.json`.
-2. Approval inbox where agents can propose memory but the user decides what gets published.
-3. Failure Lessons for turning repeated build, test, edit, and command failures into searchable lessons.
+2. Approval inbox where agents propose memory and the user decides what gets published.
+3. Failure Lessons for turning repeated build, test, edit, and command failures into searchable evidence.
 4. Episodic memory for session history, debugging context, decisions, and investigations.
-5. Generated guidance for Claude Code, Codex, Cursor, OpenCode, Antigravity, Gemini CLI, and AGENTS.md-compatible agents.
-6. Safe project linking that preserves existing project instructions outside Agent Kernel marked blocks.
-7. Claude hooks, git hooks, MCP tools, and deterministic command guards.
-8. Repo-local ECC scaffolding for Claude Code and Codex.
+5. Architecture Guardian for project maps, dependency rules, reuse search, change contracts, baselines, exceptions, reports, and scope hooks.
+6. Generated guidance for Claude Code, Codex, Cursor, OpenCode, Antigravity, Gemini CLI, and AGENTS.md-compatible agents.
+7. Safe project linking that preserves existing instructions outside Agent Kernel marked blocks.
+8. Claude hooks, git hooks, MCP tools, deterministic command guards, and repo-local ECC scaffolding.
 
 ---
 
@@ -47,29 +45,37 @@ Activate when the user says or implies:
 - stop the agent from repeating this mistake
 - capture this error as a lesson
 - search previous debugging history
+- prevent AI-generated architecture drift
+- check whether a service, validator, repository, or utility already exists
+- stop writes outside an approved task scope
+- baseline existing architecture debt
+- enforce dependency boundaries or prevent cycles
 - set up shared memory for agents
 - connect Claude, Codex, Cursor, Gemini, OpenCode, or Antigravity
 - install AGENTS.md, CLAUDE.md, Cursor rules, or Gemini guidance
-- add hooks, guardrails, or MCP support
-- audit or repair Agent Kernel docs, memory, hooks, or generated guidance
-- propose a rule but do not approve it automatically
+- add hooks, guardrails, Architecture Guardian, or MCP support
+- audit or repair Agent Kernel docs, memory, hooks, architecture state, or generated guidance
+- propose a durable rule without approving it automatically
 
-Do not activate it for generic coding tasks unless the user needs persistent memory, governance, rules, hooks, MCP, Failure Lessons, or cross-agent guidance.
+Do not activate it for generic coding tasks unless the user needs persistent governance, architecture conformance, memory, hooks, MCP, Failure Lessons, or cross-agent guidance.
 
 ---
 
 ## Mental model
 
 ```text
-user rule, workflow, or failure
-  -> agent captures evidence or proposes memory
-  -> user reviews inbox or lesson
-  -> Agent Kernel publishes approved source memory
-  -> generated guidance is compiled and linked into projects
-  -> future agents inherit the same rules and lessons
+user rule, workflow, failure, or architecture boundary
+  -> agent captures evidence, maps the project, or proposes memory
+  -> user reviews inbox, policy, contract, baseline, or exception
+  -> Agent Kernel publishes approved guidance or enforces reviewed constraints
+  -> future agents inherit the same rules, lessons, and project boundaries
 ```
 
-Important boundary: agents may propose and capture. Agents should not silently approve or publish durable memory.
+Important boundaries:
+
+- Agents may capture and propose. They should not silently approve durable memory.
+- Agents may inspect architecture state. They should not silently broaden policy, baseline, contract, or exception scope.
+- Review mode reports candidate blockers. Strict mode enforces reviewed blockers.
 
 ---
 
@@ -98,6 +104,8 @@ Typical generated project outputs:
 AGENTS.md
 CLAUDE.md
 .cursor/rules/00-agent-kernel.mdc
+.codex/AGENTS.md
+.codex/config.toml
 .agents/agents.md
 .agents/skills/README.md
 GEMINI.md
@@ -165,6 +173,43 @@ agent-kernel inbox
 agent-kernel approve <proposal-id> --publish
 ```
 
+### Prevent architecture drift
+
+Start in review mode:
+
+```bash
+agent-kernel architecture init .
+agent-kernel architecture policy validate .
+agent-kernel architecture discover . --json
+agent-kernel architecture baseline . --json
+```
+
+Before creating a new capability:
+
+```bash
+agent-kernel architecture reuse "validate customer email" . --json
+```
+
+For a non-trivial task:
+
+```bash
+agent-kernel architecture contract init . \
+  --task "Add subscription cancellation" \
+  --owner billing \
+  --allow "src/billing/**,test/billing/**" \
+  --expect "src/billing/cancel-subscription.ts,test/billing/cancel-subscription.test.ts" \
+  --tests "cancel active subscription,idempotent cancellation"
+```
+
+Before commit:
+
+```bash
+agent-kernel architecture check . --json
+agent-kernel architecture check . --strict --json
+```
+
+Read `skills/architecture-guardian/SKILL.md` for the complete workflow. Baselines, policies, contracts, and exceptions require review. An exception needs scope, reason, owner, and expiry.
+
 ### Capture an episode
 
 ```bash
@@ -182,7 +227,7 @@ agent-kernel episode search "stripe webhook"
 
 ```text
 agent-kernel init [--sync] [--enforce]
-agent-kernel doctor
+agent-kernel doctor [--runtime]
 agent-kernel compile
 agent-kernel sync
 agent-kernel link [project] [--hooks]
@@ -197,12 +242,16 @@ agent-kernel migrate json [--publish]
 agent-kernel memory list|search|show
 agent-kernel episode add|sync|search|show|stats|reindex
 agent-kernel failure capture|learn|list|search|show|propose|promote|validate
+agent-kernel architecture init|discover|baseline|diff|check|reuse|contract|exception|policy|doctor
+agent-kernel context [--query text] [--file path] [--budget 1200]
+agent-kernel daemon start|stop|restart|status
+agent-kernel session start|end|list|show|observe|observations
 agent-kernel enforce install
 agent-kernel guard [--staged|--file path]
 agent-kernel git-hook install [project]
 agent-kernel mcp serve|config|install
 agent-kernel start <claude|codex|cursor|antigravity|gemini> [project]
-agent-kernel status
+agent-kernel status [--runtime]
 ```
 
 Helper binaries:
@@ -213,6 +262,12 @@ agent-kernel-safe-git-hook
 agent-kernel-agent-propose
 agent-kernel-failure
 agent-kernel-failure-hook
+agent-kernel-architecture
+agent-kernel-architecture-hook
+agent-kernel-daemon
+agent-kernel-runtime-doctor
+agent-kernel-session
+agent-kernel-context
 agent-kernel-mode
 agent-kernel-agent-write
 ak
@@ -224,25 +279,29 @@ ak
 
 Failure capture deduplicates by `project + command + errorSignature` by default. Repeated captures increment `occurrences` and update `lastSeenAt` instead of creating duplicate records.
 
-Promotion is review-first:
-
-```bash
-agent-kernel failure propose <failure-lesson-id> --as rule
-agent-kernel inbox
-agent-kernel approve <proposal-id> --publish
-```
-
-Valid promotion targets include:
-
-```text
-rule
-policy
-workflow
-skill
-note
-```
+Promotion is review-first. Valid promotion targets are `rule`, `policy`, `workflow`, `skill`, and `note`.
 
 Agents may capture and propose. They must not silently approve or publish.
+
+---
+
+## Architecture Guardian behavior
+
+Architecture Guardian stores project-local state under:
+
+```text
+<project>/.agent-kernel/architecture/
+  policy.json
+  current-map.json
+  baseline.json
+  change-contract.json
+  exceptions.json
+  reports/latest.json
+```
+
+It scans bounded source files without executing repository code. Deterministic checks include dependency direction, forbidden pairs, cycles, package policy, contract scope, new dependency approval, and file-count limits. Review findings include incomplete expected files and test evidence.
+
+Known baseline findings remain visible but do not fail an unrelated change. External package findings include importer evidence. `--strict` can enforce a check without permanently changing the policy mode.
 
 ---
 
@@ -256,7 +315,9 @@ Claude failure capture should use:
 - short timeouts
 - structured JSON output with `hookSpecificOutput.additionalContext`
 
-Hooks are lifecycle adapters, not hidden agents. They should not approve memory, publish memory, run broad autonomous workflows, or leak credentials.
+Architecture scope enforcement uses `PreToolUse` with `Write|Edit|MultiEdit`. It checks file scope only. Content-dependent dependency checks run after the file exists.
+
+Hooks are lifecycle adapters, not hidden agents. They should not approve memory, publish memory, change architecture policy, create broad exceptions, run autonomous workflows, or leak credentials.
 
 ---
 
@@ -273,11 +334,11 @@ Safe MCP uses:
 - run guard checks
 - work with episodes where supported
 
-Approval through MCP is disabled by default unless the user explicitly asks for a trusted local workflow.
+Approval through MCP is disabled by default unless the user explicitly asks for a trusted local workflow. Architecture Guardian currently uses CLI and hook surfaces rather than hidden MCP policy mutation tools.
 
 ---
 
-## Memory layout
+## Memory and architecture layout
 
 ```text
 ~/.agent-kernel/
@@ -290,24 +351,27 @@ Approval through MCP is disabled by default unless the user explicitly asks for 
   inbox/
   dist/
   logs/
+
+<project>/.agent-kernel/
+  architecture/
 ```
 
-Generated files in `dist/` are disposable outputs. Source JSON, proposals, episodes, policies, and Failure Lessons are canonical.
+Generated files in `~/.agent-kernel/dist/` are disposable outputs. Source JSON, proposals, episodes, policies, Failure Lessons, and reviewed project architecture state are canonical.
 
 ---
 
 ## Agent compatibility
 
-| Agent | Memory source | Main output or integration |
+| Agent | Shared memory | Main output or integration |
 |---|---|---|
-| Claude Code | yes | `CLAUDE.md`, hooks, MCP config, marketplace metadata |
-| Codex | yes | `AGENTS.md`, `.codex/AGENTS.md`, `.codex/config.toml` |
+| Claude Code | yes | `CLAUDE.md`, hooks, MCP config, marketplace metadata, Architecture Guardian skill |
+| Codex | yes | `AGENTS.md`, `.codex/AGENTS.md`, `.codex/config.toml`, repo-local skills |
 | Cursor | yes | `.cursor/rules/00-agent-kernel.mdc` |
 | OpenCode | yes | `AGENTS.md` |
 | Antigravity | yes | `.agents/agents.md`, `.agents/skills/*` |
 | Gemini CLI | yes | `GEMINI.md` |
 | AGENTS.md-compatible tools | yes | `AGENTS.md` |
-| Skills.sh surfaces | yes | `SKILL.md`, `skills.sh.json` |
+| Skills.sh surfaces | yes | `SKILL.md`, `skills.sh.json`, `skills/architecture-guardian/SKILL.md` |
 
 ---
 
@@ -315,11 +379,13 @@ Generated files in `dist/` are disposable outputs. Source JSON, proposals, episo
 
 - Do not approve or publish memory unless the user explicitly asks.
 - Do not edit generated guidance as the durable source of truth.
+- Do not silently broaden architecture policy, baseline, contract, or exception state.
 - Do not store secrets, `.env` values, MCP credentials, or local auth files in repo-local config.
 - Search Failure Lessons before repeating the same failing command.
+- Search architecture reuse candidates before creating a parallel capability.
 - Use safe-link before modifying existing project guidance files.
 - Treat hooks as narrow, auditable lifecycle adapters.
-- When behavior changes, update README, relevant docs, tests, and discovery metadata together.
+- When behavior changes, update README, relevant docs, tests, schemas, templates, and discovery metadata together.
 
 ---
 
@@ -330,6 +396,7 @@ Start with:
 - [docs/README.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/README.md)
 - [docs/OPERATING_MODEL.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/OPERATING_MODEL.md)
 - [docs/ARCHITECTURE_NOW.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/ARCHITECTURE_NOW.md)
+- [docs/ARCHITECTURE_GUARDIAN.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/ARCHITECTURE_GUARDIAN.md)
 - [docs/TROUBLESHOOTING.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/TROUBLESHOOTING.md)
 - [docs/AGENT_RUNBOOK.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/AGENT_RUNBOOK.md)
 - [docs/MEMORY_PROTOCOL.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/MEMORY_PROTOCOL.md)
@@ -351,11 +418,14 @@ Discovery files:
 
 ```text
 SKILL.md
+skills/architecture-guardian/SKILL.md
 skills.sh.json
 .claude-plugin/marketplace.json
 .claude-plugin/plugin.json
 .claude/skills/agent-kernel/SKILL.md
+.claude/skills/architecture-guardian/SKILL.md
 .agents/skills/agent-kernel/SKILL.md
+.agents/skills/architecture-guardian/SKILL.md
 ```
 
 ---
