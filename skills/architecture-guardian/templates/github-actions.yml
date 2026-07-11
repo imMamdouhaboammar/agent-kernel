@@ -15,4 +15,4 @@ jobs:
           node-version: 22
       - run: npm install -g @mamdouh-aboammar/agent-kernel
       - run: agent-kernel architecture policy validate .
-      - run: agent-kernel architecture check . --base "${{ github.event.pull_request.base.sha }}" --json
+      - run: agent-kernel architecture check . --base "${{ github.event.pull_request.base.sha }}" --strict --json
