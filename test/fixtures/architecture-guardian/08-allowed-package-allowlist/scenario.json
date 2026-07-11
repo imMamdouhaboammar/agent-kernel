@@ -1,0 +1,1 @@
+{"id":"08-allowed-package-allowlist","mode":"check","policy":{"version":1,"enforceExternalAllowlist":true,"allowedExternalPackages":["lodash"]},"changedFiles":["src/a.ts"],"files":{"src/a.ts":"import lodash from 'lodash'; export const a = lodash;\n"}}
