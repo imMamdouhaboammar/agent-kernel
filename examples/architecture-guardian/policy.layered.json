@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "mode": "review",
+  "confidenceThreshold": 0.8,
+  "blockOn": ["critical", "high"],
+  "ignore": ["generated/**"],
+  "sourceRoots": ["src/**", "app/**", "packages/**"],
+  "maxFilesPerChange": 40,
+  "requireContractForWrites": true,
+  "enforceExternalAllowlist": false,
+  "allowedExternalPackages": [],
+  "deniedExternalPackages": [],
+  "forbiddenDependencies": [
+    {
+      "id": "domain-no-infrastructure",
+      "from": ["src/domain/**"],
+      "to": ["src/infrastructure/**"],
+      "severity": "critical",
+      "enforcement": "block",
+      "message": "Domain code must not import infrastructure."
+    }
+  ],
+  "layers": [
+    { "name": "domain", "include": ["src/domain/**"], "mayDependOn": [], "severity": "high", "enforcement": "block" },
+    { "name": "application", "include": ["src/application/**"], "mayDependOn": ["domain"], "severity": "high", "enforcement": "block" },
+    { "name": "infrastructure", "include": ["src/infrastructure/**"], "mayDependOn": ["application", "domain"], "severity": "high", "enforcement": "block" }
+  ],
+  "rules": {
+    "cycles": { "enabled": true, "severity": "high" },
+    "scope": { "enabled": true, "severity": "high" },
+    "reuse": { "enabled": true, "severity": "warning", "minimumScore": 0.72 },
+    "testCompanion": { "enabled": true, "severity": "warning" }
+  }
+}
