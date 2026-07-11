@@ -9,13 +9,17 @@ function assignLayer(file, policy) {
   const matches = (policy.layers || []).filter((layer) => matchesAny(file, layer.include || []));
   return matches.length ? matches[0].name : null;
 }
+function inSourceRoots(file, policy) {
+  const roots = policy.sourceRoots || [];
+  return !roots.length || matchesAny(file, roots);
+}
 
 export function discoverArchitecture(root, policy) {
-  const files = walkCodeFiles(root, { ignore: policy.ignore });
+  const files = walkCodeFiles(root, { ignore: policy.ignore }).filter((file) => inSourceRoots(file, policy));
   const fileSet = new Set(files);
   const nodes = [];
   const edges = [];
-  const externalPackages = [];
+  const externalImports = [];
   const adjacency = new Map(files.map((file) => [file, []]));
   const languages = {};
   for (const file of files) {
@@ -33,21 +37,23 @@ export function discoverArchitecture(root, policy) {
         adjacency.get(file).push(target);
       } else {
         const dependency = packageName(specifier);
-        if (dependency) externalPackages.push(dependency);
+        if (dependency) externalImports.push({ from: file, package: dependency, specifier });
       }
     }
   }
+  const externalPackages = unique(externalImports.map((item) => item.package)).sort();
   const map = {
     version: 1,
     generatedAt: nowIso(),
     root: path.basename(root),
     fileCount: files.length,
     languages,
-    externalPackages: unique(externalPackages).sort(),
+    externalPackages,
+    externalImports: externalImports.sort((a, b) => `${a.package}:${a.from}`.localeCompare(`${b.package}:${b.from}`)),
     nodes: nodes.sort((a, b) => a.file.localeCompare(b.file)),
     edges: edges.sort((a, b) => `${a.from}:${a.to}`.localeCompare(`${b.from}:${b.to}`)),
     cycles: findCycles(adjacency).map((cycle) => cycle.path)
   };
-  map.fingerprint = shortHash(sortObject({ nodes: map.nodes, edges: map.edges, externalPackages: map.externalPackages }));
+  map.fingerprint = shortHash(sortObject({ nodes: map.nodes, edges: map.edges, externalImports: map.externalImports }));
   return map;
 }
