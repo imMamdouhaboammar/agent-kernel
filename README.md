@@ -4,10 +4,10 @@
 
 <h1>Agent Kernel</h1>
 
-<p><strong>Lightweight local memory and safety for the AI coding agents you already use.</strong></p>
+<p><strong>Lightweight local memory, safety, and architecture controls for the AI coding agents you already use.</strong></p>
 
 <p>
-Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity, and AGENTS.md-compatible tools one shared source of truth for repo rules, user preferences, workflows, debugging lessons, guard policies, and generated agent instructions.
+Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity, and AGENTS.md-compatible tools one shared source of truth for repo rules, user preferences, workflows, debugging lessons, architecture policies, and generated agent instructions.
 </p>
 
 <p>
@@ -28,7 +28,7 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
 
 ## Why you would install this
 
-AI coding agents are useful, but most sessions still start with missing context. The agent forgets your repo rules, repeats old mistakes, runs commands you already warned against, or fixes a bug once and then loses the lesson.
+AI coding agents are useful, but most sessions still start with missing context. The agent forgets your repo rules, repeats old mistakes, runs commands you already warned against, or produces code that works while quietly weakening the architecture.
 
 Agent Kernel gives those agents a small local operating layer.
 
@@ -37,11 +37,13 @@ Agent Kernel gives those agents a small local operating layer.
 | You repeat the same rules in every prompt | Durable local memory compiled into agent-readable files |
 | Claude, Codex, Cursor, and Gemini drift from each other | One source of truth distributed to each surface |
 | The same build or test failure comes back | Failure Lessons that capture command, error, root cause, and fix |
+| AI-generated code creates hidden dependency drift | Architecture Guardian with maps, boundaries, contracts, baselines, and reports |
+| An agent creates a second service or validator that already exists | Reuse-first symbol search before new capabilities are introduced |
 | Agents find useful project rules but should not silently save them | Proposal inbox with user approval before publish |
 | Existing AGENTS.md, CLAUDE.md, or Cursor rules might be damaged | Safe linking with dry-run mode and marked blocks |
 | You do not want a heavy platform | A Node CLI, local JSON files, optional hooks, optional MCP |
 
-The practical gain: keep using your current agents, but stop making each one relearn the same project context from scratch.
+The practical gain: keep using your current agents, but stop making each one relearn the same project context and architectural boundaries from scratch.
 
 ---
 
@@ -52,24 +54,25 @@ Agent Kernel is not another coding agent. It does not replace Claude Code, Codex
 It sits around them as a local control layer:
 
 ```text
-your rules, preferences, workflows, notes, policies, and failure lessons
-  -> local Agent Kernel source JSON
-  -> compile and safe-link
-  -> AGENTS.md, CLAUDE.md, GEMINI.md, Cursor rules, Codex files, Antigravity files
-  -> agents start with better context next run
+your rules, preferences, workflows, notes, policies, failure lessons,
+and project architecture constraints
+  -> local Agent Kernel source JSON and project-local architecture state
+  -> compile, safe-link, hooks, and conformance checks
+  -> AGENTS.md, CLAUDE.md, GEMINI.md, Cursor rules, Codex files, reports
+  -> agents start with better context and clearer boundaries next run
 ```
 
 The approval boundary stays explicit:
 
 ```text
-agent notices a durable lesson
-  -> agent proposes memory or captures failure evidence
-  -> you review the inbox
+agent notices a durable lesson or architectural risk
+  -> agent captures evidence or proposes memory
+  -> you review the inbox, policy, contract, baseline, or exception
   -> you approve only what should last
-  -> Agent Kernel publishes updated guidance
+  -> Agent Kernel publishes guidance or enforces the reviewed boundary
 ```
 
-Autopilot here means repeated context work is automated. Approval stays human-owned.
+Autopilot here means repeated context and checking work is automated. Approval stays human-owned.
 
 ---
 
@@ -81,9 +84,10 @@ It is currently:
 
 - one npm package
 - a local `~/.agent-kernel/` folder
+- project-local `.agent-kernel/architecture/` state when Architecture Guardian is used
 - JSON-first storage
 - generated markdown and config surfaces
-- optional git hooks
+- optional git and Claude hooks
 - optional local stdio MCP server
 - optional local daemon for live context capture
 - zero runtime npm dependencies
@@ -94,7 +98,7 @@ It is not:
 - a database server
 - a cloud account
 - a background daemon by default
-- a replacement for tests, CI, or code review
+- a replacement for tests, CI, code review, or software architecture decisions
 - a secret store
 
 ---
@@ -154,6 +158,60 @@ agent-kernel link . --hooks
 ```
 
 For existing repositories, prefer safe-link first.
+
+---
+
+## Architecture Guardian
+
+Architecture Guardian prevents working code from hiding structural regressions. It maps source dependencies, checks reviewed boundaries, searches existing capabilities, distinguishes old debt from new violations, and can block writes outside an active change contract.
+
+Start in review mode:
+
+```bash
+cd ~/Projects/YourProject
+
+agent-kernel architecture init .
+# review and edit .agent-kernel/architecture/policy.json
+agent-kernel architecture policy validate .
+agent-kernel architecture discover . --json
+agent-kernel architecture baseline . --json
+```
+
+Before a non-trivial change:
+
+```bash
+agent-kernel architecture contract init . \
+  --task 'Add subscription cancellation' \
+  --owner billing \
+  --allow 'src/billing/**,test/billing/**' \
+  --expect 'src/billing/cancel-subscription.ts,test/billing/cancel-subscription.test.ts' \
+  --tests 'cancel active subscription,idempotent cancellation'
+
+agent-kernel architecture reuse 'cancel subscription' . --json
+agent-kernel architecture check . --json
+```
+
+Use strict mode for a blocking local or CI gate:
+
+```bash
+agent-kernel architecture check . --base origin/master --strict --json
+```
+
+Architecture Guardian provides:
+
+- source-root-scoped architecture maps
+- local dependency and circular dependency detection
+- layer and forbidden dependency policies
+- external package evidence and allow or deny policies
+- active change contracts for files, dependencies, and test expectations
+- baseline classification so old debt is not blamed on a new change
+- scoped exceptions with owner, reason, and expiry
+- reuse-first search across existing symbols
+- review and strict modes
+- Claude `PreToolUse` scope enforcement for Write, Edit, and MultiEdit
+- data-driven positive and negative evaluations to reduce false positives
+
+Read [`docs/ARCHITECTURE_GUARDIAN.md`](./docs/ARCHITECTURE_GUARDIAN.md) for the workflow and [`skills/architecture-guardian/`](./skills/architecture-guardian/) for the skill, schemas, templates, and focused references.
 
 ---
 
@@ -248,6 +306,17 @@ agent-kernel inbox
 agent-kernel approve <proposal-id> --publish
 ```
 
+### Prevent architecture drift
+
+```bash
+agent-kernel architecture doctor .
+agent-kernel architecture discover . --json
+agent-kernel architecture reuse 'validate customer email' . --json
+agent-kernel architecture check . --strict --json
+```
+
+If the same architectural mistake repeats, capture the failed check as a Failure Lesson, then propose a durable rule for user review rather than silently changing policy.
+
 ### Capture project history as episodes
 
 ```bash
@@ -299,6 +368,7 @@ agent-kernel migrate json [--publish]
 agent-kernel memory list|search|show
 agent-kernel episode add|sync|search|show|stats|reindex
 agent-kernel failure capture|learn|list|search|show|propose|promote|validate
+agent-kernel architecture init|discover|baseline|diff|check|reuse|contract|exception|policy|doctor
 agent-kernel context [--query text] [--file path] [--budget 1200]
 agent-kernel daemon start|stop|restart|status
 agent-kernel session start|end|list|show|observe|observations
@@ -318,6 +388,8 @@ agent-kernel-safe-git-hook
 agent-kernel-agent-propose
 agent-kernel-failure
 agent-kernel-failure-hook
+agent-kernel-architecture
+agent-kernel-architecture-hook
 agent-kernel-daemon
 agent-kernel-runtime-doctor
 agent-kernel-session
@@ -333,13 +405,13 @@ ak
 
 | Agent or surface | Output or integration |
 |---|---|
-| Claude Code | `CLAUDE.md`, hooks, MCP config, marketplace plugin metadata |
+| Claude Code | `CLAUDE.md`, context and architecture hooks, MCP config, marketplace plugin metadata, repo-local skills |
 | Codex | `AGENTS.md`, `.codex/AGENTS.md`, `.codex/config.toml`, repo-local skills |
 | Cursor | `.cursor/rules/00-agent-kernel.mdc` |
 | OpenCode / AGENTS-compatible agents | `AGENTS.md` |
 | Antigravity | `.agents/agents.md`, `.agents/skills/*` |
 | Gemini CLI | `GEMINI.md` |
-| Skills.sh | `SKILL.md`, `skills.sh.json` |
+| Skills.sh | `SKILL.md`, `skills.sh.json`, `skills/architecture-guardian/SKILL.md` |
 
 Keep credentials and private MCP details in user-level config, not in repo-local generated files.
 
@@ -349,8 +421,12 @@ Keep credentials and private MCP details in user-level config, not in repo-local
 
 - Agents may propose memories. Only Agent Kernel publishes approved memories.
 - Failure Lessons capture evidence first. Promotion creates a pending proposal, not approved memory.
+- Architecture policies, baselines, contracts, and exceptions are review artifacts. Agents should not silently broaden them.
+- Review mode surfaces candidate blockers. Strict mode enforces reviewed blocking severities.
+- Baseline findings stay visible but do not fail an unrelated change.
+- Exceptions require scope, reason, owner, and expiry.
 - Hooks are lifecycle adapters, not hidden agents.
-- Critical rules should also be backed by permissions, guard checks, git hooks, or CI.
+- Critical rules should also be backed by permissions, guard checks, hooks, or CI.
 - Repo-local configs are reviewable execution surfaces. Keep them minimal and credential-free.
 - Built-in guards include dangerous `rm -rf`, `curl | sh`, recursive `chmod 777`, force-push to main, `.git` deletion, and common secret patterns.
 
@@ -364,7 +440,9 @@ Start with [`docs/README.md`](./docs/README.md).
 |---|---|
 | Install and connect agents | [`docs/INSTALL_AND_AGENT_SETUP.md`](./docs/INSTALL_AND_AGENT_SETUP.md) |
 | Understand the operating model | [`docs/OPERATING_MODEL.md`](./docs/OPERATING_MODEL.md) |
-| Current architecture | [`docs/ARCHITECTURE_NOW.md`](./docs/ARCHITECTURE_NOW.md) |
+| Current repository architecture | [`docs/ARCHITECTURE_NOW.md`](./docs/ARCHITECTURE_NOW.md) |
+| Prevent AI-generated architecture drift | [`docs/ARCHITECTURE_GUARDIAN.md`](./docs/ARCHITECTURE_GUARDIAN.md) |
+| Architecture command reference | [`docs/architecture-guardian/COMMAND_REFERENCE.md`](./docs/architecture-guardian/COMMAND_REFERENCE.md) |
 | Troubleshoot setup or runtime issues | [`docs/TROUBLESHOOTING.md`](./docs/TROUBLESHOOTING.md) |
 | AI agent contributor runbook | [`docs/AGENT_RUNBOOK.md`](./docs/AGENT_RUNBOOK.md) |
 | Memory and approval protocol | [`docs/MEMORY_PROTOCOL.md`](./docs/MEMORY_PROTOCOL.md) |
