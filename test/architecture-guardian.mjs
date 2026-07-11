@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { findCycles } from '../bin/architecture-guardian/graph.mjs';
 import { runArchitectureGuardianEvals } from './architecture-guardian-evals.mjs';
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
@@ -28,6 +29,12 @@ function commitAll(project, message = 'fixture') {
 }
 
 export async function run() {
+  {
+    const adjacency = new Map();
+    const count = 12000;
+    for (let index = 0; index < count; index++) adjacency.set(`node-${index}`, index + 1 < count ? [`node-${index + 1}`] : []);
+    assert.deepEqual(findCycles(adjacency), [], 'long acyclic graphs should not overflow the JavaScript call stack');
+  }
   {
     const project = tmp(); initGit(project);
     const result = runCommand(project, 'init', project);
