@@ -12,6 +12,11 @@ function collectFiles(payload, root) {
   return [...new Set(values.map((value) => safeRelative(root, path.isAbsolute(value) ? value : path.join(root, value))).filter(Boolean))];
 }
 function write(value) { process.stdout.write(JSON.stringify(value)); }
+function hookPolicy(root) {
+  const policy = loadPolicy(root);
+  const override = process.env.AGENT_KERNEL_ARCHITECTURE_MODE;
+  return ['review', 'strict'].includes(override) ? { ...policy, mode: override } : policy;
+}
 function main() {
   const payload = readPayload();
   const event = payload.hook_event_name || payload.hookEventName || payload.event || process.argv[2];
@@ -20,7 +25,7 @@ function main() {
   if (!['Write','Edit','MultiEdit'].includes(tool)) return write({});
   const root = projectRoot(payload.cwd || process.cwd());
   const files = collectFiles(payload, root);
-  const policy = loadPolicy(root);
+  const policy = hookPolicy(root);
   const findings = evaluateContract(files, loadContract(root), policy);
   const candidateBlocking = findings.filter((item) => item.enforcement === 'block' && (policy.blockOn || []).includes(item.severity));
   if (policy.mode === 'strict' && candidateBlocking.length) {
