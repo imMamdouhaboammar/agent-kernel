@@ -12,6 +12,15 @@ function collectFiles(payload, root) {
   return [...new Set(values.map((value) => safeRelative(root, path.isAbsolute(value) ? value : path.join(root, value))).filter(Boolean))];
 }
 function write(value) { process.stdout.write(JSON.stringify(value)); }
+function deny(reason) {
+  return write({
+    hookSpecificOutput: {
+      hookEventName: 'PreToolUse',
+      permissionDecision: 'deny',
+      permissionDecisionReason: String(reason || 'Architecture Guardian could not validate the write.').slice(0, 1000)
+    }
+  });
+}
 function hookPolicy(root) {
   const policy = loadPolicy(root);
   const override = process.env.AGENT_KERNEL_ARCHITECTURE_MODE;
@@ -29,13 +38,7 @@ function main() {
   const findings = evaluateContract(files, loadContract(root), policy);
   const candidateBlocking = findings.filter((item) => item.enforcement === 'block' && (policy.blockOn || []).includes(item.severity));
   if (policy.mode === 'strict' && candidateBlocking.length) {
-    return write({
-      hookSpecificOutput: {
-        hookEventName: 'PreToolUse',
-        permissionDecision: 'deny',
-        permissionDecisionReason: candidateBlocking.map((item) => item.message).join('\n').slice(0, 1000)
-      }
-    });
+    return deny(candidateBlocking.map((item) => item.message).join('\n'));
   }
   const review = candidateBlocking.length
     ? `Architecture Guardian review findings: ${candidateBlocking.map((item) => item.message).join(' | ')}`
@@ -44,4 +47,5 @@ function main() {
       : 'Architecture Guardian found no file path to scope-check.';
   return write({ hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: review.slice(0, 1500) } });
 }
-main();
+try { main(); }
+catch (error) { deny(`Architecture Guardian state validation failed: ${error?.message || String(error)}`); }
