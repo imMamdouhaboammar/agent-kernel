@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "status": "active",
+  "task": "Add subscription cancellation",
+  "owner": "billing",
+  "allowedFiles": ["src/billing/**", "test/billing/**"],
+  "forbiddenFiles": ["src/auth/**"],
+  "expectedFiles": ["src/billing/cancel-subscription.ts", "test/billing/cancel-subscription.test.ts"],
+  "allowedNewDependencies": [],
+  "requiredTests": ["cancel active subscription", "idempotent cancellation"],
+  "notes": []
+}
