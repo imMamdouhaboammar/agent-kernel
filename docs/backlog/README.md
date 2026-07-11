@@ -2,7 +2,7 @@
 
 This backlog translates the strongest ideas from `rohitg00/agentmemory` into an Agent Kernel roadmap while protecting the core product principle: Agent Kernel stays local-first, lightweight, review-first, and dependency-light.
 
-Agent Kernel should not become a hosted memory platform, a required daemon, a database service, or an autonomous approval system. The backlog below adds optional live context where it helps agents work better, while keeping durable memory under user control.
+Agent Kernel should not become a hosted memory platform, a required daemon, a database service, or an autonomous approval system. The backlog below adds optional live context and capability routing where they help agents work better, while keeping durable memory under user control.
 
 ## Current implementation status
 
@@ -15,6 +15,8 @@ The first runtime slice has started:
 - a public CLI smoke test covers the daemon route and local evidence capture
 - CI or local test execution still needs to verify the latest implementation commit
 
+The Skill Docker track is currently a planned backlog. It defines safe capability discovery, classification, graph routing, lazy loading, agent hooks, and cross-agent learning without requiring a daemon, embeddings, or a graph database.
+
 ## Product principle
 
 Agent Kernel must remain:
@@ -26,6 +28,8 @@ Agent Kernel must remain:
 5. Useful without a background daemon
 6. Useful without embeddings, vector databases, or cloud services
 7. Safe for existing repositories
+8. Token-conscious when selecting skills and tools
+9. Able to return `no additional capability needed`
 
 ## Backlog files
 
@@ -35,6 +39,7 @@ Agent Kernel must remain:
 | `SESSION_AND_FILE_CONTEXT_BACKLOG.md` | Session capture, observation timeline, file-aware context, and commit links |
 | `MCP_AGENT_IDENTITY_BACKLOG.md` | Small MCP tool surface, agent identity, trust levels, and integration rules |
 | `SEARCH_RETENTION_REPORTING_BACKLOG.md` | Local search scoring, retention, export/import, terminal viewer, and static reports |
+| `SKILL_DOCKER_BACKLOG.md` | Local capability inventory, use-case classification, skill graph, pre-task routing, lazy loading, hooks, and shared routing lessons |
 | `IMPLEMENTATION_ORDER.md` | Practical build order, MVP scope, and what to avoid |
 
 ## Architectural stance
@@ -54,10 +59,23 @@ Target direction:
 source JSON + approved memory + episodes + Failure Lessons
   -> static generated agent guidance
   -> optional live local context
+  -> optional Skill Docker capability route
   -> safer agent behavior during real work
 ```
 
-The static layer remains first-class. The live layer is optional.
+Skill Docker target flow:
+
+```text
+installed local skills, tools, hooks, commands, and plugins
+  -> safe metadata inventory
+  -> compact capability graph
+  -> one pre-task route
+  -> lazy-load a small selected bundle
+  -> capture outcome evidence
+  -> propose reviewable routing lessons
+```
+
+The static layer remains first-class. The live layer and Skill Docker automatic routing are optional.
 
 ## Default safety boundary
 
@@ -70,6 +88,9 @@ Agents may:
 5. Create proposals
 6. Ask for file-specific context
 7. Ask for guard checks
+8. Query the local capability graph
+9. Load the capabilities selected by a route
+10. Record route outcomes as local evidence
 
 Agents may not, by default:
 
@@ -80,6 +101,9 @@ Agents may not, by default:
 5. Store secrets
 6. Enable remote access
 7. Turn observations into durable memory without user approval
+8. Execute discovered plugins or hooks during inventory
+9. Auto-publish routing lessons
+10. Inject the full capability graph into task context
 
 ## Recommended labels for GitHub issues
 
@@ -91,7 +115,9 @@ Agents may not, by default:
 | `memory` | Approved memory, proposals, episodes, or Failure Lessons |
 | `mcp` | MCP server tools and integration work |
 | `agent-integrations` | Claude, Codex, Cursor, Gemini, OpenCode, and related setup |
-| `safety` | Approval boundaries, guardrails, secrets, or trust levels |
+| `skills` | Skill registry, capability metadata, classification, and loading |
+| `routing` | Task fingerprinting, graph queries, scoring, and capability bundle selection |
+| `safety` | Approval boundaries, guardrails, secrets, trust levels, or unsafe sources |
 | `docs` | Documentation-only work |
 
 ## Decision rule
@@ -103,5 +129,7 @@ Any new feature should answer yes to all of these:
 3. Does it avoid required external infrastructure?
 4. Does it keep durable memory approval under user control?
 5. Does it add clear value to repeated agent work?
+6. Does it avoid loading irrelevant context into the agent?
+7. Can the user inspect why the system made its decision?
 
 If the answer is no, the feature belongs outside the default kernel path.
