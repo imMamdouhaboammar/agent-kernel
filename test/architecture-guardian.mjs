@@ -31,6 +31,22 @@ export async function run() {
   }
   {
     const project = tmp(); initGit(project);
+    json(path.join(project, '.agent-kernel/architecture/policy.json'), { version: 1, mode: 42, confidenceThreshold: 0.8, blockOn: ['high'], layers: [], forbiddenDependencies: [] });
+    const result = runCommand(project, 'policy', 'validate', project);
+    assert.equal(result.status, 2, 'raw policy validation should reject invalid mode types');
+    assert.equal(JSON.parse(result.stdout).ok, false);
+  }
+  {
+    const project = tmp(); initGit(project);
+    json(path.join(project, '.agent-kernel/architecture/policy.json'), { version: 1 });
+    const show = runCommand(project, 'contract', 'show', project);
+    assert.equal(show.status, 0, show.stderr);
+    assert.equal(JSON.parse(show.stdout).status, 'draft', 'missing contracts should not appear active');
+    const validate = runCommand(project, 'contract', 'validate', project);
+    assert.equal(validate.status, 2, 'contract validation should fail when the file is missing');
+  }
+  {
+    const project = tmp(); initGit(project);
     write(path.join(project, 'src/customer/validate-email.ts'), 'export function validateCustomerEmail() { return true }\n');
     json(path.join(project, '.agent-kernel/architecture/policy.json'), { version: 1 });
     const result = runCommand(project, 'reuse', 'validate email', project);
