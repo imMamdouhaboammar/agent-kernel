@@ -1,0 +1,1 @@
+{"id":"06-comment-import-no-cycle","mode":"check","policy":{"version":1},"changedFiles":["src/a.ts"],"files":{"src/a.ts":"// import './b.ts'\nexport const a = 1;\n","src/b.ts":"import './a.ts'; export const b = 1;\n"}}
