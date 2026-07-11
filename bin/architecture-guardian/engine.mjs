@@ -11,7 +11,8 @@ import { evaluateArchitecture } from './policy.mjs';
 import { buildReport } from './report.mjs';
 
 export function runCheck(root, options = {}) {
-  const policy = loadPolicy(root);
+  const loadedPolicy = loadPolicy(root);
+  const policy = options.mode ? { ...loadedPolicy, mode: options.mode } : loadedPolicy;
   const map = discoverArchitecture(root, policy);
   const files = changedFiles(root, { files: options.files, base: options.base });
   const contract = loadContract(root, options.contractFile);
