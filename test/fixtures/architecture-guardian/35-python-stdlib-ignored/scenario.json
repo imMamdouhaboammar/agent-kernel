@@ -1,0 +1,1 @@
+{"id":"35-python-stdlib-ignored","mode":"check","policy":{"version":1,"enforceExternalAllowlist":true,"allowedExternalPackages":[]},"changedFiles":["src/a.py"],"files":{"src/a.py":"import os\nfrom pathlib import Path\nvalue = Path(os.getcwd())\n"}}
