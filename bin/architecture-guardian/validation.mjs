@@ -4,6 +4,7 @@ const ENFORCEMENT = new Set(['review', 'block']);
 
 function issue(path, message) { return { path, message }; }
 function stringArray(value) { return Array.isArray(value) && value.every((item) => typeof item === 'string' && item.trim()); }
+function nonEmptyStringArray(value) { return stringArray(value) && value.length > 0; }
 function validDate(value) { return typeof value === 'string' && value.trim() && !Number.isNaN(Date.parse(value)); }
 function validateRuleConfig(value, path, issues) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -42,7 +43,7 @@ export function validatePolicy(policy) {
       if (!layer.name || typeof layer.name !== 'string') issues.push(issue(`${base}.name`, 'layer name is required'));
       else if (names.has(layer.name)) issues.push(issue(`${base}.name`, 'layer names must be unique'));
       else names.add(layer.name);
-      if (!stringArray(layer.include)) issues.push(issue(`${base}.include`, 'layer include must be a non-empty string array'));
+      if (!nonEmptyStringArray(layer.include)) issues.push(issue(`${base}.include`, 'layer include must be a non-empty string array'));
       if (!Array.isArray(layer.mayDependOn) || layer.mayDependOn.some((value) => typeof value !== 'string')) issues.push(issue(`${base}.mayDependOn`, 'mayDependOn must be a string array'));
       if (layer.severity !== undefined && !SEVERITIES.has(layer.severity)) issues.push(issue(`${base}.severity`, 'severity is invalid'));
       if (layer.enforcement !== undefined && !ENFORCEMENT.has(layer.enforcement)) issues.push(issue(`${base}.enforcement`, 'enforcement must be review or block'));
@@ -55,8 +56,8 @@ export function validatePolicy(policy) {
       issues.push(issue(base, 'dependency rule must be an object'));
       return;
     }
-    if (!stringArray(rule.from)) issues.push(issue(`${base}.from`, 'from must be a non-empty string array'));
-    if (!stringArray(rule.to)) issues.push(issue(`${base}.to`, 'to must be a non-empty string array'));
+    if (!nonEmptyStringArray(rule.from)) issues.push(issue(`${base}.from`, 'from must be a non-empty string array'));
+    if (!nonEmptyStringArray(rule.to)) issues.push(issue(`${base}.to`, 'to must be a non-empty string array'));
     if (rule.severity !== undefined && !SEVERITIES.has(rule.severity)) issues.push(issue(`${base}.severity`, 'severity is invalid'));
     if (rule.enforcement !== undefined && !ENFORCEMENT.has(rule.enforcement)) issues.push(issue(`${base}.enforcement`, 'enforcement must be review or block'));
   });
@@ -74,7 +75,7 @@ export function validateContract(contract) {
   else if (contract.status === 'active' && !contract.task.trim()) issues.push(issue('task', 'active contracts require a task'));
   if (typeof contract.owner !== 'string' || !contract.owner.trim()) issues.push(issue('owner', 'owner must be a non-empty string'));
   for (const key of ['allowedFiles','forbiddenFiles','expectedFiles','allowedNewDependencies','requiredTests','notes']) {
-    if (!stringArray(contract[key]) && !(Array.isArray(contract[key]) && contract[key].length === 0)) issues.push(issue(key, `${key} must be an array of strings`));
+    if (!stringArray(contract[key])) issues.push(issue(key, `${key} must be an array of strings`));
   }
   if (contract.maxFiles !== undefined && (!Number.isInteger(Number(contract.maxFiles)) || Number(contract.maxFiles) < 1)) issues.push(issue('maxFiles', 'maxFiles must be a positive integer'));
   return { ok: issues.length === 0, issues };
