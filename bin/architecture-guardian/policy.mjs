@@ -49,11 +49,15 @@ function externalPackageFindings(map, policy) {
   const denied = new Set(policy.deniedExternalPackages || []);
   const allowed = new Set(policy.allowedExternalPackages || []);
   const blocked = map.externalPackages.filter((name) => denied.has(name) || (policy.enforceExternalAllowlist && !allowed.has(name)));
-  return blocked.map((name) => finding({
-    ruleId: 'denied-external-package', type: 'external-package', severity: 'critical', confidence: 1,
-    title: `External package is not approved: ${name}`, message: `${name} is disallowed by project architecture policy.`,
-    files: [], evidence: { package: name }, enforcement: 'block', remediation: 'Use an approved dependency or request a reviewed policy exception.'
-  }));
+  return blocked.map((name) => {
+    const imports = (map.externalImports || []).filter((item) => item.package === name);
+    return finding({
+      ruleId: 'denied-external-package', type: 'external-package', severity: 'critical', confidence: 1,
+      title: `External package is not approved: ${name}`, message: `${name} is disallowed by project architecture policy.`,
+      files: imports.map((item) => item.from), evidence: { package: name, imports }, enforcement: 'block',
+      remediation: 'Use an approved dependency or request a reviewed policy exception.'
+    });
+  });
 }
 export function evaluateArchitecture(map, policy) {
   return [...layerPolicyFindings(map, policy), ...forbiddenFindings(map, policy), ...cycleFindings(map, policy), ...externalPackageFindings(map, policy)];
