@@ -20,6 +20,20 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
   <a href='./LICENSE'><img alt='license' src='https://img.shields.io/badge/license-MIT-30363d'></a>
 </p>
 
+<p>
+  <strong>Current stable release: <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'>v1.8.0</a></strong> &mdash; Architecture Guardian conformance engine, change contracts, baselines, scoped exceptions, reuse-first search, Claude PreToolUse scope hook, 37-scenario torture bench, and fail-closed governance state.
+</p>
+
+<p>
+  <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'><img alt='npm version' src='https://img.shields.io/npm/v/@mamdouh-aboammar/agent-kernel'></a>
+  <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'><img alt='npm downloads' src='https://img.shields.io/npm/dw/@mamdouh-aboammar/agent-kernel'></a>
+  <a href='https://bundlephobia.com/package/@mamdouh-aboammar/agent-kernel'><img alt='bundle size' src='https://img.shields.io/bundlephobia/min/@mamdouh-aboammar/agent-kernel'></a>
+  <a href='https://github.com/imMamdouhaboammar/agent-kernel/actions/workflows/ci.yml'><img alt='CI' src='https://github.com/imMamdouhaboammar/agent-kernel/actions/workflows/ci.yml/badge.svg'></a>
+  <img alt='node' src='https://img.shields.io/badge/node-%3E%3D18.18.0-30363d'>
+  <img alt='runtime dependencies' src='https://img.shields.io/badge/runtime_deps-0-30363d'>
+  <a href='./LICENSE'><img alt='license' src='https://img.shields.io/badge/license-MIT-30363d'></a>
+</p>
+
 <img src='./docs/brand/agent-strip.svg' alt='Agent Kernel supported agent stack' width='900' />
 
 </div>
@@ -197,6 +211,35 @@ Use strict mode for a blocking local or CI gate:
 agent-kernel architecture check . --base origin/master --strict --json
 ```
 
+CI example (GitHub Actions):
+
+```yaml
+- name: Architecture Guardian (strict)
+  run: |
+    npx -y @mamdouh-aboammar/agent-kernel architecture init .
+    npx -y @mamdouh-aboammar/agent-kernel architecture policy validate .
+    npx -y @mamdouh-aboammar/agent-kernel architecture check . --base origin/${{ github.base_ref }} --strict --json
+```
+
+Claude `PreToolUse` scope hook (`.claude/settings.json`):
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "agent-kernel-architecture-hook" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Set `AGENT_KERNEL_ARCHITECTURE_MODE=strict` to make the hook deny. Default is review.
+
 Architecture Guardian provides:
 
 - source-root-scoped architecture maps
@@ -210,6 +253,9 @@ Architecture Guardian provides:
 - review and strict modes
 - Claude `PreToolUse` scope enforcement for Write, Edit, and MultiEdit
 - data-driven positive and negative evaluations to reduce false positives
+- fail-closed behavior on malformed JSON, invalid policy, or invalid contracts
+- iterative graph traversal that handles large dependency graphs without stack overflow
+- standard-library false-positive control (Node builtins, Python `stdlib`, Go `stdlib`)
 
 Read [`docs/ARCHITECTURE_GUARDIAN.md`](./docs/ARCHITECTURE_GUARDIAN.md) for the workflow and [`skills/architecture-guardian/`](./skills/architecture-guardian/) for the skill, schemas, templates, and focused references.
 

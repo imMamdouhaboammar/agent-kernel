@@ -3,42 +3,161 @@
 All notable changes to this project are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [1.8.0] - 2026-07-11
+
+Architecture Guardian is now a first-class, production-ready Agent Kernel
+capability. This release ships the full conformance engine behind the public
+`agent-kernel architecture` router, with discovery, change contracts, baselines,
+scoped exceptions, reuse-first search, Claude PreToolUse scope enforcement, and
+fail-closed governance state.
 
 ### Added
 
-- `docs/brand/` with lightweight repo-owned SVG assets: minimal logo, README hero, and supported-agent surface strip.
-- `docs/BUNDLE_KB.md` documenting the planned Knowledge Bundle feature for portable `.akb` sharing, inspection, diffing, review-first import, and guided install.
-- `docs/OPERATING_MODEL.md` to explain the day-to-day Agent Kernel governance loop: propose, approve, publish, capture, search, and promote.
-- `docs/TROUBLESHOOTING.md` with symptom-based diagnosis for install, memory home, safe-link, hooks, MCP, Failure Lessons, docs drift, and release issues.
-- `docs/AGENT_RUNBOOK.md` with a practical workflow for AI coding agents working on this repository or using Agent Kernel inside another project.
+- **Architecture Guardian runtime.** `bin/agent-kernel-architecture.mjs` (full
+  command surface) and `bin/agent-kernel-architecture-hook.mjs` (Claude
+  PreToolUse scope enforcement) are now part of the public CLI and the npm
+  package. The engine modules live in `bin/architecture-guardian/` and are
+  consumable from the public router via `agent-kernel architecture ...`.
+- **Architecture discovery and maps.** `agent-kernel architecture discover`
+  produces a JSON project map with source roots, layers, dependencies, cycles,
+  external package usage, and a stable map fingerprint. Project-local state
+  lives at `.agent-kernel/architecture/current-map.json`.
+- **Dependency rules and circular dependency detection.** `policy.json` now
+  supports layer rules, forbidden dependency pairs, external package
+  allow/deny lists, and a non-recursive iterative cycle detector that scales
+  beyond 12 000 nodes without stack overflow.
+- **Review and strict enforcement modes.** `agent-kernel architecture check`
+  defaults to review (report candidate blockers) and supports
+  `--strict` to enforce reviewed blocking severities without permanently
+  changing the policy mode.
+- **Change Contracts.** `agent-kernel architecture contract init/show/
+  validate/close` creates an active contract with a task, owner, allowed
+  files, forbidden files, expected files, allowed new dependencies, and
+  required test descriptions. Contracts gate writes in strict mode.
+- **Architecture baselines and diffs.** `agent-kernel architecture baseline`
+  and `agent-kernel architecture diff` classify pre-existing findings so
+  they are not attributed to the current change. A finding fingerprint
+  prevents re-attribution of unchanged debt.
+- **Scoped expiring exceptions.** `agent-kernel architecture exception add/
+  list/revoke` records reviewable exceptions with scope, reason, owner, and
+  ISO-8601 expiry. Expired exceptions stop suppressing findings
+  automatically.
+- **Reuse-first search.** `agent-kernel architecture reuse "<capability>"`
+  searches existing symbols across supported languages before new
+  capabilities are introduced. Returns ranked candidates with file, layer,
+  and score.
+- **Claude PreToolUse hook.** `agent-kernel-architecture-hook` denies writes
+  outside an active change contract when
+  `AGENT_KERNEL_ARCHITECTURE_MODE=strict` is set, and emits structured
+  `additionalContext` feedback in review mode.
+- **npm package and public router integration.** The package `bin` map
+  exposes `agent-kernel-architecture` and `agent-kernel-architecture-hook`,
+  and `package.json#files` ships the full engine module tree, skill,
+  schemas, and templates.
+- **Skills.sh and Claude plugin integration.**
+  `skills/architecture-guardian/SKILL.md` is the canonical first-class
+  skill, mirrored to `.claude/skills/architecture-guardian/SKILL.md` and
+  `.agents/skills/architecture-guardian/SKILL.md`. The Claude plugin
+  `agent-kernel` lists both `./` and `./skills/architecture-guardian` as
+  bundled skills.
+- **37-scenario torture bench.** `test/architecture-guardian.mjs` and
+  `test/architecture-guardian-evals.mjs` cover layered, forbidden pair,
+  cycle (2-node, 3-node, comment, dynamic, CommonJS, index-resolution),
+  package policy, contract scope, baseline pre-existing vs new, exception
+  suppression (active and expired), strict and review modes, source-root
+  isolation, unapproved and approved new dependencies, missing and
+  complete expected files, hook deny / allow / review, test companion
+  review, and language-specific false-positive control for Node, Python,
+  and Go standard libraries.
+- **Fail-closed JSON handling.** Malformed policy, contract, baseline, and
+  exception JSON is rejected with a clear error. Architecture checks return
+  exit 1, doctor reports the failure, and the hook denies writes when
+  governance state cannot be validated.
+- **Iterative graph traversal.** Cycle detection uses an iterative
+  worklist so it scales to large dependency graphs without stack overflow.
+- **Standard-library false-positive controls.** Node `node:*` builtins,
+  Python `stdlib` packages, and Go `stdlib` packages are recognized and
+  do not produce false dependency findings.
+- **Node.js 18, 20, and 22 verification.** CI matrix runs build, lint, and
+  smoke on all three Node majors.
 
 ### Changed
 
-- `README.md` now opens with centered product positioning, badges, brand visuals, and a clearer explanation of why installing Agent Kernel gives value without adding a heavy system.
-- `README.md` now explains that Agent Kernel is a local control layer around existing agents, not a replacement agent.
-- `README.md` now includes a planned `Bundle your KB` section with proposed bundle commands.
-- `docs/README.md` now includes the Knowledge Bundle doc, brand asset map, and docs ownership rule for bundle behavior.
-- `README.md` now gives a clearer install path, safe project adoption flow, operating loop, command map, and documentation map.
-- `docs/README.md` now separates first-time setup, runtime docs, integration docs, schema docs, development docs, agent docs, troubleshooting, and ownership rules.
-- `docs/INTEGRATIONS.md` now recommends `agent-kernel-safe-link` and `agent-kernel-safe-git-hook` as the default adoption path for existing projects.
-- `docs/SAFE_LINKING.md` now documents idempotency, duplicate marked-block cleanup, backup behavior, direct-link comparison, Claude guidance linking, and what agents should not edit.
-- `AGENTS.md` now points coding agents to the dedicated runbook and troubleshooting guide before non-trivial work.
-- `CONTRIBUTING.md` now includes clearer pre-edit reading order, helper-binary checklist, safe-link and hook rules, troubleshooting-first guidance, and release pre-flight checks.
+- `agent-kernel` public router now exposes the `architecture` subcommand and
+  dispatches to `agent-kernel-architecture.mjs` for all architecture work.
+- `SKILL.md` now lists Architecture Guardian as a first-class capability
+  with required triggers, mental model, and command surface.
+- `.claude/skills/agent-kernel/SKILL.md` and
+  `.agents/skills/agent-kernel/SKILL.md` were rewritten with valid
+  frontmatter and Architecture Guardian cross-references.
+- `.claude/skills/architecture-guardian/SKILL.md` and
+  `.agents/skills/architecture-guardian/SKILL.md` are now first-class
+  skills pointing to the canonical references rather than one long prompt.
+- `.claude-plugin/marketplace.json` and `.claude-plugin/plugin.json` bumped
+  to `1.8.0` with `architecture-guardian` listed as a bundled skill.
+- `README.md` now opens with an explicit v1.8.0 release callout and adds a
+  CI example, a Claude `PreToolUse` hook example, and a fail-closed
+  governance section.
+- `docs/ARCHITECTURE_GUARDIAN.md` and `docs/architecture-guardian/*` are
+  aligned with the shipped behavior: review mode, strict mode, change
+  contract lifecycle, baselines, exceptions, hook fail-closed,
+  standard-library false-positive handling, supported languages, CI
+  integration, and migration from review to strict.
+- All helper binaries (`bin/agent-kernel-architecture.mjs`,
+  `bin/agent-kernel-architecture-hook.mjs`, `bin/agent-kernel-mode.mjs`,
+  and other `bin/*.mjs` files) carry the new `VERSION = '1.8.0'`
+  constant.
+- `package-lock.json` regenerated to reflect the new `bin` entries for
+  `agent-kernel-architecture` and `agent-kernel-architecture-hook`.
+- `docs/BUNDLE_KB.md` example manifest updated to `agent_kernel_version:
+  "1.8.0"`.
 
 ### Fixed
 
-- `agent-kernel-safe-link` now links generated Claude guidance into `CLAUDE.md`, preserving existing Claude-specific instructions outside the Agent Kernel marked block.
-- Public `agent-kernel link` safe behavior now has regression coverage for `CLAUDE.md` preservation and idempotency.
+- `bin/agent-kernel-file-context.mjs` and
+  `bin/agent-kernel-file-records-core.mjs` now canonicalize both the
+  project root and the input file path before computing `path.relative`,
+  fixing a macOS symlink mismatch where `/var/folders/...` (the cwd as
+  passed to a child process) did not match `/private/var/folders/...`
+  (the canonical form returned by `git rev-parse --show-toplevel`).
+- `bin/architecture-guardian/common.mjs` `safeRelative` now canonicalizes
+  the project root and the absolute file path through
+  `fs.realpathSync.native` with a parent-directory fallback, so file
+  references are matched consistently across macOS, Linux, and Windows
+  paths.
+- `test/public-cli-registries.mjs` now compares project roots through
+  `fs.realpathSync.native` so the test is stable on macOS where
+  `git rev-parse` returns the canonical path while the test's home is the
+  non-canonical `/var/folders/...` form.
 
-### Planned
+### Security
 
-- Add a `bundle` command group for portable knowledge sharing: `bundle create`, `bundle inspect`, `bundle diff`, `bundle import`, and `bundle install`.
-- Modularize `src/cli.mjs` into `src/core/*` and `src/commands/*` (tracked
-  in `development/BACKLOG.md`). The repo keeps a single-file CLI today
-  because that fits the < 100 KB npm package budget.
+- Architecture Guardian is review-first. Agents may not silently broaden
+  policy, baseline, contract, or exception scope.
+- The Claude `PreToolUse` hook is fail-closed: any unparseable
+  governance state (malformed JSON, missing files, invalid policy,
+  invalid contract) results in a `permissionDecision: "deny"` so the
+  Claude session is forced to either fix the state or stop.
+- `safeRelative` resolves file paths through `fs.realpathSync.native`
+  rather than string comparison, eliminating the macOS symlink
+  normalization gap.
 
-## [1.0.0] — 2026-07-09
+### Verified (this release)
+
+- `npm ci && npm run build && npm run lint && npm run typecheck && npm test`
+  green locally.
+- 34/34 smoke tests pass, including the 37 architecture-guardian torture
+  bench scenarios.
+- `node scripts/check-version.mjs` confirms `package.json`,
+  `src/cli.mjs`, and `dist/cli.mjs` all carry `1.8.0`.
+- `npm run publish:dry` produces a clean tarball preview.
+- `npm pack` tarball contains the public CLIs, all `bin/architecture-guardian/`
+  modules, the `skills/architecture-guardian/` skill tree, schemas,
+  templates, examples, and required docs.
+- Isolated install from the tarball into a fresh `mktemp -d` succeeds and
+  `agent-kernel --version` and `agent-kernel architecture --help` work.
+
+## [1.0.0] - 2026-07-09
 
 First stable release. Local-first governance kernel for AI coding agents is now considered production-ready: shared memory, rule distribution, approval inbox, episodic recall, Failure Lessons, MCP tools, Claude + git hooks, deterministic guard, and a single-file CLI under the 100 KB npm budget.
 
