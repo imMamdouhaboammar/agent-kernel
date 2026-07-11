@@ -15,12 +15,18 @@ import { validateContract, validatePolicy } from './architecture-guardian/valida
 
 function output(value, json) { process.stdout.write(json ? JSON.stringify(value, null, 2) + '\n' : String(value)); }
 function usage() {
-  output(`agent-kernel architecture\n\nCommands:\n  init [project]\n  discover [project]\n  baseline [project]\n  diff [project]\n  check [project] [--files a,b] [--base ref]\n  reuse <query> [project]\n  contract init|show|validate|close [project]\n  exception add|list|revoke [project]\n  policy validate [project]\n  doctor [project]\n`, false);
+  output(`agent-kernel architecture\n\nCommands:\n  init [project]\n  discover [project]\n  baseline [project]\n  diff [project]\n  check [project] [--files a,b] [--base ref] [--strict|--review]\n  reuse <query> [project]\n  contract init|show|validate|close [project]\n  exception add|list|revoke [project]\n  policy validate [project]\n  doctor [project]\n`, false);
 }
 function rootFor(flags, index) { return projectRoot(flags.project || flags._[index] || '.'); }
 function failValidation(result) {
   output(result, true);
   if (!result.ok) process.exitCode = 2;
+}
+function requestedMode(flags) {
+  if (flags.strict && flags.review) throw new Error('Use either --strict or --review, not both.');
+  if (flags.strict) return 'strict';
+  if (flags.review) return 'review';
+  return null;
 }
 function main() {
   const flags = parseFlags(process.argv.slice(2));
@@ -87,7 +93,10 @@ function main() {
     return output(architectureDiff(map, readBaseline(flags.baseline || paths.baseline)), flags.json);
   }
   if (command === 'check') {
-    const result = runCheck(root, { files: csv(flags.files), base: flags.base, contractFile: flags.contract, baselineFile: flags.baseline });
+    const result = runCheck(root, {
+      files: csv(flags.files), base: flags.base, contractFile: flags.contract,
+      baselineFile: flags.baseline, mode: requestedMode(flags)
+    });
     output(flags.json ? result.report : formatReport(result.report), flags.json);
     if (result.report.status === 'failed') process.exitCode = 2;
     return;
