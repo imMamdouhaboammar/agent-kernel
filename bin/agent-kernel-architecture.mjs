@@ -2,7 +2,7 @@
 import { createBaseline, architectureDiff, readBaseline } from './architecture-guardian/baseline.mjs';
 import { architecturePaths } from './architecture-guardian/paths.mjs';
 import { csv, parseFlags, projectRoot, readJson, writeJsonAtomic } from './architecture-guardian/common.mjs';
-import { loadContract, loadPolicy, writeDefaultPolicy } from './architecture-guardian/config.mjs';
+import { loadContract, loadPolicy, readContractDocument, readPolicyDocument, writeDefaultPolicy } from './architecture-guardian/config.mjs';
 import { closeContract, createContract } from './architecture-guardian/contract-store.mjs';
 import { discoverArchitecture } from './architecture-guardian/discovery.mjs';
 import { architectureDoctor } from './architecture-guardian/doctor.mjs';
@@ -21,6 +21,9 @@ function rootFor(flags, index) { return projectRoot(flags.project || flags._[ind
 function failValidation(result) {
   output(result, true);
   if (!result.ok) process.exitCode = 2;
+}
+function missingDocument(name) {
+  return { ok: false, issues: [{ path: '$', message: `${name} file is missing` }] };
 }
 function requestedMode(flags) {
   if (flags.strict && flags.review) throw new Error('Use either --strict or --review, not both.');
@@ -48,7 +51,10 @@ function main() {
       requiredTests: flags.tests, notes: flags.notes
     }), flags.json);
     if (action === 'show') return output(loadContract(root), flags.json);
-    if (action === 'validate') return failValidation(validateContract(loadContract(root)));
+    if (action === 'validate') {
+      const raw = readContractDocument(root);
+      return failValidation(raw === null ? missingDocument('contract') : validateContract(raw));
+    }
     if (action === 'close') return output(closeContract(root), flags.json);
     throw new Error(`Unknown contract action: ${action || ''}`);
   }
@@ -66,7 +72,10 @@ function main() {
   if (command === 'policy') {
     const action = flags._[1];
     const root = rootFor(flags, 2);
-    if (action === 'validate') return failValidation(validatePolicy(loadPolicy(root)));
+    if (action === 'validate') {
+      const raw = readPolicyDocument(root);
+      return failValidation(raw === null ? missingDocument('policy') : validatePolicy(raw));
+    }
     throw new Error(`Unknown policy action: ${action || ''}`);
   }
   const root = rootFor(flags, 1);
