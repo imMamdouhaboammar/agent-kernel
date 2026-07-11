@@ -43,7 +43,13 @@ export async function run() {
     json(path.join(project, '.agent-kernel/architecture/policy.json'), { version: 1, blockOn: ['high'], requireContractForWrites: true });
     json(path.join(project, '.agent-kernel/architecture/change-contract.json'), { version: 1, status: 'active', task: 'test', owner: 'team', allowedFiles: ['src/allowed.ts'], forbiddenFiles: [], expectedFiles: [], allowedNewDependencies: [], requiredTests: [], notes: [] });
     const payload = { hook_event_name: 'PreToolUse', tool_name: 'Write', cwd: project, tool_input: { file_path: path.join(project, 'src/outside.ts') } };
-    const result = childProcess.spawnSync(process.execPath, [hook], { cwd: project, input: JSON.stringify(payload), encoding: 'utf8', stdio: ['pipe','pipe','pipe'] });
+    const result = childProcess.spawnSync(process.execPath, [hook], {
+      cwd: project,
+      env: { ...process.env, AGENT_KERNEL_ARCHITECTURE_MODE: 'strict' },
+      input: JSON.stringify(payload),
+      encoding: 'utf8',
+      stdio: ['pipe','pipe','pipe']
+    });
     assert.equal(result.status, 0, result.stderr);
     assert.equal(JSON.parse(result.stdout).hookSpecificOutput.permissionDecision, 'deny');
   }
