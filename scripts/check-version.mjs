@@ -22,6 +22,7 @@ const pluginPath = join(root, '.claude-plugin', 'plugin.json');
 const marketplacePath = join(root, '.claude-plugin', 'marketplace.json');
 
 let failed = false;
+let checkedSurfaces = 0;
 const ok = (message) => console.log(`  ✓ ${message}`);
 const err = (message) => {
   console.log(`  ✗ ${message}`);
@@ -43,6 +44,7 @@ function readJson(label, path) {
 }
 
 function checkVersion(label, actual, expected) {
+  checkedSurfaces += 1;
   if (typeof actual !== 'string' || actual.length === 0) {
     err(`${label} has no usable version`);
     return;
@@ -125,4 +127,4 @@ if (failed) {
   process.exit(1);
 }
 
-console.log(`\n✅ versions agree across ${versionedBinaries + 5} checked surfaces`);
+console.log(`\n✅ versions agree across ${checkedSurfaces} checked surfaces`);
