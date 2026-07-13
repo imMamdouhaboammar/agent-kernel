@@ -2,36 +2,71 @@
 //
 // Invariants:
 //   1. `agent-kernel --version` matches package.json#version.
-//   2. The string appears in src/cli.mjs (source) and dist/cli.mjs (built).
-//   3. The npm package tarball includes the same version in its
-//      package.json (verified via `npm pack --dry-run`).
-//
-// The matching is done by `scripts/check-version.mjs` for the source
-// side. This test exercises the runtime side and the package tarball
-// side.
+//   2. Source and built CLI artifacts expose the same VERSION.
+//   3. Every helper binary that exposes VERSION matches package.json.
+//   4. Claude plugin and marketplace metadata match package.json.
 
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync, readdirSync } from 'node:fs';
+import { extname, join, relative } from 'node:path';
 import { assertContains, makeEnv, repo, runCli } from './_lib/helpers.mjs';
+
+function walkMjsFiles(directory) {
+  const files = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) files.push(...walkMjsFiles(path));
+    else if (entry.isFile() && extname(entry.name) === '.mjs') files.push(path);
+  }
+  return files;
+}
+
+function assertVersion(label, actual, expected) {
+  if (actual !== expected) {
+    throw new Error(`${label} = "${actual}", expected "${expected}"`);
+  }
+}
 
 export async function run() {
   const { env } = makeEnv();
   const pkg = JSON.parse(readFileSync(join(repo.root, 'package.json'), 'utf8'));
   const expected = pkg.version;
 
-  // 1. CLI reports the package.json version.
   const cliVersion = runCli(env, '--version').trim();
-  if (cliVersion !== expected) {
-    throw new Error(`CLI --version = "${cliVersion}", expected "${expected}"`);
-  }
+  assertVersion('CLI --version', cliVersion, expected);
 
-  // 2. The built artifact contains the version.
   const distText = readFileSync(join(repo.root, 'dist', 'cli.mjs'), 'utf8');
   assertContains(distText, `const VERSION = '${expected}'`, 'dist/cli.mjs VERSION drift');
 
-  // 3. The source artifact contains the version.
   const srcText = readFileSync(join(repo.root, 'src', 'cli.mjs'), 'utf8');
   assertContains(srcText, `const VERSION = '${expected}'`, 'src/cli.mjs VERSION drift');
+
+  let versionedBinaries = 0;
+  for (const path of walkMjsFiles(join(repo.root, 'bin'))) {
+    const text = readFileSync(path, 'utf8');
+    const match = text.match(/const VERSION = ['"]([^'"]+)['"]/);
+    if (!match) continue;
+    versionedBinaries += 1;
+    assertVersion(`${relative(repo.root, path)} VERSION`, match[1], expected);
+  }
+
+  if (versionedBinaries === 0) {
+    throw new Error('expected at least one versioned helper binary under bin/');
+  }
+
+  const plugin = JSON.parse(readFileSync(join(repo.root, '.claude-plugin', 'plugin.json'), 'utf8'));
+  assertVersion('.claude-plugin/plugin.json version', plugin.version, expected);
+
+  const marketplace = JSON.parse(readFileSync(join(repo.root, '.claude-plugin', 'marketplace.json'), 'utf8'));
+  assertVersion('.claude-plugin/marketplace.json version', marketplace.version, expected);
+
+  if (!Array.isArray(marketplace.plugins) || marketplace.plugins.length === 0) {
+    throw new Error('.claude-plugin/marketplace.json must contain at least one plugin entry');
+  }
+
+  for (const [index, entry] of marketplace.plugins.entries()) {
+    const name = typeof entry?.name === 'string' ? entry.name : `plugins[${index}]`;
+    assertVersion(`marketplace plugin ${name} version`, entry?.version, expected);
+  }
 }
 
 export const name = 'version';
