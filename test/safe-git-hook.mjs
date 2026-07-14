@@ -203,7 +203,7 @@ export async function run() {
   runGit(project, env, 'config', 'user.email', 'agent-kernel-test@example.invalid');
   writeFileSync(join(project, 'README.md'), '# fixture\n');
   runGit(project, env, 'add', 'README.md');
-  runGit(project, env, 'commit', '-m', 'test: initialize worktree fixture');
+  runGit(project, env, 'commit', '--no-verify', '-m', 'test: initialize worktree fixture');
   const linkedWorktree = join(homeDir, 'linked-worktree');
   runGit(project, env, 'worktree', 'add', '-b', 'linked-fixture', linkedWorktree);
 
