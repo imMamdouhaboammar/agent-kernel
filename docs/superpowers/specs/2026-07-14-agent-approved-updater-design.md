@@ -2,22 +2,30 @@
 
 ## Status
 
-Approved for implementation on 2026-07-14 and aligned with the implemented helper boundaries after the TDD cycle.
+Approved on 2026-07-14 and aligned with the final implementation after TDD, CI, review feedback, and hardening.
 
 ## Objective
 
-Add a focused update helper to the public Agent Kernel CLI. The helper checks configurable npm release channels, exposes update availability to connected AI agents, and permits only explicitly trusted agents to install an update after the user enables agent-approved mode.
+Provide a self-update surface inside the public CLI that:
 
-## Confirmed repository constraints
+- resolves a configurable npm release channel
+- tells connected AI agents when an update is available
+- allows only explicitly allowlisted agent identities to apply it
+- verifies the installed version and rolls back once after verification failure
+- preserves a local audit trail without storing subprocess output or secrets
 
-- The public package is `@mamdouh-aboammar/agent-kernel`.
-- The current package version is `1.9.0`.
-- Public command routing is implemented by `bin/agent-kernel-router.mjs`.
-- Focused helper binaries under `bin/` are an accepted boundary for behavior outside the single-file core runtime.
-- Generated agent guidance is compiled by `src/cli.mjs` and distributed by `compile`, `sync`, and `link`.
-- `src/commands/` remains an unwired placeholder and must not receive production behavior.
-- Routed commands require focused smoke coverage.
-- The existing build script must remain the canonical version-injection and dist-copy path.
+The current stable npm package is v1.9.0. This updater becomes available to npm users in the first release after v1.9.0.
+
+## Repository constraints
+
+- Public package: `@mamdouh-aboammar/agent-kernel`
+- Public router: `bin/agent-kernel-router.mjs`
+- Core runtime: `src/cli.mjs`, built to `dist/cli.mjs`
+- Focused helpers under `bin/` are valid routed runtime boundaries
+- `src/commands/` remains an unwired placeholder
+- No runtime dependency may be added
+- Routed commands require smoke coverage
+- The canonical build script must remain unchanged
 
 ## Command surface
 
@@ -32,46 +40,48 @@ agent-kernel update revoke <agent-id> [--yes] [--json]
 agent-kernel update apply --agent <agent-id> [--json]
 ```
 
-`AGENT_KERNEL_AGENT_ID` is accepted as the identity source when `--agent` is omitted.
+`AGENT_KERNEL_AGENT_ID` may provide the identity for `update apply`.
 
-## Architecture
+## Runtime components
 
-### Focused update helper
+### `bin/agent-kernel-update.mjs`
 
-`bin/agent-kernel-update.mjs` is the only component allowed to query the npm registry or execute package installation. The public router sends the `update` command family to this helper.
+This is the only updater component allowed to:
 
-The helper owns:
+- query npm
+- install a global package version
+- verify the installed CLI
+- attempt rollback
 
-- configuration validation and persistence
-- release channel resolution
-- semantic version comparison
-- update status caching
-- agent trust enforcement
-- npm installation and verification
-- rollback after failed verification
-- redacted audit events
-- human and JSON output
+It owns strict config parsing, additive updater defaults, channel validation, semantic version comparison, cache persistence, authorization, audit records, human output, and JSON output.
 
-The package name is a source constant and cannot be supplied from user input.
+The package name is a constant. The user cannot supply another package, URL, or command fragment.
 
-### Offline guidance publisher
+### `bin/agent-kernel-update-guidance.mjs`
 
-`bin/agent-kernel-update-guidance.mjs` owns update notifications inside existing agent guidance files.
+This helper publishes cached notices to existing agent guidance files. It:
 
-The publisher:
+- reads local config and cache only
+- never contacts npm
+- never installs a package
+- never creates a missing integration file
+- owns one bounded marker block
+- skips a file when the start marker has no matching end marker
+- uses atomic writes
 
-- reads only local config and cached update status
-- never queries npm
-- maintains one bounded marker block
-- updates existing Codex, Claude, Cursor, Antigravity, and Gemini guidance files
-- removes the block when no cached update is available
-- does not create missing integration files
+Targets include existing Codex and AGENTS.md surfaces, Claude, Cursor, Antigravity, and Gemini files.
 
-The router invokes the publisher after successful `update`, `init`, `compile`, `sync`, and `link` commands. This ordering allows core compilation to remain unchanged and offline while preserving notices after generated files are rewritten.
+### `bin/agent-kernel-router.mjs`
 
-### State files
+The router:
 
-All update state lives under the existing Agent Kernel home:
+- sends `agent-kernel update ...` to the updater helper
+- prints a concise cached notice to stderr for human-oriented non-update commands
+- suppresses that notice when `--json` is present
+- refreshes guidance after successful `update`, `init`, `compile`, `sync`, and `link`
+- performs limited stale metadata checks at selected lifecycle boundaries
+
+## Local state
 
 ```text
 ~/.agent-kernel/config.json
@@ -79,22 +89,22 @@ All update state lives under the existing Agent Kernel home:
 ~/.agent-kernel/logs/updates.jsonl
 ```
 
-The config gains this additive object:
+Updater defaults:
 
 ```json
 {
-  "updates": {
-    "mode": "disabled",
-    "channel": "latest",
-    "trustedAgents": [],
-    "checkIntervalHours": 24
-  }
+  "mode": "disabled",
+  "channel": "latest",
+  "trustedAgents": [],
+  "checkIntervalHours": 24
 }
 ```
 
-Existing configurations without `updates` use these defaults without requiring migration.
+A missing updater section uses defaults. A malformed existing `config.json` is rejected and preserved.
 
-The cache schema is:
+Read-only `status` and explicit `check` may use defaults before initialization. Governance changes require the canonical config created by `agent-kernel init`; they never create a partial core config.
+
+Cache schema:
 
 ```json
 {
@@ -113,156 +123,158 @@ The cache schema is:
 
 Agent-approved mode is disabled by default.
 
-Enabling, disabling, changing a channel, trusting an agent, and revoking an agent are user-governance operations. They require either an interactive terminal confirmation or `--yes`. JSON mode does not bypass confirmation.
+Governance changes require terminal confirmation or `--yes`:
 
-An update apply operation is allowed only when:
+- enable
+- disable
+- channel
+- trust
+- revoke
+
+JSON mode does not bypass confirmation. Without `--yes`, JSON governance calls fail with `confirmation-required` rather than emitting an interactive prompt.
+
+Apply is allowed only when:
 
 1. mode is `agent-approved`
-2. the caller supplies an agent identity
-3. the identity is present in `trustedAgents`
-4. the requested target is not lower than the installed version
-5. registry resolution succeeds
+2. an identity is supplied
+3. the normalized identity is in `trustedAgents`
+4. registry resolution succeeds
+5. the target is not lower than the installed version
 
-Agent identities are normalized to lowercase identifiers containing letters, digits, dots, underscores, or hyphens.
+Authorization happens before npm installation.
 
-The initial allowlist is supplied by the user through `update enable --agents ...`; no agent is trusted implicitly.
+`--yes` is an explicit confirmation override, not an operating-system authentication mechanism. It must not be exposed to untrusted automation.
 
-## Channel model
+## Channels and subprocess safety
 
-The default channel is `latest`.
-
-A channel value may be:
+A channel may be:
 
 - a safe npm dist-tag such as `latest`, `next`, or `beta`
 - an exact semantic version such as `2.0.0` or `2.0.0-beta.1`
 
-Package names, URLs, ranges, shell fragments, whitespace, and command flags are rejected.
+Package specifications, URLs, ranges, whitespace, shell fragments, and flags are rejected.
 
-Registry lookup uses argument arrays:
+Registry lookup:
 
 ```text
 npm view @mamdouh-aboammar/agent-kernel@<channel> version --json
 ```
 
-Tests inject a fake npm executable through `AGENT_KERNEL_NPM_BIN`. Production defaults to `npm`.
+Install:
 
-## Check and cache behavior
+```text
+npm install --global @mamdouh-aboammar/agent-kernel@<exact-version>
+```
 
-`update check` performs a network lookup. `--force` ignores a fresh cache.
+Both use argument arrays with no shell interpolation. Windows uses `npm.cmd` and `agent-kernel.cmd`.
 
-Normal CLI commands must not perform a blocking network request. The router reads the cache and prints one concise update notice to stderr when the cache says an update is available. The notice is suppressed when `--json` is present.
+Tests inject fake executables through:
 
-The helper treats registry failures as non-fatal for `status` and cached notifications. Explicit `check` returns a structured failure and a non-zero exit status. No unrelated command fails because the registry is unavailable.
+```text
+AGENT_KERNEL_NPM_BIN
+AGENT_KERNEL_UPDATE_CLI_BIN
+```
 
-## Agent guidance notifications
+## Check and notification behavior
 
-When an update is available, the offline publisher adds a bounded section containing:
+`update check` performs an explicit lookup. `--force` bypasses a fresh cache.
 
-- current and target versions
-- configured channel
-- whether agent-approved mode is enabled
-- trusted agent identities
-- the exact apply command
+When agent-approved mode is enabled, the router may refresh stale or missing metadata before:
 
-The block is refreshed in existing shared and agent-specific guidance for Codex, Claude, Cursor, Antigravity, and Gemini.
+```text
+doctor
+start
+compile
+sync
+status
+```
 
-No registry lookup occurs during compilation, synchronization, linking, or guidance publication.
+Conditions:
+
+- no `--json`
+- cache age is at least `checkIntervalHours`
+- `AGENT_KERNEL_DISABLE_AUTO_UPDATE_CHECK` is not `1`
+
+The refresh uses a 20-second subprocess timeout. Failure is ignored by the requested lifecycle command. It never installs a package.
+
+A failed refresh preserves a compatible prior available-version target and records `error`. The cache remains stale for retry because error-bearing caches are not treated as fresh.
+
+After a successful lifecycle command, the offline guidance publisher adds or refreshes the bounded notice. This makes the available version visible to connected agents without placing registry or installation logic inside the core compiler.
 
 ## Apply transaction
 
-`update apply` follows this sequence:
+1. Strictly parse config.
+2. Authorize the identity.
+3. Resolve the configured channel again.
+4. Refuse downgrade targets.
+5. Audit install start.
+6. Install the exact target globally.
+7. Require `agent-kernel version` to equal the target.
+8. Run `agent-kernel doctor`.
+9. Run `agent-kernel compile`.
+10. Run `agent-kernel sync`.
+11. Audit verification success.
+12. Persist a success cache and final audit record.
 
-1. load and validate config
-2. authorize the agent identity
-3. resolve the configured channel
-4. reject downgrade targets
-5. audit the attempted transition
-6. execute `npm install --global @mamdouh-aboammar/agent-kernel@<targetVersion>` without a shell
-7. execute the installed CLI `version` command
-8. require the reported version to equal the target
-9. execute `doctor`
-10. execute `compile` and `sync`
-11. persist a fresh success cache and audit record
+If post-install verification fails:
 
-If installation succeeds but verification fails, execute one rollback attempt:
+1. audit verification failure
+2. attempt one exact reinstall of the previous version
+3. verify the reported rollback version
+4. audit rollback outcome
+5. return a non-zero structured result
 
-```text
-npm install --global @mamdouh-aboammar/agent-kernel@<previousVersion>
-```
+## Output and audit rules
 
-The final JSON response states whether rollback was attempted and whether it succeeded.
+Human errors go to stderr.
 
-## Audit rules
+With `--json`, successes and failures go to stdout as one JSON object. Failures retain a non-zero exit status. This keeps automation parsing deterministic.
 
-Append JSON lines to `logs/updates.jsonl` for:
+Audit records contain bounded normalized fields only:
 
-- check success or failure
-- governance changes
-- denied update attempts
-- install start
-- verification result
-- rollback result
-- final success or failure
+- timestamp
+- action
+- outcome
+- error category
+- agent identity
+- channel
+- previous version
+- target version
 
-Audit entries include timestamps, agent identity, channel, previous version, target version, action, outcome, and a bounded error category. They never include environment dumps, npm output, tokens, credentials, or arbitrary command text.
+They do not include npm output, environment dumps, arbitrary command strings, tokens, or credentials.
 
-## Error handling
+## Tests
 
-- Invalid config produces an actionable error and no write.
-- Config writes are atomic through a temporary file and rename.
-- Cache writes are atomic.
-- Guidance block writes are atomic.
-- A malformed cache is ignored.
-- An unknown or untrusted agent is denied before npm executes.
-- A failed registry lookup never mutates trust configuration.
-- Update installation uses a timeout and inherited terminal output for human mode.
-- JSON mode returns structured success or failure data without adding cached router notices.
+`test/public-cli-update.mjs` uses an isolated Agent Kernel home plus fake npm and CLI executables. Coverage includes:
 
-## Testing strategy
+- uninitialized governance rejection
+- malformed config preservation
+- default disabled state
+- confirmation behavior
+- channel and identity validation
+- cache reuse and force
+- stale lifecycle refresh
+- outage resilience and prior-target preservation
+- denial before install
+- `--agent` and environment identities
+- exact install arguments
+- verification and rollback
+- JSON stream behavior
+- audit redaction
+- guidance publication
+- malformed marker preservation
+- cached router notices
 
-`test/public-cli-update.mjs` uses fake npm and CLI executables with an isolated Agent Kernel home. The test covers:
-
-- routed command discovery
-- default disabled status
-- confirmation requirements
-- channel validation
-- enabling trusted agents
-- successful update availability checks
-- cache reuse and forced refresh
-- registry failure behavior
-- denial of untrusted agents
-- agent identity through environment
-- successful install and verification
-- verification failure and rollback
-- JSON responses
-- redacted audit records
-- managed guidance notification
-- router cached notice behavior
-
-The module is wired into `test/smoke.mjs`.
-
-Because the execution environment cannot clone the repository, GitHub Actions is the source of truth for the failing-test and passing-test evidence. The test-only stage failed before implementation, then the complete feature passed the Node 18, 20, and 22 smoke matrix.
-
-## Documentation impact
-
-Updated:
-
-- `README.md`
-- `docs/README.md`
-- `docs/ARCHITECTURE_NOW.md`
-- `docs/public-cli/ROUTED_COMMANDS.md`
-
-Created:
-
-- `docs/UPDATES.md`
+The module is wired through `test/smoke.mjs` and runs on Node 18, 20, and 22 in CI.
 
 ## Out of scope
 
 - background daemon or operating-system service
-- silent updates on every CLI invocation
-- npm package publishing
-- release creation or version bump
-- remote update service
+- package installation during unrelated commands
 - automatic trust expansion
-- updating arbitrary packages
-- self-update through MCP approval
+- arbitrary package updates
+- MCP approval or installation
+- npm publishing
+- release creation
+- version bump
+- merging the pull request
