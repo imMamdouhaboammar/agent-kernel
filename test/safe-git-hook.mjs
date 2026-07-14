@@ -5,6 +5,8 @@
 //   2. Existing pre-commit hook logic is preserved.
 //   3. Existing pre-commit hooks get backups before write.
 //   4. Re-running the installer replaces the marked block instead of duplicating it.
+//   5. Invalid arguments and project paths fail without filesystem changes.
+//   6. Linked Git worktrees resolve and update the repository's actual hooks path.
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
@@ -20,15 +22,73 @@ function runSafeGitHook(env, ...args) {
   });
 }
 
+function runSafeGitHookFailure(env, ...args) {
+  try {
+    runSafeGitHook(env, ...args);
+    return { status: 0, stdout: '', stderr: '' };
+  } catch (error) {
+    return {
+      status: error.status ?? 1,
+      stdout: String(error.stdout || ''),
+      stderr: String(error.stderr || '')
+    };
+  }
+}
+
+function runGit(cwd, env, ...args) {
+  return execFileSync('git', args, {
+    cwd,
+    env,
+    encoding: 'utf8',
+    stdio: ['pipe', 'pipe', 'pipe']
+  }).trim();
+}
+
 function countMarkers(text) {
   return (text.match(/# agent-kernel:start/g) || []).length;
 }
 
+function assertFailure(result, message) {
+  if (result.status === 0) throw new Error(message);
+}
+
 export async function run() {
   const { env, homeDir } = makeEnv();
+
+  const unknown = runSafeGitHookFailure(env, '--unknown');
+  assertFailure(unknown, 'safe git-hook accepted an unknown option');
+  assertContains(unknown.stderr, 'Unknown option: --unknown', 'unknown option error was not actionable');
+  if (unknown.stderr.includes(' at ')) throw new Error('unknown option printed a stack trace');
+
+  const duplicate = runSafeGitHookFailure(env, '--dry-run', '--dry-run');
+  assertFailure(duplicate, 'safe git-hook accepted a duplicate option');
+  assertContains(duplicate.stderr, 'Duplicate option: --dry-run', 'duplicate option error was not actionable');
+
+  const multipleProjects = runSafeGitHookFailure(env, homeDir, join(homeDir, 'other'));
+  assertFailure(multipleProjects, 'safe git-hook accepted multiple project paths');
+  assertContains(multipleProjects.stderr, 'Expected at most one project path', 'multiple project path error was not actionable');
+
+  const missingProject = join(homeDir, 'missing-project');
+  const missing = runSafeGitHookFailure(env, missingProject);
+  assertFailure(missing, 'safe git-hook accepted a missing project path');
+  assertContains(missing.stderr, 'Project path not found', 'missing project error was not actionable');
+  if (existsSync(missingProject)) throw new Error('safe git-hook created a missing project directory');
+
+  const regularFile = join(homeDir, 'not-a-project.txt');
+  writeFileSync(regularFile, 'file');
+  const fileProject = runSafeGitHookFailure(env, regularFile);
+  assertFailure(fileProject, 'safe git-hook accepted a regular file as a project');
+  assertContains(fileProject.stderr, 'Project path is not a directory', 'regular file project error was not actionable');
+
+  const nonGitProject = join(homeDir, 'not-a-git-project');
+  mkdirSync(nonGitProject, { recursive: true });
+  const nonGit = runSafeGitHookFailure(env, nonGitProject);
+  assertFailure(nonGit, 'safe git-hook accepted a non-Git directory');
+  assertContains(nonGit.stderr, 'Not a Git worktree', 'non-Git project error was not actionable');
+
   const project = join(homeDir, 'project-with-existing-hook');
   mkdirSync(project, { recursive: true });
-  execFileSync('git', ['init'], { cwd: project, env, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+  runGit(project, env, 'init');
 
   const hookPath = join(project, '.git', 'hooks', 'pre-commit');
   writeFileSync(hookPath, '#!/usr/bin/env sh\necho "existing hook still runs"\n');
@@ -59,6 +119,22 @@ export async function run() {
   const afterSecondRun = readFileSync(hookPath, 'utf8');
   if (countMarkers(afterSecondRun) !== 1) {
     throw new Error('safe git-hook duplicated the marked block on a second run');
+  }
+
+  runGit(project, env, 'config', 'user.name', 'Agent Kernel Test');
+  runGit(project, env, 'config', 'user.email', 'agent-kernel-test@example.invalid');
+  writeFileSync(join(project, 'README.md'), '# fixture\n');
+  runGit(project, env, 'add', 'README.md');
+  runGit(project, env, 'commit', '-m', 'test: initialize worktree fixture');
+  const linkedWorktree = join(homeDir, 'linked-worktree');
+  runGit(project, env, 'worktree', 'add', '-b', 'linked-fixture', linkedWorktree);
+
+  const worktreeDryRun = runSafeGitHook(env, linkedWorktree, '--dry-run');
+  assertContains(worktreeDryRun, 'pre-commit', 'worktree dry-run did not resolve the hooks path');
+  runSafeGitHook(env, linkedWorktree);
+  const worktreeHook = readFileSync(hookPath, 'utf8');
+  if (countMarkers(worktreeHook) !== 1) {
+    throw new Error('worktree install did not update the shared repository hook idempotently');
   }
 }
 
