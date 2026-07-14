@@ -2,7 +2,7 @@
 
 ## Status
 
-Approved for implementation on 2026-07-14.
+Approved on 2026-07-14 and aligned with the implemented focused-module boundary after the TDD cycle.
 
 ## Objective
 
@@ -21,67 +21,33 @@ agent-kernel dashboard --json --open
 agent-kernel dashboard --project /path/to/repository
 ```
 
-Default human-mode flow:
+Human mode opens by default. JSON mode generates only unless `--open` is supplied. `--open` and `--no-open` are mutually exclusive. The stable default target is `~/.agent-kernel/reports/dashboard.html` and is atomically replaced.
 
-1. Read known stores from `AGENT_KERNEL_HOME` or `~/.agent-kernel`.
-2. Sanitize and normalize data in memory.
-3. Atomically replace `~/.agent-kernel/reports/dashboard.html`.
-4. Open the generated file in the default browser.
-5. Print the path and open result.
-
-Rules:
-
-- Human mode opens by default.
-- `--no-open` generates only.
-- `--json` generates only unless `--open` is supplied.
-- `--open` and `--no-open` are mutually exclusive.
-- `--out` selects an explicit HTML target.
-- `--project` selects the project whose local Architecture Guardian summary may be included; it defaults to the current directory.
-- The default target is stable, so repeated generation does not accumulate snapshots.
-
-## Architecture
-
-Extend the existing routed portability and reporting surface:
+## Final architecture
 
 ```text
 agent-kernel dashboard
   -> bin/agent-kernel-router.mjs
-  -> bin/agent-kernel-portability.mjs
-  -> diagnostic-safe local readers
-  -> sanitized adaptive snapshot
-  -> self-contained HTML
+  -> bin/agent-kernel-dashboard.mjs
+       -> bin/dashboard/common.mjs
+       -> bin/dashboard/state.mjs
+       -> bin/dashboard/render.mjs
+  -> sanitized self-contained HTML
   -> optional platform browser opener
 ```
 
-This reuses existing paths, redaction, atomic writes, audit records, and test boundaries. It adds no runtime dependency, frontend build system, daemon requirement, server, remote API, or persistent schema.
+Responsibilities:
 
-The existing `agent-kernel report <file.html>` command remains compatible.
+- `agent-kernel-dashboard.mjs`: command orchestration and result/error envelopes
+- `dashboard/common.mjs`: flags, redaction, paths, atomic output, audit, browser invocation, and safety errors
+- `dashboard/state.mjs`: diagnostic-safe store readers, normalization, adaptive sections, and Architecture Guardian summary
+- `dashboard/render.mjs`: escaped branded HTML, CSP, search, and copy-only interactions
 
-## Result contract
-
-JSON mode returns a stable envelope:
-
-```json
-{
-  "ok": true,
-  "path": "/absolute/path/dashboard.html",
-  "generatedAt": "2026-07-14T00:00:00.000Z",
-  "opened": false,
-  "browser": null,
-  "browserError": null,
-  "externalAssets": false,
-  "scripts": "inline-copy-filter-only",
-  "sections": ["pending", "memories", "episodes"]
-}
-```
-
-A browser-open failure does not invalidate or remove the generated snapshot. The result remains successful with `opened: false` and a bounded error category.
+This preserves the existing routed-helper pattern without expanding the already large portability helper. It adds no runtime dependency, frontend build system, daemon requirement, server, remote API, or persistent schema. The existing `agent-kernel report <file.html>` command remains compatible.
 
 ## Snapshot coverage
 
-Read known stores conservatively and render only useful sections.
-
-Global stores:
+Known local sources are read conservatively:
 
 - `source/memories/*.json`
 - `source/policies/policies.json`
@@ -89,28 +55,19 @@ Global stores:
 - `source/agents/agents.json`
 - `source/projects/projects.json`
 - `inbox/pending`, `inbox/approved`, and `inbox/rejected`
-- episode archive and index
+- episode archive
 - runtime session metadata
 - commit-link index
 - updater configuration summary and update cache
 - retention summary
-- bounded redacted audit summary
+- bounded redacted audit history
+- selected-project Architecture Guardian policy, map, contract, exception, and report summaries
 
-Project-local Architecture Guardian summary, when present:
-
-- policy mode, roots, and layer count
-- map node and edge counts
-- active change contract metadata
-- active non-expired exception count
-- latest report status and finding counts
-
-Never embed repository source, raw observation JSONL, environment variables, npm output, hook payloads, credentials, full audit metadata, raw update logs, or daemon process internals.
+The snapshot never embeds repository source, raw observation JSONL, environment variables, npm output, hook payloads, credentials, full audit metadata, updater audit logs, or daemon process internals.
 
 ## Adaptive sections
 
-The shell always includes a title, generation timestamp, kernel version, neutral home label, search control, summary metrics, and diagnostics.
-
-Render a section only when it has data:
+The shell always includes the title, generation timestamp, kernel version, neutral home label, search control, summary metrics, and diagnostics. Data sections are rendered only when useful:
 
 1. Pending review
 2. Approved proposals
@@ -134,9 +91,7 @@ Rules and skill triggers are projections of durable memories, not new stores.
 
 ## Pending review assistance
 
-Each pending card may display ID, type, scope, level, status, targets, tags, source agent, timestamps, sanitized text, and reason.
-
-For a safe proposal ID, render copy-only controls for:
+A safe proposal ID receives copy-only controls for:
 
 ```bash
 agent-kernel inbox
@@ -144,86 +99,66 @@ agent-kernel approve <proposal-id> --publish
 agent-kernel reject <proposal-id>
 ```
 
-Also provide a copy-ID control. IDs that fail the existing safe file-ID contract receive no action commands and display `Invalid action ID`.
+The page also offers a copy-ID button. IDs outside the existing safe identifier contract receive no commands and display `Invalid action ID`.
 
-The page never calls localhost, submits forms, spawns processes, navigates to a custom protocol, or writes files. JavaScript is limited to local filtering, navigation, and clipboard feedback over already rendered content.
+The browser cannot call localhost, submit forms, spawn processes, navigate to a custom command protocol, or write files. Its script is limited to local filtering and clipboard feedback over rendered text.
 
 ## Privacy and filesystem safety
 
-- Apply existing secret-pattern and sensitive-key redaction before rendering.
+- Apply secret-pattern and sensitive-key redaction before rendering.
 - HTML-escape all dynamic text and attributes.
-- Render `AGENT_KERNEL_HOME` or `~/.agent-kernel`, never the absolute home path.
-- Render project name or registered ID, never its absolute path.
-- Audit rows expose only timestamp, operation, actor category, target type, and compact redacted summary.
-- Updater rows expose only mode, channel, versions, availability, checked time, and bounded error category.
-- Reject an existing symbolic output target.
-- Reject an existing non-regular output target.
-- Reject symbolic existing parent components.
-- Atomically replace the final file.
-- Do not follow or replace symlink targets.
-- Append one bounded redacted `dashboard.generate` audit record after successful generation.
-
-Missing optional stores are empty. Malformed individual JSON files are counted, skipped, and reported generically without exposing their paths. A malformed central config is preserved and does not block unrelated sections.
+- Replace absolute Agent Kernel and project paths with neutral labels.
+- Reduce audit and Architecture Guardian data to bounded summaries.
+- Count and skip malformed optional JSON files without exposing paths.
+- Preserve malformed central configuration and continue with unrelated stores.
+- Reject symbolic output targets, non-regular output targets, and symbolic existing parent directories.
+- Validate browser override configuration before creating output directories or files.
+- Atomically replace the final HTML.
+- Append one bounded redacted `dashboard.generate` audit event after each successful generation.
+- Emit structured JSON errors on stdout in JSON mode and human-readable errors on stderr otherwise.
 
 ## Browser opening
 
 Use argument-array execution without a shell:
 
-- macOS: `open <file>`
-- Linux and other Unix: `xdg-open <file>`
-- Windows: `rundll32.exe url.dll,FileProtocolHandler <file-url>`
+- macOS: `open`
+- Linux and other Unix systems: `xdg-open`
+- Windows: `rundll32.exe url.dll,FileProtocolHandler`
 
-Use bounded process startup and ignored stdio. Test seams:
+Browser-open failure leaves the generated file valid and reports a bounded category. Test seams are `AGENT_KERNEL_BROWSER_BIN` and a bounded JSON string array in `AGENT_KERNEL_BROWSER_ARGS_JSON`.
 
-- `AGENT_KERNEL_BROWSER_BIN`
-- `AGENT_KERNEL_BROWSER_ARGS_JSON`, a JSON array of prefix arguments
+## HTML and visual boundary
 
-Invalid override JSON fails before browser execution. Raw subprocess output is never returned.
+- background `#050505`
+- panels `#0B0B0B`
+- borders `#2A2A2A`
+- primary text `#F4F4F1`
+- secondary text `#8E8E88`
+- accent `#F8F46A`
+- local JetBrains Mono or system monospace stack
+- compact responsive layout, sticky header, metric strip, section navigation, expandable cards, and restrained status pills
+- no gradients, glass effects, external fonts, images, analytics, remote URLs, or decorative AI visuals
 
-## Visual system
+The HTML includes a restrictive Content Security Policy. Its only inline script filters cards and copies already-rendered values. It contains no fetch, XMLHttpRequest, WebSocket, EventSource, external script, or external stylesheet.
 
-- Background `#050505`
-- Panels `#0B0B0B`
-- Borders `#2A2A2A`
-- Primary text `#F4F4F1`
-- Secondary text `#8E8E88`
-- Accent `#F8F46A`
-- JetBrains Mono when locally available, otherwise a system monospace stack
-- Compact spacing, thin borders, restrained radius
-- Sticky compact header, summary strip, wide-screen side navigation, one-column mobile layout
-- Expandable record cards, status pills, high-contrast copy buttons
-- No gradients, glass effects, external fonts, images, analytics, remote URLs, or decorative AI visuals
+## Validation contract
 
-## Testing strategy
+Focused smoke modules cover:
 
-Use a focused `test/public-cli-dashboard.mjs` module wired into `test/smoke.mjs`.
-
-Regression coverage must prove:
-
-- router delegation and default output
+- routing and default output
 - custom output and project selection
-- default browser opening, `--no-open`, JSON suppression, and explicit JSON opening
-- browser failure containment
-- self-contained output with no external assets or network primitives
+- default opening, `--no-open`, JSON suppression, and explicit JSON opening
+- browser failure containment and preflight
 - adaptive rendering across all known stores
 - omission of empty sections
-- safe copy commands and invalid-ID suppression
-- redaction, HTML escaping, neutral path labels, and malformed-record diagnostics
-- symlink and non-regular output rejection before writes
+- copy commands and unsafe-ID suppression
+- secret redaction, HTML injection, path labels, CSP, and malformed-record diagnostics
+- symbolic and non-regular output rejection
 - source store immutability
-- one bounded audit event per successful generation
-- Node 18, 20, and 22 smoke matrices
-
-## Documentation
-
-Update:
-
-- `README.md`
-- `docs/RETENTION_AND_PORTABILITY.md`
-- `docs/ARCHITECTURE_NOW.md`
-- `docs/README.md`
-- `docs/public-cli/ROUTED_COMMANDS.md`
+- bounded audit records
+- structured JSON errors
+- Node 18, 20, and 22 CI matrices
 
 ## Exclusions
 
-This PR does not add live refresh, file watching, a server, a dashboard daemon, browser-side mutation, remote sync, accounts, authentication, analytics, cloud storage, dependencies, a package-version bump, a release, a tag, or a merge.
+This PR does not add live refresh, file watching, a server, a dashboard daemon, browser-side mutation, remote sync, accounts, authentication, analytics, cloud storage, runtime dependencies, a package-version bump, a release, a tag, or a merge.
