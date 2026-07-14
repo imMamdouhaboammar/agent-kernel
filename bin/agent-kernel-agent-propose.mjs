@@ -16,6 +16,7 @@ const BOOLEAN_FLAGS = new Set(['help']);
 const MEMORY_TYPES = new Set(['rule', 'policy', 'preference', 'workflow', 'project-note', 'skill-trigger']);
 const MEMORY_SCOPES = new Set(['global', 'project']);
 const MEMORY_LEVELS = new Set(['critical', 'standard', 'note']);
+const SAFE_PROPOSAL_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,199}$/;
 const ERROR_REDACTIONS = [
   /sk-[A-Za-z0-9_-]{16,}/g,
   /ghp_[A-Za-z0-9]{16,}/g,
@@ -186,17 +187,18 @@ function redactedDiagnostic(value) {
 }
 
 function runCoreProposal(command, args) {
+  const timeout = helperTimeoutMs();
   try {
     return childProcess.execFileSync(command, args, {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
       env: process.env,
-      timeout: helperTimeoutMs(),
+      timeout,
       maxBuffer: 1024 * 1024
     });
   } catch (error) {
     if (error?.code === 'ETIMEDOUT' || error?.signal) {
-      throw new Error(`Proposal command timed out after ${helperTimeoutMs()}ms.`);
+      throw new Error(`Proposal command timed out after ${timeout}ms.`);
     }
     const stderr = redactedDiagnostic(error?.stderr);
     const stdout = redactedDiagnostic(error?.stdout);
@@ -213,15 +215,76 @@ function proposalIdFrom(output) {
   return String(output || '').match(/Created pending memory proposal:\s*(\S+)/)?.[1] || '';
 }
 
-function readJson(filePath, fallback) {
-  try { return JSON.parse(fs.readFileSync(filePath, 'utf8')); } catch { return fallback; }
+function pendingProposalPath(proposalId) {
+  if (!SAFE_PROPOSAL_ID.test(proposalId)) throw new Error(`Proposal command returned an invalid proposal ID: ${proposalId || '(empty)'}`);
+  const pendingDir = path.resolve(kernelHome(), 'inbox', 'pending');
+  const proposalPath = path.resolve(pendingDir, `${proposalId}.json`);
+  if (path.dirname(proposalPath) !== pendingDir) throw new Error(`Proposal path escaped the pending inbox: ${proposalId}`);
+  return proposalPath;
 }
 
-function writeJsonAtomic(filePath, value) {
+function readProposal(filePath, proposalId) {
+  let value;
+  try {
+    value = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch {
+    throw new Error(`Proposal ${proposalId} was created but its pending record could not be read.`);
+  }
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error(`Proposal ${proposalId} has an invalid pending record.`);
+  }
+  if (value.id !== proposalId) throw new Error(`Proposal ${proposalId} record has a mismatched ID.`);
+  if ((value.status || 'pending') !== 'pending') {
+    throw new Error(`Proposal ${proposalId} is not pending and will not be modified by the agent helper.`);
+  }
+  return value;
+}
+
+function replaceFileAtomic(filePath, content) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  const temporary = `${filePath}.tmp-${process.pid}-${Date.now()}`;
-  fs.writeFileSync(temporary, JSON.stringify(value, null, 2) + '\n', 'utf8');
-  fs.renameSync(temporary, filePath);
+  const temporary = `${filePath}.tmp-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  let displaced = null;
+  try {
+    fs.writeFileSync(temporary, content, 'utf8');
+    try {
+      fs.renameSync(temporary, filePath);
+      return;
+    } catch (error) {
+      if (!fs.existsSync(filePath) || !['EEXIST', 'EPERM', 'EACCES'].includes(error?.code)) throw error;
+    }
+    displaced = `${filePath}.rollback-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    fs.renameSync(filePath, displaced);
+    try {
+      fs.renameSync(temporary, filePath);
+      fs.rmSync(displaced, { force: true });
+      displaced = null;
+    } catch (error) {
+      try { if (displaced && fs.existsSync(displaced) && !fs.existsSync(filePath)) fs.renameSync(displaced, filePath); } catch {}
+      throw error;
+    }
+  } finally {
+    try { fs.rmSync(temporary, { force: true }); } catch {}
+    if (displaced && fs.existsSync(displaced) && fs.existsSync(filePath)) {
+      try { fs.rmSync(displaced, { force: true }); } catch {}
+    }
+  }
+}
+
+function enrichPendingProposal(output, identity, requestedFrom) {
+  const proposalId = proposalIdFrom(output);
+  const proposalPath = pendingProposalPath(proposalId);
+  const proposal = readProposal(proposalPath, proposalId);
+  const enriched = enrichIdentityRecord(proposal, identity, { fallback: requestedFrom });
+  enriched.status = 'pending';
+  enriched.source = {
+    ...(proposal.source || {}),
+    proposedBy: proposal.source?.proposedBy || identity.agentId,
+    createdBy: identity.agentId,
+    agentId: identity.agentId,
+    trustLevel: identity.trustLevel
+  };
+  replaceFileAtomic(proposalPath, JSON.stringify(enriched, null, 2) + '\n');
+  return proposalId;
 }
 
 function usage() {
@@ -255,22 +318,7 @@ function main() {
   if (input.tags) args.push('--tags', input.tags);
 
   const out = runCoreProposal(cmd, args);
-  const proposalId = proposalIdFrom(out);
-  if (proposalId) {
-    const proposalPath = path.join(kernelHome(), 'inbox', 'pending', `${proposalId}.json`);
-    const proposal = readJson(proposalPath, null);
-    if (proposal) {
-      const enriched = enrichIdentityRecord(proposal, identity, { fallback: input.from });
-      enriched.source = {
-        ...(proposal.source || {}),
-        proposedBy: proposal.source?.proposedBy || identity.agentId,
-        createdBy: identity.agentId,
-        agentId: identity.agentId,
-        trustLevel: identity.trustLevel
-      };
-      writeJsonAtomic(proposalPath, enriched);
-    }
-  }
+  enrichPendingProposal(out, identity, input.from);
   process.stdout.write(out);
 }
 
