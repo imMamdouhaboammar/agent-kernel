@@ -25,15 +25,15 @@ function atomicWrite(filePath, text) {
   fs.renameSync(temporary, filePath);
 }
 
-function removeBlock(text) {
-  const start = text.indexOf(START);
-  if (start < 0) return { ok: true, text };
-  const end = text.indexOf(END, start);
-  if (end < 0) return { ok: false, text };
-  return {
-    ok: true,
-    text: (text.slice(0, start) + text.slice(end + END.length)).trimEnd() + '\n'
-  };
+function removeBlocks(text) {
+  let next = text;
+  while (true) {
+    const start = next.indexOf(START);
+    if (start < 0) return { ok: true, text: next };
+    const end = next.indexOf(END, start);
+    if (end < 0) return { ok: false, text };
+    next = next.slice(0, start) + next.slice(end + END.length);
+  }
 }
 
 function renderBlock(config, cache) {
@@ -83,21 +83,31 @@ function publish(projectPath) {
   const block = renderBlock(config, cache);
   let changed = 0;
   let skippedMalformed = 0;
+  let skippedSymlinks = 0;
   for (const filePath of targetFiles(projectPath)) {
     if (!fs.existsSync(filePath)) continue;
+    try {
+      if (fs.lstatSync(filePath).isSymbolicLink()) {
+        skippedSymlinks++;
+        continue;
+      }
+    } catch {
+      continue;
+    }
     const original = fs.readFileSync(filePath, 'utf8');
-    const cleaned = removeBlock(original);
+    const cleaned = removeBlocks(original);
     if (!cleaned.ok) {
       skippedMalformed++;
       continue;
     }
-    const next = block ? `${cleaned.text.trimEnd()}\n\n${block}` : cleaned.text;
+    const base = cleaned.text.trimEnd();
+    const next = block ? `${base}\n\n${block}` : `${base}\n`;
     if (next !== original) {
       atomicWrite(filePath, next);
       changed++;
     }
   }
-  return { changed, skippedMalformed };
+  return { changed, skippedMalformed, skippedSymlinks };
 }
 
 const args = process.argv.slice(2);
