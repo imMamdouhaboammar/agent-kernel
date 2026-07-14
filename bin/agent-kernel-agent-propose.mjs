@@ -8,6 +8,9 @@ import { agentCan, enrichIdentityRecord, resolveAgentIdentity } from './agent-ke
 
 const VALUE_FLAGS = new Set(['from', 'agent', 'reason', 'text', 'type', 'scope', 'level', 'targets', 'tags']);
 const BOOLEAN_FLAGS = new Set(['help']);
+const MEMORY_TYPES = new Set(['rule', 'policy', 'preference', 'workflow', 'project-note', 'skill-trigger']);
+const MEMORY_SCOPES = new Set(['global', 'project']);
+const MEMORY_LEVELS = new Set(['critical', 'standard', 'note']);
 
 function print(message = '') {
   process.stdout.write(String(message) + '\n');
@@ -83,6 +86,51 @@ function readStdin() {
   }
 }
 
+function resolveText(flags) {
+  const sources = [
+    ['--text', String(flags.text || '').trim()],
+    ['positional text', flags._.join(' ').trim()],
+    ['stdin', readStdin().trim()]
+  ].filter(([, value]) => value);
+  if (sources.length > 1) {
+    throw new Error(`Proposal text was provided by multiple sources: ${sources.map(([label]) => label).join(', ')}.`);
+  }
+  return sources[0]?.[1] || '';
+}
+
+function validateCsv(value, label, options = {}) {
+  const raw = String(value || '').trim();
+  if (!raw) {
+    if (options.required) throw new Error(`${label} must not be empty.`);
+    return '';
+  }
+  const items = raw.split(',').map((item) => item.trim());
+  if (items.some((item) => !item)) throw new Error(`${label} contains an empty item.`);
+  if (items.length > (options.maxItems || 50)) throw new Error(`${label} contains too many items.`);
+  if (items.some((item) => item.length > (options.maxLength || 100))) throw new Error(`${label} contains an item that is too long.`);
+  return [...new Set(items)].join(',');
+}
+
+function validateInputs(flags) {
+  const text = resolveText(flags);
+  const from = String(flags.from || flags.agent || 'unknown-agent').trim();
+  const reason = String(flags.reason || 'Captured by coding agent.').trim();
+  const type = String(flags.type || 'rule').trim();
+  const scope = String(flags.scope || 'global').trim();
+  const level = String(flags.level || 'standard').trim();
+  const targets = validateCsv(flags.targets || 'all', 'Targets', { required: true });
+  const tags = validateCsv(flags.tags || '', 'Tags', { maxItems: 30 });
+
+  if (text.length < 8) throw new Error('Proposal text is required and must be at least 8 characters.');
+  if (text.length > 4000) throw new Error('Proposal text must not exceed 4000 characters.');
+  if (!from || from.length > 200) throw new Error('Agent identity must be between 1 and 200 characters.');
+  if (reason.length < 4 || reason.length > 1000) throw new Error('Proposal reason must be between 4 and 1000 characters.');
+  if (!MEMORY_TYPES.has(type)) throw new Error(`Invalid proposal type: ${type}`);
+  if (!MEMORY_SCOPES.has(scope)) throw new Error(`Invalid proposal scope: ${scope}`);
+  if (!MEMORY_LEVELS.has(level)) throw new Error(`Invalid proposal level: ${level}`);
+  return { text, from, reason, type, scope, level, targets, tags };
+}
+
 function localCliPath() {
   const here = path.dirname(fileURLToPath(import.meta.url));
   return path.resolve(here, '..', 'dist', 'cli.mjs');
@@ -122,23 +170,11 @@ function main() {
   const flags = parseArgs(process.argv.slice(2));
   if (flags.help) return usage();
 
-  const text = String(flags.text || flags._.join(' ') || readStdin()).trim();
-  const from = String(flags.from || flags.agent || 'unknown-agent').trim();
-  const reason = String(flags.reason || 'Captured by coding agent.').trim();
-  const type = String(flags.type || 'rule').trim();
-  const scope = String(flags.scope || 'global').trim();
-  const level = String(flags.level || 'standard').trim();
-  const targets = String(flags.targets || 'all').trim();
-  const tags = String(flags.tags || '').trim();
-  const identity = resolveAgentIdentity(from, { action: 'propose' });
+  const input = validateInputs(flags);
+  const identity = resolveAgentIdentity(input.from, { action: 'propose' });
 
   if (!agentCan(identity, 'propose')) {
     fail(`Agent ${identity.agentId} has trust level ${identity.trustLevel} and cannot create proposals.`);
-    return;
-  }
-
-  if (!text || text.length < 8) {
-    fail('Proposal text is required and must be at least 8 characters.');
     return;
   }
 
@@ -147,14 +183,14 @@ function main() {
     ...baseArgs,
     'propose',
     '--from', identity.agentId,
-    '--type', type,
-    '--scope', scope,
-    '--level', level,
-    '--targets', targets,
-    '--text', text,
-    '--reason', reason
+    '--type', input.type,
+    '--scope', input.scope,
+    '--level', input.level,
+    '--targets', input.targets,
+    '--text', input.text,
+    '--reason', input.reason
   ];
-  if (tags) args.push('--tags', tags);
+  if (input.tags) args.push('--tags', input.tags);
 
   const out = childProcess.execFileSync(cmd, args, {
     encoding: 'utf8',
@@ -166,7 +202,7 @@ function main() {
     const proposalPath = path.join(kernelHome(), 'inbox', 'pending', `${proposalId}.json`);
     const proposal = readJson(proposalPath, null);
     if (proposal) {
-      const enriched = enrichIdentityRecord(proposal, identity, { fallback: from });
+      const enriched = enrichIdentityRecord(proposal, identity, { fallback: input.from });
       enriched.source = {
         ...(proposal.source || {}),
         proposedBy: proposal.source?.proposedBy || identity.agentId,
