@@ -1,0 +1,99 @@
+#!/usr/bin/env node
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
+const START = '<!-- agent-kernel-update:start -->';
+const END = '<!-- agent-kernel-update:end -->';
+
+function kernelHome() {
+  return process.env.AGENT_KERNEL_HOME || path.join(os.homedir(), '.agent-kernel');
+}
+
+function readJson(filePath, fallback = null) {
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch {
+    return fallback;
+  }
+}
+
+function atomicWrite(filePath, text) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  const temporary = `${filePath}.tmp-${process.pid}-${Date.now()}`;
+  fs.writeFileSync(temporary, text, 'utf8');
+  fs.renameSync(temporary, filePath);
+}
+
+function removeBlock(text) {
+  const start = text.indexOf(START);
+  if (start < 0) return text;
+  const end = text.indexOf(END, start);
+  if (end < 0) return text.slice(0, start).trimEnd() + '\n';
+  return (text.slice(0, start) + text.slice(end + END.length)).trimEnd() + '\n';
+}
+
+function renderBlock(config, cache) {
+  if (!cache || cache.updateAvailable !== true || !cache.currentVersion || !cache.targetVersion) return '';
+  const updates = {
+    mode: 'disabled',
+    channel: cache.channel || 'latest',
+    trustedAgents: [],
+    ...(config?.updates || {})
+  };
+  const trusted = Array.isArray(updates.trustedAgents) && updates.trustedAgents.length
+    ? updates.trustedAgents.join(', ')
+    : 'none';
+  return `${START}\n## Agent Kernel update available\n\n- Installed: ${cache.currentVersion}\n- Available: ${cache.targetVersion}\n- Channel: ${cache.channel || updates.channel}\n- Mode: ${updates.mode}\n- Trusted agents: ${trusted}\n\nTrusted agents may run:\n\n\`agent-kernel update apply --agent <agent-id>\`\n${END}\n`;
+}
+
+function targetFiles(projectPath) {
+  const home = kernelHome();
+  const userHome = process.env.HOME || process.env.USERPROFILE || os.homedir();
+  const files = [
+    path.join(home, 'dist', 'AGENTS.md'),
+    path.join(home, 'dist', 'CLAUDE.md'),
+    path.join(home, 'dist', 'cursor-rule.mdc'),
+    path.join(home, 'dist', 'antigravity-agents.md'),
+    path.join(home, 'dist', 'GEMINI.md'),
+    path.join(userHome, '.codex', 'AGENTS.md'),
+    path.join(userHome, '.claude', 'CLAUDE.md'),
+    path.join(userHome, '.gemini', 'GEMINI.md')
+  ];
+  if (projectPath) {
+    const project = path.resolve(projectPath);
+    files.push(
+      path.join(project, 'AGENTS.md'),
+      path.join(project, 'CLAUDE.md'),
+      path.join(project, '.cursor', 'rules', '00-agent-kernel.mdc'),
+      path.join(project, '.agents', 'agents.md'),
+      path.join(project, 'GEMINI.md')
+    );
+  }
+  return [...new Set(files)];
+}
+
+function publish(projectPath) {
+  const home = kernelHome();
+  const config = readJson(path.join(home, 'config.json'), {});
+  const cache = readJson(path.join(home, 'runtime', 'update-status.json'), null);
+  const block = renderBlock(config, cache);
+  let changed = 0;
+  for (const filePath of targetFiles(projectPath)) {
+    if (!fs.existsSync(filePath)) continue;
+    const original = fs.readFileSync(filePath, 'utf8');
+    const clean = removeBlock(original);
+    const next = block ? `${clean.trimEnd()}\n\n${block}` : clean;
+    if (next !== original) {
+      atomicWrite(filePath, next);
+      changed++;
+    }
+  }
+  return changed;
+}
+
+const args = process.argv.slice(2);
+const projectIndex = args.indexOf('--project');
+const projectPath = projectIndex >= 0 ? args[projectIndex + 1] : null;
+const changed = publish(projectPath);
+if (args.includes('--json')) process.stdout.write(JSON.stringify({ ok: true, changed }) + '\n');
