@@ -29,11 +29,7 @@ function runPublicFailure(env, ...args) {
     runPublic(env, ...args);
     return { status: 0, stdout: '', stderr: '' };
   } catch (error) {
-    return {
-      status: error.status || 1,
-      stdout: String(error.stdout || ''),
-      stderr: String(error.stderr || '')
-    };
+    return { status: error.status || 1, stdout: String(error.stdout || ''), stderr: String(error.stderr || '') };
   }
 }
 
@@ -65,11 +61,7 @@ function seedState(isolated) {
   const unsafePath = path.join(isolated.kernelHome, 'inbox', 'pending', 'proposal_dashboard_unsafe.json');
   const approvedPath = path.join(isolated.kernelHome, 'inbox', 'approved', 'proposal_dashboard_approved.json');
   const rejectedPath = path.join(isolated.kernelHome, 'inbox', 'rejected', 'proposal_dashboard_rejected.json');
-  writeJson(pendingPath, {
-    id: 'proposal_dashboard_pending', type: 'rule', scope: 'global', level: 'standard', status: 'pending',
-    text: `Review-first dashboard proposal ${secret}`, reason: 'A local agent proposed this memory.',
-    targets: ['all'], tags: ['dashboard'], source: { proposedBy: 'codex' }, createdAt: NOW, updatedAt: NOW
-  });
+  writeJson(pendingPath, { id: 'proposal_dashboard_pending', type: 'rule', scope: 'global', level: 'standard', status: 'pending', text: `Review-first dashboard proposal ${secret}`, reason: 'A local agent proposed this memory.', targets: ['all'], tags: ['dashboard'], source: { proposedBy: 'codex' }, createdAt: NOW, updatedAt: NOW });
   writeJson(unsafePath, { id: '../../unsafe-dashboard-id', type: 'note', status: 'pending', text: 'Unsafe ID fixture.', createdAt: NOW });
   writeJson(approvedPath, { id: 'proposal_dashboard_approved', type: 'workflow', status: 'approved', text: 'Approved proposal history.', updatedAt: NOW });
   writeJson(rejectedPath, { id: 'proposal_dashboard_rejected', type: 'policy', status: 'rejected', text: 'Rejected proposal history.', updatedAt: NOW });
@@ -115,10 +107,7 @@ function seedState(isolated) {
   writeJson(path.join(architecture, 'exceptions.json'), { version: 1, exceptions: [{ id: 'exception_dashboard', status: 'active', expiresAt: '2099-01-01T00:00:00.000Z' }] });
   writeJson(path.join(architecture, 'reports', 'latest.json'), { version: 1, generatedAt: NOW, ok: true, findings: [], summary: { blocking: 0, warning: 0 } });
 
-  return {
-    secret, projectPath, auditPath,
-    sourceFiles: [pendingPath, unsafePath, approvedPath, rejectedPath, rulePath, skillPath, policyPath, episodePath, failurePath, agentsPath, projectsPath, sessionPath, commitsPath, configPath, updatePath]
-  };
+  return { secret, projectPath, auditPath, sourceFiles: [pendingPath, unsafePath, approvedPath, rejectedPath, rulePath, skillPath, policyPath, episodePath, failurePath, agentsPath, projectsPath, sessionPath, commitsPath, configPath, updatePath] };
 }
 
 export async function run() {
@@ -137,10 +126,7 @@ export async function run() {
   if (openedArgs.length !== 1 || openedArgs[0] !== dashboardPath) throw new Error(`browser received unexpected arguments: ${JSON.stringify(openedArgs)}`);
 
   const html = fs.readFileSync(dashboardPath, 'utf8');
-  for (const required of [
-    'Agent Kernel Memory Dashboard', 'Pending review', 'Approved proposals', 'Rejected proposals', 'Durable memories', 'Rules', 'Skill triggers', 'Policies', 'Episodes', 'Failure Lessons', 'Sessions', 'Agents', 'Projects', 'Commit links', 'Architecture Guardian', 'Update status', 'Retention', 'Audit summary',
-    'agent-kernel inbox', 'agent-kernel approve proposal_dashboard_pending --publish', 'agent-kernel reject proposal_dashboard_pending', 'Invalid action ID', 'navigator.clipboard', 'dashboard-search', 'Skipped malformed local records: 1'
-  ]) {
+  for (const required of ['Agent Kernel Memory Dashboard', 'Pending review', 'Approved proposals', 'Rejected proposals', 'Durable memories', 'Rules', 'Skill triggers', 'Policies', 'Episodes', 'Failure Lessons', 'Sessions', 'Agents', 'Projects', 'Commit links', 'Architecture Guardian', 'Update status', 'Retention', 'Audit summary', 'agent-kernel inbox', 'agent-kernel approve proposal_dashboard_pending --publish', 'agent-kernel reject proposal_dashboard_pending', 'Invalid action ID', 'navigator.clipboard', 'dashboard-search', 'Skipped malformed local records: 1']) {
     if (!html.includes(required)) throw new Error(`dashboard omitted required content: ${required}`);
   }
   if (html.includes(fixture.secret) || html.includes(isolated.kernelHome) || html.includes(fixture.projectPath)) throw new Error('dashboard leaked a secret or absolute local path');
@@ -186,10 +172,10 @@ export async function run() {
   if (minimalHtml.includes('Rejected proposals') || minimalHtml.includes('Architecture Guardian')) throw new Error('dashboard rendered empty adaptive sections');
 
   assertUnchanged(before);
-  const audit = fs.readFileSync(fixture.auditPath, 'utf8');
-  if (audit.includes(fixture.secret)) throw new Error('dashboard audit leaked a secret');
-  const dashboardEvents = audit.split(/\r?\n/).filter((line) => line.includes('dashboard.generate'));
+  const auditLines = fs.readFileSync(fixture.auditPath, 'utf8').split(/\r?\n/).filter(Boolean);
+  const dashboardEvents = auditLines.filter((line) => line.includes('dashboard.generate'));
   if (dashboardEvents.length !== 5) throw new Error(`dashboard audit count was incorrect: ${dashboardEvents.length}`);
+  if (dashboardEvents.some((line) => line.includes(fixture.secret))) throw new Error('dashboard-generated audit event leaked a secret');
 }
 
 export const name = 'public-cli-dashboard';
