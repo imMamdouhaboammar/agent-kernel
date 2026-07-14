@@ -71,16 +71,43 @@ function resolveProject(projectArg) {
   return fs.realpathSync(candidate);
 }
 
-function gitRoot(projectPath) {
+function gitOutput(projectPath, args, errorMessage) {
   try {
-    return fs.realpathSync(childProcess.execFileSync('git', ['rev-parse', '--show-toplevel'], {
+    return childProcess.execFileSync('git', args, {
       cwd: projectPath,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore']
-    }).trim());
+    }).trim();
   } catch {
-    throw new Error(`Not a Git worktree: ${projectPath}`);
+    throw new Error(errorMessage);
   }
+}
+
+function resolveGitPath(projectPath, value) {
+  const candidate = path.isAbsolute(value) ? value : path.resolve(projectPath, value);
+  const existingAncestor = (() => {
+    let current = candidate;
+    while (!exists(current)) {
+      const parent = path.dirname(current);
+      if (parent === current) return null;
+      current = parent;
+    }
+    return current;
+  })();
+  if (!existingAncestor) throw new Error(`Could not resolve Git path: ${candidate}`);
+  const realAncestor = fs.realpathSync(existingAncestor);
+  return path.join(realAncestor, path.relative(existingAncestor, candidate));
+}
+
+function gitLocations(projectPath) {
+  const root = fs.realpathSync(gitOutput(projectPath, ['rev-parse', '--show-toplevel'], `Not a Git worktree: ${projectPath}`));
+  const commonRaw = gitOutput(projectPath, ['rev-parse', '--git-common-dir'], `Could not resolve Git common directory for ${projectPath}`);
+  const hooksRaw = gitOutput(projectPath, ['rev-parse', '--git-path', 'hooks'], `Could not resolve Git hooks directory for ${projectPath}`);
+  return {
+    root,
+    commonDir: resolveGitPath(projectPath, commonRaw),
+    hooksDir: resolveGitPath(projectPath, hooksRaw)
+  };
 }
 
 function agentKernelBlock() {
@@ -109,6 +136,12 @@ function backupExisting(hookPath, root) {
   return backupPath;
 }
 
+function displayPath(root, targetPath) {
+  const relative = path.relative(root, targetPath).replace(/\\/g, '/');
+  if (!relative.startsWith('../') && relative !== '..' && !path.isAbsolute(relative)) return relative;
+  return targetPath;
+}
+
 function usage() {
   print(`agent-kernel-safe-git-hook\n\nUsage:\n  agent-kernel-safe-git-hook [project] [--dry-run] [--force] [--no-backup]\n\nSafely injects the Agent Kernel pre-commit block without deleting existing hook logic.\n`);
 }
@@ -118,13 +151,8 @@ function main() {
   if (flags.help) return usage();
 
   const project = resolveProject(flags._[0] || '.');
-  const root = gitRoot(project);
-  const gitDir = path.join(root, '.git');
-  if (!exists(gitDir)) {
-    throw new Error(`No .git directory found in ${root}`);
-  }
-
-  const hookPath = path.join(gitDir, 'hooks', 'pre-commit');
+  const locations = gitLocations(project);
+  const hookPath = path.join(locations.hooksDir, 'pre-commit');
   const existing = readText(hookPath, '');
   const next = mergeHook(existing);
   const action = exists(hookPath)
@@ -132,11 +160,11 @@ function main() {
     : 'create';
 
   print(flags.dryRun ? 'Agent Kernel safe git-hook dry run:' : 'Agent Kernel safe git-hook:');
-  print(`- ${action}: ${path.relative(root, hookPath).replace(/\\/g, '/')}`);
+  print(`- ${action}: ${displayPath(locations.root, hookPath)}`);
 
   if (flags.dryRun) return;
 
-  if (!flags.noBackup && exists(hookPath)) backupExisting(hookPath, root);
+  if (!flags.noBackup && exists(hookPath)) backupExisting(hookPath, locations.root);
   writeText(hookPath, next);
   fs.chmodSync(hookPath, 0o755);
   print(`Safe git hook installed: ${hookPath}`);
