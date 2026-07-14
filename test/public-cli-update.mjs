@@ -8,7 +8,7 @@
 //   5. Only allowlisted agents can apply an exact resolved version.
 //   6. Verification failure triggers one rollback attempt.
 //   7. Update notifications reach generated agent guidance and router stderr.
-//   8. Audit and guidance handling never leak secrets or truncate malformed files.
+//   8. Audit and guidance handling never leak secrets, replace symlinks, or truncate malformed files.
 
 import assert from 'node:assert/strict';
 import childProcess from 'node:child_process';
@@ -305,14 +305,31 @@ export async function run() {
   fs.mkdirSync(path.dirname(malformedGuidancePath), { recursive: true });
   const malformedGuidance = 'User guidance\n<!-- agent-kernel-update:start -->\nKeep this tail intact\n';
   fs.writeFileSync(malformedGuidancePath, malformedGuidance);
-  JSON.parse(runPublic(baseEnv, 'update', 'status', '--json'));
+
+  const duplicateGuidancePath = path.join(fixture.homeDir, '.gemini', 'GEMINI.md');
+  fs.mkdirSync(path.dirname(duplicateGuidancePath), { recursive: true });
+  const duplicateBlock = '<!-- agent-kernel-update:start -->\nold notice\n<!-- agent-kernel-update:end -->';
+  fs.writeFileSync(duplicateGuidancePath, `User Gemini guidance\n${duplicateBlock}\n${duplicateBlock}\n`);
+
+  const symlinkTarget = path.join(fixture.homeDir, 'claude-guidance-target.md');
+  const symlinkPath = path.join(fixture.homeDir, '.claude', 'CLAUDE.md');
+  fs.mkdirSync(path.dirname(symlinkPath), { recursive: true });
+  fs.writeFileSync(symlinkTarget, 'User-owned symlink target\n');
+  fs.symlinkSync(symlinkTarget, symlinkPath);
+
+  JSON.parse(runPublic(baseEnv, 'update', 'status', '--json=true'));
   assert.equal(fs.readFileSync(malformedGuidancePath, 'utf8'), malformedGuidance);
+  const collapsedGuidance = fs.readFileSync(duplicateGuidancePath, 'utf8');
+  assert.equal((collapsedGuidance.match(/<!-- agent-kernel-update:start -->/g) || []).length, 1);
+  assert.ok(collapsedGuidance.includes('User Gemini guidance'));
+  assert.equal(fs.lstatSync(symlinkPath).isSymbolicLink(), true);
+  assert.equal(fs.readFileSync(symlinkTarget, 'utf8'), 'User-owned symlink target\n');
 
   const routedVersion = runPublicCapture(baseEnv, 'version');
   assert.equal(routedVersion.status, 0);
   assert.ok(routedVersion.stderr.includes(`Agent Kernel update available: ${currentVersion} -> ${guidanceVersion}`));
   const npmCallsBeforeJson = readJsonLines(tools.npmLog).length;
-  const routedJsonStatus = runPublicCapture(baseEnv, 'update', 'status', '--json');
+  const routedJsonStatus = runPublicCapture(baseEnv, 'update', 'status', '--json=true');
   assert.equal(routedJsonStatus.status, 0);
   assert.equal(routedJsonStatus.stderr, '');
   assert.equal(readJsonLines(tools.npmLog).length, npmCallsBeforeJson);
@@ -337,6 +354,7 @@ export async function run() {
   const autoCompile = runPublicCapture(autoEnv, 'compile');
   assert.equal(autoCompile.status, 0);
   assert.equal(countNpmCalls(autoTools.npmLog, 'view'), 1);
+  assert.equal(countNpmCalls(autoTools.npmLog, 'install'), 0);
   assert.ok(autoCompile.stderr.includes(`Agent Kernel update available: ${currentVersion} -> ${availableVersion}`));
   const autoConstitution = fs.readFileSync(path.join(autoFixture.kernelHome, 'dist', 'AGENTS.md'), 'utf8');
   assert.ok(autoConstitution.includes(availableVersion));
