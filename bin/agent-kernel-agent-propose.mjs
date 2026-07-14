@@ -6,6 +6,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { agentCan, enrichIdentityRecord, resolveAgentIdentity } from './agent-kernel-agent-model.mjs';
 
+const VALUE_FLAGS = new Set(['from', 'agent', 'reason', 'text', 'type', 'scope', 'level', 'targets', 'tags']);
+const BOOLEAN_FLAGS = new Set(['help']);
+
 function print(message = '') {
   process.stdout.write(String(message) + '\n');
 }
@@ -15,22 +18,58 @@ function fail(message) {
   process.exitCode = 1;
 }
 
+function canonicalFlag(raw) {
+  if (raw === 'h') return 'help';
+  return raw;
+}
+
 function parseArgs(argv) {
   const flags = { _: [] };
+  const seen = new Set();
+  let positionalOnly = false;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (arg.startsWith('--')) {
-      const raw = arg.slice(2);
-      const eq = raw.indexOf('=');
-      if (eq >= 0) flags[raw.slice(0, eq)] = raw.slice(eq + 1);
-      else {
-        const next = argv[i + 1];
-        if (next && !next.startsWith('-')) { flags[raw] = next; i++; }
-        else flags[raw] = true;
-      }
-    } else {
+    if (positionalOnly) {
       flags._.push(arg);
+      continue;
     }
+    if (arg === '--') {
+      positionalOnly = true;
+      continue;
+    }
+    if (!arg.startsWith('-') || arg === '-') {
+      flags._.push(arg);
+      continue;
+    }
+
+    const prefixLength = arg.startsWith('--') ? 2 : 1;
+    const token = arg.slice(prefixLength);
+    const eq = token.indexOf('=');
+    const rawName = eq >= 0 ? token.slice(0, eq) : token;
+    const name = canonicalFlag(rawName);
+    if (!VALUE_FLAGS.has(name) && !BOOLEAN_FLAGS.has(name)) throw new Error(`Unknown option: ${arg}`);
+    if (seen.has(name)) throw new Error(`Duplicate option: --${name}`);
+    seen.add(name);
+
+    if (BOOLEAN_FLAGS.has(name)) {
+      if (eq >= 0) throw new Error(`Option --${name} does not accept a value.`);
+      flags[name] = true;
+      continue;
+    }
+
+    let value;
+    if (eq >= 0) value = token.slice(eq + 1);
+    else {
+      const next = argv[i + 1];
+      if (next === undefined || next.startsWith('-')) throw new Error(`Option --${name} requires a value.`);
+      value = next;
+      i++;
+    }
+    if (!String(value).trim()) throw new Error(`Option --${name} requires a non-empty value.`);
+    flags[name] = value;
+  }
+  if (flags.from !== undefined && flags.agent !== undefined) {
+    throw new Error('Options --from and --agent are aliases and cannot be used together.');
   }
   return flags;
 }
@@ -81,7 +120,7 @@ function usage() {
 
 function main() {
   const flags = parseArgs(process.argv.slice(2));
-  if (flags.help || flags.h) return usage();
+  if (flags.help) return usage();
 
   const text = String(flags.text || flags._.join(' ') || readStdin()).trim();
   const from = String(flags.from || flags.agent || 'unknown-agent').trim();
@@ -141,4 +180,5 @@ function main() {
   process.stdout.write(out);
 }
 
-main();
+try { main(); }
+catch (error) { fail(error?.message || String(error)); }
