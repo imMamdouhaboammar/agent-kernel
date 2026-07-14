@@ -10,8 +10,8 @@
 //         to dist/cli.mjs.
 // Step 4: ensure dist/cli.mjs is executable.
 //
-// After this script runs, dist/cli.mjs is byte-identical to
-// src/cli.mjs, both with VERSION = package.json#version.
+// After this script runs, `dist/cli.mjs` is byte-identical to
+// `src/cli.mjs`, both with VERSION = package.json#version.
 
 import {
   chmodSync,
@@ -85,37 +85,6 @@ function redactEpisodeText(value) {
   const tagsLine = "tags: Array.isArray(input.tags) ? input.tags : String(input.tags || '').split(',').map(s => s.trim()).filter(Boolean),";
   const redactedTagsLine = "tags: Array.isArray(input.tags) ? input.tags.map(redactEpisodeText) : redactEpisodeText(String(input.tags || '')).split(',').map(s => s.trim()).filter(Boolean),";
   if (srcText.includes(tagsLine)) srcText = srcText.replace(tagsLine, redactedTagsLine);
-
-  const updateRendererAnchor = 'function renderAgentsMd(data) {';
-  const updateRendererBlock = [
-    'function renderUpdateGuidance(data) {',
-    "  const cache = readJson(path.join(data.paths.root, 'runtime', 'update-status.json'), null);",
-    "  if (!cache || cache.updateAvailable !== true || !cache.currentVersion || !cache.targetVersion) return '';",
-    "  const updates = { mode: 'disabled', channel: cache.channel || 'latest', trustedAgents: [], ...(data.config?.updates || {}) };",
-    "  const trusted = Array.isArray(updates.trustedAgents) && updates.trustedAgents.length ? updates.trustedAgents.join(', ') : 'none';",
-    "  return '\\n## Agent Kernel update available\\n\\n- Installed: ' + cache.currentVersion + '\\n- Available: ' + cache.targetVersion + '\\n- Channel: ' + (cache.channel || updates.channel) + '\\n- Mode: ' + updates.mode + '\\n- Trusted agents: ' + trusted + '\\n\\nRun: agent-kernel update apply --agent <agent-id>\\n';",
-    '}',
-    '',
-    updateRendererAnchor
-  ].join('\n');
-
-  if (!srcText.includes('function renderUpdateGuidance(')) {
-    if (!srcText.includes(updateRendererAnchor)) {
-      console.error('✗ renderAgentsMd anchor not found — inspect src/cli.mjs before building');
-      process.exit(1);
-    }
-    srcText = srcText.replace(updateRendererAnchor, updateRendererBlock);
-  }
-
-  const checklistAnchor = '- Never hide policy violations or skipped checks.\\n${MARKER_END}\\n`;';
-  const checklistReplacement = '- Never hide policy violations or skipped checks.\\n${renderUpdateGuidance(data)}\\n${MARKER_END}\\n`;';
-  if (!srcText.includes(checklistReplacement)) {
-    if (!srcText.includes(checklistAnchor)) {
-      console.error('✗ final checklist anchor not found — inspect src/cli.mjs before building');
-      process.exit(1);
-    }
-    srcText = srcText.replace(checklistAnchor, checklistReplacement);
-  }
 
   return srcText;
 }
