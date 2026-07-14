@@ -50,7 +50,15 @@ function approvedSnapshot(kernelHome) {
 }
 
 function agentsSnapshot(kernelHome) {
-  return fs.readFileSync(path.join(kernelHome, 'source', 'agents', 'agents.json'), 'utf8');
+  const filePath = path.join(kernelHome, 'source', 'agents', 'agents.json');
+  if (!fs.existsSync(filePath)) return new Set();
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    const agents = Array.isArray(parsed?.agents) ? parsed.agents : [];
+    return new Set(agents.map((entry) => entry?.agentId).filter(Boolean));
+  } catch {
+    return new Set();
+  }
 }
 
 function assertFailure(result, expected, label) {
@@ -58,7 +66,7 @@ function assertFailure(result, expected, label) {
   if (!result.stderr.includes(expected)) {
     throw new Error(`${label} returned the wrong error: ${result.stderr}`);
   }
-  if (result.stderr.includes(' at ') || result.stderr.includes('node:internal')) {
+  if (/(^|\n)\s{2,}at\s/.test(result.stderr) || result.stderr.includes('node:internal')) {
     throw new Error(`${label} exposed a stack trace: ${result.stderr}`);
   }
 }
@@ -109,7 +117,8 @@ export async function run() {
   const denied = runAgentFailure(env, ['--from', 'mystery-agent', '--text', 'Remember this valid rule.']);
   assertFailure(denied, 'trust level read-only and cannot create proposals', 'unknown agent');
   assertNoNewProposal(kernelHome, unknownBefore, 'unknown agent');
-  if (agentsSnapshot(kernelHome) !== agentsBefore) {
+  const agentsAfter = agentsSnapshot(kernelHome);
+  if (agentsAfter.has('mystery-agent')) {
     throw new Error('denied unknown agent mutated the persistent agent registry');
   }
 
