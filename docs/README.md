@@ -2,7 +2,7 @@
 
 This folder is the canonical documentation set for Agent Kernel.
 
-Use it to understand the current runtime, connect agent surfaces, update memory behavior, review trust and hook safety, prevent architecture drift, troubleshoot setup, manage portable local state, and operate the trusted CLI updater.
+Use it to understand the current runtime, connect agent surfaces, update memory behavior, review trust and hook safety, prevent architecture drift, troubleshoot setup, manage portable local state, inspect the static memory dashboard, and operate the trusted CLI updater.
 
 ---
 
@@ -11,12 +11,13 @@ Use it to understand the current runtime, connect agent surfaces, update memory 
 | Situation | Read first | Then read |
 |---|---|---|
 | I want to install and use Agent Kernel | `INSTALL_AND_AGENT_SETUP.md` | `OPERATING_MODEL.md`, `SAFE_LINKING.md`, `SAFE_GIT_HOOKS.md` |
+| I want to inspect pending, approved, rejected, memory, episode, failure, and runtime state in a browser | `STATIC_MEMORY_DASHBOARD.md` | `RETENTION_AND_PORTABILITY.md`, `MEMORY_PROTOCOL.md` |
 | I want trusted agents to check or apply Agent Kernel updates | `UPDATES.md` | `AGENT_WRITE_MODES.md`, `ARCHITECTURE_NOW.md` |
 | I want to understand how the system works | `OPERATING_MODEL.md` | `ARCHITECTURE_NOW.md` |
 | I want to understand which agents may capture or propose data | `AGENT_WRITE_MODES.md` | `AGENT_PROPOSALS.md`, `MEMORY_PROTOCOL.md` |
 | I want to clean up, back up, restore, or report on local state | `RETENTION_AND_PORTABILITY.md` | `MEMORY_PROTOCOL.md`, `JSON_FIRST_STORAGE.md` |
 | I want to prevent architecture drift in AI-generated code | `ARCHITECTURE_GUARDIAN.md` | `architecture-guardian/COMMAND_REFERENCE.md`, `skills/architecture-guardian/references/` |
-| I want to debug a setup or runtime problem | `TROUBLESHOOTING.md` | Relevant setup, hook, MCP, architecture, trust, update, or protocol doc |
+| I want to debug a setup or runtime problem | `TROUBLESHOOTING.md` | Relevant setup, hook, MCP, architecture, trust, update, dashboard, or protocol doc |
 | I am an AI agent working on this repo | `AGENT_RUNBOOK.md` | `AGENTS.md`, `ARCHITECTURE_NOW.md` |
 | I want to change runtime behavior | `ARCHITECTURE_NOW.md` | Relevant protocol doc and tests |
 | I want to add or change memory behavior | `MEMORY_PROTOCOL.md` | `JSON_FIRST_STORAGE.md`, `AGENT_PROPOSALS.md` |
@@ -45,9 +46,10 @@ For a new reader, follow this order:
 6. `ARCHITECTURE_GUARDIAN.md` when AI agents will make non-trivial code changes.
 7. `SAFE_LINKING.md` and `SAFE_GIT_HOOKS.md` before modifying an existing project.
 8. The relevant file under `integrations/` for exact client setup and rollback.
-9. `RETENTION_AND_PORTABILITY.md` before pruning, exporting, importing, or restoring local state.
-10. `UPDATES.md` before allowing an AI agent to install a global Agent Kernel version.
-11. `TROUBLESHOOTING.md` if setup, linking, hooks, MCP, architecture checks, memory, portability, or updates behave unexpectedly.
+9. `STATIC_MEMORY_DASHBOARD.md` when a browser snapshot is useful for reviewing local state.
+10. `RETENTION_AND_PORTABILITY.md` before pruning, exporting, importing, or restoring local state.
+11. `UPDATES.md` before allowing an AI agent to install a global Agent Kernel version.
+12. `TROUBLESHOOTING.md` if setup, linking, hooks, MCP, architecture checks, memory, portability, dashboard, or updates behave unexpectedly.
 
 This order gets a user from installation to safe project adoption before asking them to understand every protocol.
 
@@ -66,6 +68,7 @@ This order gets a user from installation to safe project adoption before asking 
 - `AGENT_PROPOSALS.md` documents the restricted proposal helper, trust checks, input limits, structured output, and pending-only lifecycle.
 - `AGENT_WRITE_MODES.md` documents `read-only`, `capture-only`, `propose-only`, and `trusted-local` behavior for agent-authored runtime capture.
 - `FAILURE_LESSONS_PROTOCOL.md` documents the error-to-skill loop.
+- `STATIC_MEMORY_DASHBOARD.md` documents the read-only adaptive HTML snapshot, browser boundary, copy-only review commands, redaction, and output safety.
 - `RETENTION_AND_PORTABILITY.md` documents raw-observation retention, deterministic session compaction, redacted export, review-first import, explicit restore, terminal views, and static local reports.
 - `UPDATES.md` documents configurable release channels, user-confirmed allowlists, cached agent notices, exact-version installation, verification, rollback, and update auditing.
 - `BUNDLE_KB.md` documents the planned portable knowledge bundle format and command contract. It is not a shipped v1.9.0 command surface.
@@ -131,7 +134,7 @@ Updater configuration, cache, and audit state live under:
 ~/.agent-kernel/logs/updates.jsonl
 ```
 
-Runtime sessions, observations, local reports, and import backups remain under the local Agent Kernel home. See `RETENTION_AND_PORTABILITY.md` before changing or sharing them.
+The default generated dashboard lives at `~/.agent-kernel/reports/dashboard.html`. Runtime sessions, observations, local reports, and import backups remain under the local Agent Kernel home. See `STATIC_MEMORY_DASHBOARD.md` and `RETENTION_AND_PORTABILITY.md` before changing or sharing them.
 
 Architecture Guardian project state lives under:
 
@@ -172,6 +175,7 @@ When behavior changes, update docs in the same PR.
 |---|---|
 | New core command | `README.md`, `ARCHITECTURE_NOW.md`, relevant protocol doc, smoke test docs if needed |
 | New helper binary | `README.md`, `ARCHITECTURE_NOW.md`, relevant setup or protocol doc |
+| Static dashboard command, stores, browser behavior, privacy, or output safety | `STATIC_MEMORY_DASHBOARD.md`, `README.md`, `ARCHITECTURE_NOW.md`, routed-command docs, focused tests |
 | Updater command, trust, channel, cache, notification, install, or rollback behavior | `UPDATES.md`, `README.md`, `ARCHITECTURE_NOW.md`, routed-command docs, focused tests |
 | Proposal helper, identity, or trust behavior | `AGENT_PROPOSALS.md`, `AGENT_WRITE_MODES.md`, `MEMORY_PROTOCOL.md`, focused tests |
 | Runtime capture or observation behavior | `AGENT_WRITE_MODES.md`, `ARCHITECTURE_NOW.md`, focused tests |
