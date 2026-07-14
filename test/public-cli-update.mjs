@@ -132,6 +132,7 @@ process.exit(41);
 export async function run() {
   const fixture = makeEnv();
   const tools = createFakeTools(fixture.homeDir);
+  const fakeSecret = 'ghp_' + 'abcdefghijklmnopqrstuvwxyz123456';
   const baseEnv = {
     ...fixture.env,
     AGENT_KERNEL_NPM_BIN: tools.npmPath,
@@ -193,7 +194,7 @@ export async function run() {
   const registryFailure = runPublicResult({
     ...baseEnv,
     FAKE_NPM_VIEW_FAIL: '1',
-    FAKE_NPM_ERROR_TEXT: 'registry failed with ghp_abcdefghijklmnopqrstuvwxyz123456'
+    FAKE_NPM_ERROR_TEXT: `registry failed with ${fakeSecret}`
   }, 'update', 'check', '--force', '--json');
   assert.notEqual(registryFailure.status, 0);
   assert.match(registryFailure.stderr, /registry-unavailable/i);
@@ -236,7 +237,7 @@ export async function run() {
   const auditText = fs.readFileSync(auditPath, 'utf8');
   assert.ok(auditText.includes('registry-unavailable'));
   assert.ok(auditText.includes('unauthorized-agent'));
-  assert.ok(!auditText.includes('ghp_abcdefghijklmnopqrstuvwxyz123456'));
+  assert.ok(!auditText.includes(fakeSecret));
 
   fs.writeFileSync(cachePath, JSON.stringify({
     schemaVersion: 1,
