@@ -12,11 +12,12 @@ import {
 } from './agent-kernel-agent-model.mjs';
 
 const VALUE_FLAGS = new Set(['from', 'agent', 'reason', 'text', 'type', 'scope', 'level', 'targets', 'tags']);
-const BOOLEAN_FLAGS = new Set(['help']);
+const BOOLEAN_FLAGS = new Set(['help', 'json']);
 const MEMORY_TYPES = new Set(['rule', 'policy', 'preference', 'workflow', 'project-note', 'skill-trigger']);
 const MEMORY_SCOPES = new Set(['global', 'project']);
 const MEMORY_LEVELS = new Set(['critical', 'standard', 'note']);
 const SAFE_PROPOSAL_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,199}$/;
+const JSON_REQUESTED = process.argv.slice(2).includes('--json');
 const ERROR_REDACTIONS = [
   /sk-[A-Za-z0-9_-]{16,}/g,
   /ghp_[A-Za-z0-9]{16,}/g,
@@ -28,14 +29,18 @@ function print(message = '') {
   process.stdout.write(String(message) + '\n');
 }
 
+function printJson(value, stream = process.stdout) {
+  stream.write(JSON.stringify(value, null, 2) + '\n');
+}
+
 function fail(message) {
-  process.stderr.write(String(message) + '\n');
+  if (JSON_REQUESTED) printJson({ ok: false, error: String(message) }, process.stderr);
+  else process.stderr.write(String(message) + '\n');
   process.exitCode = 1;
 }
 
 function canonicalFlag(raw) {
-  if (raw === 'h') return 'help';
-  return raw;
+  return raw === 'h' ? 'help' : raw;
 }
 
 function parseArgs(argv) {
@@ -288,7 +293,7 @@ function enrichPendingProposal(output, identity, requestedFrom) {
 }
 
 function usage() {
-  print(`agent-kernel-agent-propose\n\nUsage:\n  agent-kernel-agent-propose --from codex --reason "User corrected this twice" --text "Always use pnpm here."\n  echo "Always use pnpm here." | agent-kernel-agent-propose --from cursor --reason "User asked to remember it"\n\nCreates a pending memory proposal. It does not approve or publish the memory.\n`);
+  print(`agent-kernel-agent-propose\n\nUsage:\n  agent-kernel-agent-propose --from codex --reason "User corrected this twice" --text "Always use pnpm here."\n  echo "Always use pnpm here." | agent-kernel-agent-propose --from cursor --reason "User asked to remember it"\n\nOptions:\n  --json  Emit a structured success or error envelope.\n\nCreates a pending memory proposal. It does not approve or publish the memory.\n`);
 }
 
 function main() {
@@ -318,8 +323,18 @@ function main() {
   if (input.tags) args.push('--tags', input.tags);
 
   const out = runCoreProposal(cmd, args);
-  enrichPendingProposal(out, identity, input.from);
-  process.stdout.write(out);
+  const proposalId = enrichPendingProposal(out, identity, input.from);
+  if (flags.json) {
+    printJson({
+      ok: true,
+      proposalId,
+      status: 'pending',
+      agentId: identity.agentId,
+      trustLevel: identity.trustLevel
+    });
+  } else {
+    process.stdout.write(out);
+  }
 }
 
 try { main(); }
