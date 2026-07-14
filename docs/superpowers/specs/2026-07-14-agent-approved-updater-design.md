@@ -2,7 +2,7 @@
 
 ## Status
 
-Approved for implementation on 2026-07-14.
+Approved for implementation on 2026-07-14 and aligned with the implemented helper boundaries after the TDD cycle.
 
 ## Objective
 
@@ -17,6 +17,7 @@ Add a focused update helper to the public Agent Kernel CLI. The helper checks co
 - Generated agent guidance is compiled by `src/cli.mjs` and distributed by `compile`, `sync`, and `link`.
 - `src/commands/` remains an unwired placeholder and must not receive production behavior.
 - Routed commands require focused smoke coverage.
+- The existing build script must remain the canonical version-injection and dist-copy path.
 
 ## Command surface
 
@@ -37,7 +38,7 @@ agent-kernel update apply --agent <agent-id> [--json]
 
 ### Focused update helper
 
-Create `bin/agent-kernel-update.mjs` as the only component allowed to query the npm registry or execute package installation. The public router sends the `update` command family to this helper.
+`bin/agent-kernel-update.mjs` is the only component allowed to query the npm registry or execute package installation. The public router sends the `update` command family to this helper.
 
 The helper owns:
 
@@ -52,6 +53,21 @@ The helper owns:
 - human and JSON output
 
 The package name is a source constant and cannot be supplied from user input.
+
+### Offline guidance publisher
+
+`bin/agent-kernel-update-guidance.mjs` owns update notifications inside existing agent guidance files.
+
+The publisher:
+
+- reads only local config and cached update status
+- never queries npm
+- maintains one bounded marker block
+- updates existing Codex, Claude, Cursor, Antigravity, and Gemini guidance files
+- removes the block when no cached update is available
+- does not create missing integration files
+
+The router invokes the publisher after successful `update`, `init`, `compile`, `sync`, and `link` commands. This ordering allows core compilation to remain unchanged and offline while preserving notices after generated files are rewritten.
 
 ### State files
 
@@ -109,7 +125,7 @@ An update apply operation is allowed only when:
 
 Agent identities are normalized to lowercase identifiers containing letters, digits, dots, underscores, or hyphens.
 
-The default recommended allowlist is supplied by the user through `update enable --agents ...`; no agent is trusted implicitly.
+The initial allowlist is supplied by the user through `update enable --agents ...`; no agent is trusted implicitly.
 
 ## Channel model
 
@@ -134,13 +150,13 @@ Tests inject a fake npm executable through `AGENT_KERNEL_NPM_BIN`. Production de
 
 `update check` performs a network lookup. `--force` ignores a fresh cache.
 
-Normal CLI commands must not perform a blocking network request. The router reads the cache and prints one concise update notice to stderr when the cache says an update is available.
+Normal CLI commands must not perform a blocking network request. The router reads the cache and prints one concise update notice to stderr when the cache says an update is available. The notice is suppressed when `--json` is present.
 
 The helper treats registry failures as non-fatal for `status` and cached notifications. Explicit `check` returns a structured failure and a non-zero exit status. No unrelated command fails because the registry is unavailable.
 
 ## Agent guidance notifications
 
-The compiler reads `runtime/update-status.json`. When an update is available, generated guidance receives a bounded section containing:
+When an update is available, the offline publisher adds a bounded section containing:
 
 - current and target versions
 - configured channel
@@ -148,9 +164,9 @@ The compiler reads `runtime/update-status.json`. When an update is available, ge
 - trusted agent identities
 - the exact apply command
 
-The section is present in the shared constitution and therefore reaches Codex. Agent-specific generated files also receive a concise pointer so Claude, Cursor, Antigravity, and Gemini can surface the update.
+The block is refreshed in existing shared and agent-specific guidance for Codex, Claude, Cursor, Antigravity, and Gemini.
 
-No registry lookup occurs during compilation.
+No registry lookup occurs during compilation, synchronization, linking, or guidance publication.
 
 ## Apply transaction
 
@@ -195,15 +211,16 @@ Audit entries include timestamps, agent identity, channel, previous version, tar
 - Invalid config produces an actionable error and no write.
 - Config writes are atomic through a temporary file and rename.
 - Cache writes are atomic.
+- Guidance block writes are atomic.
 - A malformed cache is ignored.
 - An unknown or untrusted agent is denied before npm executes.
 - A failed registry lookup never mutates trust configuration.
 - Update installation uses a timeout and inherited terminal output for human mode.
-- JSON mode captures bounded subprocess output for structured reporting.
+- JSON mode returns structured success or failure data without adding cached router notices.
 
 ## Testing strategy
 
-Create `test/public-cli-update.mjs` with a fake npm executable and isolated Agent Kernel home. The test covers:
+`test/public-cli-update.mjs` uses fake npm and CLI executables with an isolated Agent Kernel home. The test covers:
 
 - routed command discovery
 - default disabled status
@@ -219,23 +236,23 @@ Create `test/public-cli-update.mjs` with a fake npm executable and isolated Agen
 - verification failure and rollback
 - JSON responses
 - redacted audit records
-- generated guidance notification
+- managed guidance notification
 - router cached notice behavior
 
-Wire the test into `test/smoke.mjs`.
+The module is wired into `test/smoke.mjs`.
 
-Because the current execution environment cannot clone the repository, GitHub Actions is the source of truth for the failing-test and passing-test evidence. The test-only commit must fail before implementation is added.
+Because the execution environment cannot clone the repository, GitHub Actions is the source of truth for the failing-test and passing-test evidence. The test-only stage failed before implementation, then the complete feature passed the Node 18, 20, and 22 smoke matrix.
 
 ## Documentation impact
 
-Update:
+Updated:
 
 - `README.md`
 - `docs/README.md`
 - `docs/ARCHITECTURE_NOW.md`
 - `docs/public-cli/ROUTED_COMMANDS.md`
 
-Create:
+Created:
 
 - `docs/UPDATES.md`
 
