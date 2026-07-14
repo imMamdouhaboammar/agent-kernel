@@ -30,7 +30,7 @@ const distPath = join(root, 'dist', 'cli.mjs');
 const VERSION_REGEX = /const VERSION = ['"]([^'"]+)['"]/;
 
 function applyRuntimePatches(srcText) {
-  const agentsWrite = "writeText(path.join(root, 'AGENTS.md'), `${agents}\n\n## Project bridge\n\nLinked project: ${root}\nLinked at: ${nowIso()}\n`);";
+  const agentsWrite = "writeText(path.join(root, 'AGENTS.md'), `${agents}\\n\\n## Project bridge\\n\\nLinked project: ${root}\\nLinked at: ${nowIso()}\\n`);";
   const claudeWrite = "writeText(path.join(root, 'CLAUDE.md'), readText(path.join(p.dist, 'CLAUDE.md')));";
 
   if (!srcText.includes(agentsWrite)) {
@@ -45,7 +45,7 @@ function applyRuntimePatches(srcText) {
   const episodeLimitLine = 'const EPISODE_TEXT_LIMIT = 120000;';
   const redactionBlock = `const EPISODE_REDACTION_PATTERNS = [
   ...DEFAULT_SECRET_PATTERNS,
-  '(' + 'OPENAI_API_KEY|ANTHROPIC_API_KEY|SUPABASE_SERVICE_ROLE_KEY' + ')\\s*=\\s*[^\\s\\n]+',
+  '(' + 'OPENAI_API_KEY|ANTHROPIC_API_KEY|SUPABASE_SERVICE_ROLE_KEY' + ')\\\\s*=\\\\s*[^\\\\s\\\\n]+',
   'github_' + 'pat_[A-Za-z0-9_]{20,}',
   'xox' + '[abposr]-[A-Za-z0-9-]{10,}'
 ];
