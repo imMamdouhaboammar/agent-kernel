@@ -129,12 +129,21 @@ function validateTargetPath(root, targetPath, relativePath) {
   const ancestor = nearestExistingAncestor(path.dirname(targetPath));
   if (!ancestor) throw new Error(`Could not resolve target parent: ${relativePath}`);
   const ancestorStat = lstat(ancestor);
-  if (!ancestorStat?.isDirectory()) {
-    throw new Error(`Target parent is not a directory: ${relativePath}`);
+  let resolvedAncestor;
+  try {
+    resolvedAncestor = fs.realpathSync(ancestor);
+  } catch {
+    if (ancestorStat?.isSymbolicLink()) throw new Error(`Broken symbolic target parent: ${relativePath}`);
+    throw new Error(`Could not resolve target parent: ${relativePath}`);
   }
-  const resolvedAncestor = fs.realpathSync(ancestor);
   if (!isInside(root, resolvedAncestor)) {
     throw new Error(`Target parent resolves outside project root: ${relativePath}`);
+  }
+  if (ancestorStat?.isSymbolicLink()) {
+    throw new Error(`Refusing to modify through symbolic target parent: ${relativePath}`);
+  }
+  if (!ancestorStat?.isDirectory()) {
+    throw new Error(`Target parent is not a directory: ${relativePath}`);
   }
 }
 
