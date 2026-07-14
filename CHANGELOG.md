@@ -3,6 +3,61 @@
 All notable changes to this project are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.10.1] - 2026-07-14
+
+This patch release hardens the CLI surface discovered during an
+end-to-end user-journey test of v1.10.0 against a fresh install. The
+new `--command` flag closes a critical gap in the public guard
+command, and the `--json` envelopes make `inbox`, `status`, and
+`doctor` scriptable.
+
+### Fixed
+
+- **`agent-kernel doctor` exit code.** Doctor now exits 1 on
+  `Status: ATTENTION REQUIRED` (was: always exit 0). CI scripts and
+  the runtime-doctor can now detect doctor failures.
+- **`agent-kernel guard --command`** (security). The `--command`
+  flag is now honored by the public CLI: any command is checked
+  against the deny-pattern policies in `policies.json`
+  (`dangerous-rm`, `curl-pipe-shell`, `chmod-777`,
+  `force-push-main`, `delete-git`) and rejected with exit 2 on
+  violation. Before this fix, the deny policies were only enforced
+  via the Claude PreToolUse hook, not the public CLI, so any direct
+  CLI user could `agent-kernel guard --command "rm -rf ~"` and
+  receive `OK`.
+- **`--json` envelopes** for `inbox`, `status`, and `doctor`
+  (plus the file-scan and command-scan variants of `guard`).
+  Output shapes:
+  - `inbox --json` → `{ ok, count, items[] }`
+  - `status --json` → `{ ok, version, home, approvedRules, pendingProposals, dist }`
+  - `doctor --json` → `{ ok, version, status, home, checks[] }`
+  - `guard --command --json` → `{ ok, blocked, kind: "command", message }`
+  - `guard (file scan) --json` → `{ ok, blocked, kind: "files", scanned | violations }`
+- **Help text.** `agent-kernel guard` now documents `--command` and
+  `--json`.
+
+### Tests
+
+- 38/38 smoke scenarios pass (was 37/37). New: `cli-status-json`
+  covers the JSON envelopes and the doctor exit-code behavior on
+  a fresh install (verified by running `init` in a tmpdir without
+  Claude/Codex globals and asserting that doctor exits 1 with
+  `ok: false` in `--json` mode).
+- `guard` test now covers the new `--command` flag for `rm -rf`,
+  `curl|sh`, and `chmod 777` (all blocked with exit 2) plus a
+  safe command (OK with exit 0), and the `--json` envelope.
+
+### Verified
+
+- `npm ci` (clean install)
+- `npm run build` (regenerates `dist/cli.mjs` at v1.10.1)
+- `npm run lint` (zero warnings)
+- `npm run typecheck` (TypeScript types pass)
+- `npm test` (38/38 smoke scenarios pass)
+- `npm run docs:check` (markdown link sanity)
+- `node scripts/check-version.mjs` (18/18 version surfaces agree)
+- `npm pack --dry-run` (clean tarball preview)
+
 ## [1.10.0] - 2026-07-14
 
 This release ships the **agent-approved CLI updater**: a secure self-update
