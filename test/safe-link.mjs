@@ -9,9 +9,11 @@
 //   6. Claude guidance is linked safely through CLAUDE.md.
 //   7. Unknown or duplicate options and ambiguous project paths fail without writes.
 //   8. Corrupt marker layouts fail closed unless explicit `--force` repair is used.
+//   9. Unsafe symbolic targets and invalid target parents fail during preflight.
+//  10. `--no-backup` suppresses user backups without leaving temporary files.
 
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { assertContains, makeEnv, repo, runCli } from './_lib/helpers.mjs';
 
@@ -43,6 +45,30 @@ function assertFailure(result, message) {
 
 function countMarkers(text) {
   return (text.match(/<!-- agent-kernel:start -->/g) || []).length;
+}
+
+function trySymlink(target, linkPath, type) {
+  try {
+    symlinkSync(target, linkPath, type);
+    return true;
+  } catch (error) {
+    if (error?.code === 'EPERM' || error?.code === 'EACCES' || error?.code === 'ENOSYS') return false;
+    throw error;
+  }
+}
+
+function tempArtifacts(root) {
+  const found = [];
+  function visit(dir) {
+    for (const name of readdirSync(dir)) {
+      const full = join(dir, name);
+      const stat = lstatSync(full);
+      if (stat.isDirectory()) visit(full);
+      else if (name.includes('.tmp-')) found.push(full);
+    }
+  }
+  visit(root);
+  return found;
 }
 
 export async function run() {
@@ -149,6 +175,50 @@ export async function run() {
   assertContains(repairedCorrupt, 'Keep this line.', 'force repair lost hand-written content');
   assertContains(repairedCorrupt, 'stale unclosed generated text', 'force repair removed non-marker text without review');
   if (countMarkers(repairedCorrupt) !== 1) throw new Error('force repair did not rebuild exactly one managed block');
+
+  const invalidParentProject = join(homeDir, 'invalid-target-parent-project');
+  mkdirSync(invalidParentProject, { recursive: true });
+  writeFileSync(join(invalidParentProject, '.cursor'), 'parent is a file');
+  const invalidParent = runSafeLinkFailure(env, invalidParentProject);
+  assertFailure(invalidParent, 'safe-link accepted a non-directory target parent');
+  assertContains(invalidParent.stderr, 'Target parent is not a directory', 'target parent error was not actionable');
+  if (existsSync(join(invalidParentProject, 'AGENTS.md'))) {
+    throw new Error('safe-link wrote earlier targets before target preflight completed');
+  }
+
+  const externalFile = join(homeDir, 'outside-agent-guidance.md');
+  writeFileSync(externalFile, 'outside content');
+  const symlinkProject = join(homeDir, 'symlink-target-project');
+  mkdirSync(symlinkProject, { recursive: true });
+  if (trySymlink(externalFile, join(symlinkProject, 'AGENTS.md'), 'file')) {
+    const symlinkResult = runSafeLinkFailure(env, symlinkProject);
+    assertFailure(symlinkResult, 'safe-link followed a symbolic target file');
+    assertContains(symlinkResult.stderr, 'Refusing to modify symbolic link target: AGENTS.md', 'symbolic target error was not actionable');
+    if (readFileSync(externalFile, 'utf8') !== 'outside content') throw new Error('safe-link modified a symlink target outside the project');
+  }
+
+  const externalDir = join(homeDir, 'outside-cursor-dir');
+  mkdirSync(externalDir, { recursive: true });
+  const parentSymlinkProject = join(homeDir, 'symlink-parent-project');
+  mkdirSync(parentSymlinkProject, { recursive: true });
+  if (trySymlink(externalDir, join(parentSymlinkProject, '.cursor'), 'dir')) {
+    const parentSymlinkResult = runSafeLinkFailure(env, parentSymlinkProject);
+    assertFailure(parentSymlinkResult, 'safe-link accepted a target parent resolving outside the project');
+    assertContains(parentSymlinkResult.stderr, 'Target parent resolves outside project root', 'external parent error was not actionable');
+    if (existsSync(join(parentSymlinkProject, 'AGENTS.md'))) {
+      throw new Error('safe-link wrote earlier targets before external parent preflight completed');
+    }
+  }
+
+  const noBackupProject = join(homeDir, 'no-backup-project');
+  mkdirSync(noBackupProject, { recursive: true });
+  writeFileSync(join(noBackupProject, 'AGENTS.md'), '# Existing no-backup instructions\n');
+  runSafeLink(env, noBackupProject, '--no-backup');
+  if (existsSync(join(noBackupProject, '.agent-kernel-backups'))) {
+    throw new Error('safe-link created user backups despite --no-backup');
+  }
+  const temporaryFiles = tempArtifacts(noBackupProject);
+  if (temporaryFiles.length) throw new Error(`safe-link left temporary files: ${temporaryFiles.join(', ')}`);
 }
 
 export const name = 'safe-link';
