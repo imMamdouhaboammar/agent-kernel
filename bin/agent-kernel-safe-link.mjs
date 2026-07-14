@@ -20,6 +20,10 @@ function exists(filePath) {
   try { fs.accessSync(filePath); return true; } catch { return false; }
 }
 
+function lstat(filePath) {
+  try { return fs.lstatSync(filePath); } catch { return null; }
+}
+
 function ensureDir(dirPath) {
   fs.mkdirSync(dirPath, { recursive: true });
 }
@@ -89,6 +93,40 @@ function gitRoot(projectPath) {
   }
 }
 
+function isInside(root, candidate) {
+  const relative = path.relative(root, candidate);
+  return relative === '' || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative));
+}
+
+function nearestExistingAncestor(filePath) {
+  let current = filePath;
+  while (!lstat(current)) {
+    const parent = path.dirname(current);
+    if (parent === current) return null;
+    current = parent;
+  }
+  return current;
+}
+
+function validateTargetPath(root, targetPath, relativePath) {
+  if (!isInside(root, path.resolve(targetPath))) {
+    throw new Error(`Target escapes project root: ${relativePath}`);
+  }
+  const targetStat = lstat(targetPath);
+  if (targetStat?.isSymbolicLink()) {
+    throw new Error(`Refusing to modify symbolic link target: ${relativePath}`);
+  }
+  if (targetStat && !targetStat.isFile()) {
+    throw new Error(`Target path is not a regular file: ${relativePath}`);
+  }
+  const ancestor = nearestExistingAncestor(path.dirname(targetPath));
+  if (!ancestor) throw new Error(`Could not resolve target parent: ${relativePath}`);
+  const resolvedAncestor = fs.realpathSync(ancestor);
+  if (!isInside(root, resolvedAncestor)) {
+    throw new Error(`Target parent resolves outside project root: ${relativePath}`);
+  }
+}
+
 function escapeRegex(text) {
   return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -98,6 +136,28 @@ function markedBlockRegex() {
     `(?:\\r?\\n){0,2}${escapeRegex(MARKER_START)}[\\s\\S]*?${escapeRegex(MARKER_END)}(?:\\r?\\n){0,2}`,
     'g'
   );
+}
+
+function markerCount(content, marker) {
+  return (String(content || '').match(new RegExp(escapeRegex(marker), 'g')) || []).length;
+}
+
+function markerState(content) {
+  const text = String(content || '');
+  const starts = markerCount(text, MARKER_START);
+  const ends = markerCount(text, MARKER_END);
+  const completeBlocks = (text.match(markedBlockRegex()) || []).length;
+  return {
+    starts,
+    ends,
+    completeBlocks,
+    corrupt: starts !== ends || completeBlocks !== starts
+  };
+}
+
+function stripMarkerLines(content) {
+  const markerLine = new RegExp(`^[\\t ]*(?:${escapeRegex(MARKER_START)}|${escapeRegex(MARKER_END)})[\\t ]*\\r?\\n?`, 'gm');
+  return String(content || '').replace(markerLine, '').replace(/\n{3,}/g, '\n\n').trimEnd();
 }
 
 function stripOuterMarkers(content) {
@@ -141,21 +201,29 @@ function backupExisting(targetPath, root) {
   return backupPath;
 }
 
-function planTarget(root, relativePath, sourcePath) {
+function planTarget(root, relativePath, sourcePath, options = {}) {
   const sourceText = readText(sourcePath);
   if (!sourceText.trim()) return null;
   const targetPath = path.join(root, relativePath);
+  validateTargetPath(root, targetPath, relativePath);
   const existing = readText(targetPath, '');
+  const state = markerState(existing);
+  if (state.corrupt && !options.force) {
+    throw new Error(`Corrupt Agent Kernel markers in ${relativePath}. Review the file, then rerun with --force to preserve its text and rebuild one managed block.`);
+  }
+  const mergeBase = state.corrupt ? stripMarkerLines(existing) : existing;
   const generatedBlock = wrapGenerated(sourceText);
-  const next = replaceMarkedBlock(existing, generatedBlock);
-  const action = exists(targetPath)
-    ? (hasMarkedBlock(existing) ? 'replace-marked-block' : 'append-marked-block')
-    : 'create';
+  const next = replaceMarkedBlock(mergeBase, generatedBlock);
+  const action = state.corrupt
+    ? 'repair-corrupt-markers'
+    : exists(targetPath)
+      ? (hasMarkedBlock(existing) ? 'replace-marked-block' : 'append-marked-block')
+      : 'create';
   return { relativePath, targetPath, sourcePath, action, existing, next };
 }
 
 function usage() {
-  print(`agent-kernel-safe-link\n\nUsage:\n  agent-kernel-safe-link [project] [--dry-run] [--force] [--no-backup]\n\nReads generated files from AGENT_KERNEL_HOME/dist and safely injects marked blocks into a project.\n`);
+  print(`agent-kernel-safe-link\n\nUsage:\n  agent-kernel-safe-link [project] [--dry-run] [--force] [--no-backup]\n\nReads generated files from AGENT_KERNEL_HOME/dist and safely injects marked blocks into a project.\n\n--force repairs unmatched or nested Agent Kernel marker lines while preserving the surrounding text.\n`);
 }
 
 function main() {
@@ -181,7 +249,7 @@ function main() {
     ['.agents/skills/README.md', path.join(dist, 'SKILLS.md')]
   ];
 
-  const plans = targets.map(([relativePath, sourcePath]) => planTarget(root, relativePath, sourcePath)).filter(Boolean);
+  const plans = targets.map(([relativePath, sourcePath]) => planTarget(root, relativePath, sourcePath, flags)).filter(Boolean);
   if (!plans.length) {
     throw new Error(`No generated Agent Kernel files were found in ${dist}. Run agent-kernel compile first.`);
   }
