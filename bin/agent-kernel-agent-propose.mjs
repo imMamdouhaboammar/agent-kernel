@@ -4,7 +4,12 @@ import childProcess from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { agentCan, enrichIdentityRecord, resolveAgentIdentity } from './agent-kernel-agent-model.mjs';
+import {
+  agentCan,
+  enrichIdentityRecord,
+  getAgentIdentity,
+  normalizeAgentId
+} from './agent-kernel-agent-model.mjs';
 
 const VALUE_FLAGS = new Set(['from', 'agent', 'reason', 'text', 'type', 'scope', 'level', 'targets', 'tags']);
 const BOOLEAN_FLAGS = new Set(['help']);
@@ -131,6 +136,22 @@ function validateInputs(flags) {
   return { text, from, reason, type, scope, level, targets, tags };
 }
 
+function proposalIdentity(value) {
+  const found = getAgentIdentity(value);
+  if (found) return { ...found, known: true };
+  const agentId = normalizeAgentId(value);
+  return {
+    agentId,
+    displayName: String(value || agentId),
+    aliases: [],
+    surface: 'custom',
+    trustLevel: 'read-only',
+    allowedActions: [],
+    builtIn: false,
+    known: false
+  };
+}
+
 function localCliPath() {
   const here = path.dirname(fileURLToPath(import.meta.url));
   return path.resolve(here, '..', 'dist', 'cli.mjs');
@@ -171,7 +192,7 @@ function main() {
   if (flags.help) return usage();
 
   const input = validateInputs(flags);
-  const identity = resolveAgentIdentity(input.from, { action: 'propose' });
+  const identity = proposalIdentity(input.from);
 
   if (!agentCan(identity, 'propose')) {
     fail(`Agent ${identity.agentId} has trust level ${identity.trustLevel} and cannot create proposals.`);
