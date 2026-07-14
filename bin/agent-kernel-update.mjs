@@ -386,7 +386,7 @@ function emitError(error, flags) {
     message: error.message,
     ...(error.details || {})
   };
-  if (flags.json) process.stderr.write(JSON.stringify(payload) + '\n');
+  if (flags.json) process.stdout.write(JSON.stringify(payload) + '\n');
   else process.stderr.write(`${payload.error}: ${payload.message}\n`);
   process.exitCode = 1;
 }
