@@ -20,6 +20,7 @@ const distPath = join(root, 'dist', 'cli.mjs');
 const binPath = join(root, 'bin');
 const pluginPath = join(root, '.claude-plugin', 'plugin.json');
 const marketplacePath = join(root, '.claude-plugin', 'marketplace.json');
+const exactSemverPattern = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
 
 let failed = false;
 let checkedSurfaces = 0;
@@ -84,6 +85,10 @@ const pkg = readJson('package.json', pkgPath);
 const expected = pkg.version;
 console.log('agent-kernel version check\n');
 console.log(`  package.json: ${expected}`);
+
+if (typeof expected !== 'string' || !exactSemverPattern.test(expected)) {
+  err(`package.json version must be an exact SemVer value without a v prefix (received ${JSON.stringify(expected)})`);
+}
 
 checkVersion('package.json version', expected, expected);
 readCliVersion('src/cli.mjs', srcPath, expected);
