@@ -58,11 +58,77 @@ Run `--dry-run` first in any repository that already has project instructions or
 | Target file does not exist | Create file with a marked Agent Kernel block |
 | Target file exists without markers | Back up the file, then append a marked Agent Kernel block |
 | Target file exists with one marked block | Back up the file, then replace only the marked block |
-| Target file contains duplicate marked blocks | Collapse duplicate Agent Kernel blocks into one canonical block |
-| `--dry-run` | Print planned actions without writing |
-| `--no-backup` | Write without creating `.agent-kernel-backups/` |
+| Target file contains duplicate complete marked blocks | Collapse duplicate Agent Kernel blocks into one canonical block |
+| Target file has unmatched or nested marker lines | Fail before writing; use reviewed `--force` repair when appropriate |
+| Target or target parent is unsafe | Fail during preflight before any project file is written |
+| A write fails after earlier writes | Restore earlier files to their pre-run content |
+| `--dry-run` | Run the same path and marker preflight, then print actions without writing |
+| `--force` | Preserve non-marker text, remove corrupt marker lines, and rebuild one managed block |
+| `--no-backup` | Skip persistent `.agent-kernel-backups/` files; in-process rollback still applies |
 
-The safe-link path is intended to be idempotent. Running it repeatedly should update the Agent Kernel block, not duplicate it.
+The safe-link path is idempotent. Running it repeatedly updates the Agent Kernel block rather than duplicating it.
+
+---
+
+## Input validation
+
+Safe-link accepts at most one project path. The path must already exist and must be a directory.
+
+Unknown options, duplicate options, and multiple project paths fail with a non-zero exit code. Use `--` before a project path that begins with a dash.
+
+```bash
+agent-kernel-safe-link -- ./-project-name
+```
+
+A failed argument or project-path check does not create directories or project files.
+
+---
+
+## Marker repair
+
+Complete duplicate blocks are collapsed automatically. Unmatched or nested markers are treated differently because it is ambiguous which text is user-owned.
+
+Default behavior is fail closed:
+
+```bash
+agent-kernel-safe-link .
+# Corrupt Agent Kernel markers in AGENTS.md ...
+```
+
+Review the file, preview repair, then apply it explicitly:
+
+```bash
+agent-kernel-safe-link . --force --dry-run
+agent-kernel-safe-link . --force
+```
+
+Force repair removes only Agent Kernel marker lines, preserves the remaining text, and appends one current managed block. Stale text that was between unmatched markers is preserved for human review rather than deleted silently.
+
+---
+
+## Target safety
+
+Before writing any target, safe-link preflights the full target set.
+
+It rejects:
+
+- target files that are symbolic links
+- parent directories that resolve outside the project root
+- non-directory target parents
+- target paths outside the canonical project root
+- existing targets that are not regular files
+
+This prevents an early file such as `AGENTS.md` from being changed before a later invalid target is discovered.
+
+---
+
+## Atomic writes and rollback
+
+Each target is written through a temporary file in the same directory and renamed into place. Temporary files are removed after a failed write.
+
+All target plans are validated before the first write. If an unexpected write fails after earlier targets were applied, safe-link restores earlier existing files from their in-memory pre-run content and removes files created by the failed run.
+
+Persistent backups are created before writes unless `--no-backup` is set. Rollback does not depend on persistent backups.
 
 ---
 
@@ -103,7 +169,7 @@ Backups live under:
 .agent-kernel-backups/
 ```
 
-Use `--no-backup` only when the repository is disposable, already clean in git, or being modified by a controlled automation step.
+Use `--no-backup` only when the repository is disposable, already clean in git, or being modified by a controlled automation step. The command still keeps enough in-memory state to reverse writes from the current failed run.
 
 ---
 
@@ -115,6 +181,7 @@ Use `--no-backup` only when the repository is disposable, already clean in git, 
 | Existing repo with custom pre-commit hook | `agent-kernel-safe-git-hook .` |
 | New repo where generated guidance may own the files | `agent-kernel link . --hooks` |
 | Preview before writing | `agent-kernel-safe-link . --dry-run` |
+| Repair reviewed corrupt markers | `agent-kernel-safe-link . --force --dry-run`, then `--force` |
 
 When in doubt, use the safe path first.
 
@@ -139,6 +206,6 @@ This keeps hand-written project guidance, source memory, generated output, and a
 
 ## Current status
 
-`agent-kernel-safe-link` is a companion binary with regression coverage for duplicate marked blocks and Claude guidance linking through `CLAUDE.md`. It exists to keep project linking safe while the main `agent-kernel link` wrapper routes user-facing link operations through the same safe behavior.
+`agent-kernel-safe-link` is a companion binary with regression coverage for argument validation, dry-run parity, duplicate and corrupt markers, target preflight, symlink safety, temporary cleanup, idempotency, backups, and Claude guidance linking through `CLAUDE.md`. The main `agent-kernel link` wrapper routes user-facing link operations through the same safe behavior.
 
 Future work can move the same merge strategy into the monolithic runtime once the behavior is fully aligned with the command surface and smoke suite.
