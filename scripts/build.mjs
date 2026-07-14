@@ -10,8 +10,8 @@
 //         to dist/cli.mjs.
 // Step 4: ensure dist/cli.mjs is executable.
 //
-// After this script runs, `dist/cli.mjs` is byte-identical to
-// `src/cli.mjs`, both with VERSION = package.json#version.
+// After this script runs, dist/cli.mjs is byte-identical to
+// src/cli.mjs, both with VERSION = package.json#version.
 
 import {
   chmodSync,
@@ -30,7 +30,7 @@ const distPath = join(root, 'dist', 'cli.mjs');
 const VERSION_REGEX = /const VERSION = ['"]([^'"]+)['"]/;
 
 function applyRuntimePatches(srcText) {
-  const agentsWrite = "writeText(path.join(root, 'AGENTS.md'), `${agents}\\n\\n## Project bridge\\n\\nLinked project: ${root}\\nLinked at: ${nowIso()}\\n`);";
+  const agentsWrite = "writeText(path.join(root, 'AGENTS.md'), `${agents}\n\n## Project bridge\n\nLinked project: ${root}\nLinked at: ${nowIso()}\n`);";
   const claudeWrite = "writeText(path.join(root, 'CLAUDE.md'), readText(path.join(p.dist, 'CLAUDE.md')));";
 
   if (!srcText.includes(agentsWrite)) {
@@ -45,7 +45,7 @@ function applyRuntimePatches(srcText) {
   const episodeLimitLine = 'const EPISODE_TEXT_LIMIT = 120000;';
   const redactionBlock = `const EPISODE_REDACTION_PATTERNS = [
   ...DEFAULT_SECRET_PATTERNS,
-  '(' + 'OPENAI_API_KEY|ANTHROPIC_API_KEY|SUPABASE_SERVICE_ROLE_KEY' + ')\\\\s*=\\\\s*[^\\\\s\\\\n]+',
+  '(' + 'OPENAI_API_KEY|ANTHROPIC_API_KEY|SUPABASE_SERVICE_ROLE_KEY' + ')\\s*=\\s*[^\\s\\n]+',
   'github_' + 'pat_[A-Za-z0-9_]{20,}',
   'xox' + '[abposr]-[A-Za-z0-9-]{10,}'
 ];
@@ -85,6 +85,37 @@ function redactEpisodeText(value) {
   const tagsLine = "tags: Array.isArray(input.tags) ? input.tags : String(input.tags || '').split(',').map(s => s.trim()).filter(Boolean),";
   const redactedTagsLine = "tags: Array.isArray(input.tags) ? input.tags.map(redactEpisodeText) : redactEpisodeText(String(input.tags || '')).split(',').map(s => s.trim()).filter(Boolean),";
   if (srcText.includes(tagsLine)) srcText = srcText.replace(tagsLine, redactedTagsLine);
+
+  const updateRendererAnchor = 'function renderAgentsMd(data) {';
+  const updateRendererBlock = [
+    'function renderUpdateGuidance(data) {',
+    "  const cache = readJson(path.join(data.paths.root, 'runtime', 'update-status.json'), null);",
+    "  if (!cache || cache.updateAvailable !== true || !cache.currentVersion || !cache.targetVersion) return '';",
+    "  const updates = { mode: 'disabled', channel: cache.channel || 'latest', trustedAgents: [], ...(data.config?.updates || {}) };",
+    "  const trusted = Array.isArray(updates.trustedAgents) && updates.trustedAgents.length ? updates.trustedAgents.join(', ') : 'none';",
+    "  return `\\n## Agent Kernel update available\\n\\n- Installed: ${cache.currentVersion}\\n- Available: ${cache.targetVersion}\\n- Channel: ${cache.channel || updates.channel}\\n- Mode: ${updates.mode}\\n- Trusted agents: ${trusted}\\n\\nTrusted agents may run:\\n\\n```bash\\nagent-kernel update apply --agent <agent-id>\\n```\\n`;",
+    '}',
+    '',
+    updateRendererAnchor
+  ].join('\n');
+
+  if (!srcText.includes('function renderUpdateGuidance(')) {
+    if (!srcText.includes(updateRendererAnchor)) {
+      console.error('✗ renderAgentsMd anchor not found — inspect src/cli.mjs before building');
+      process.exit(1);
+    }
+    srcText = srcText.replace(updateRendererAnchor, updateRendererBlock);
+  }
+
+  const checklistAnchor = '- Never hide policy violations or skipped checks.\\n${MARKER_END}\\n`;';
+  const checklistReplacement = '- Never hide policy violations or skipped checks.\\n${renderUpdateGuidance(data)}\\n${MARKER_END}\\n`;';
+  if (!srcText.includes(checklistReplacement)) {
+    if (!srcText.includes(checklistAnchor)) {
+      console.error('✗ final checklist anchor not found — inspect src/cli.mjs before building');
+      process.exit(1);
+    }
+    srcText = srcText.replace(checklistAnchor, checklistReplacement);
+  }
 
   return srcText;
 }
