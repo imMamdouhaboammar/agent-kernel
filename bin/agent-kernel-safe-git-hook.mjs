@@ -19,6 +19,10 @@ function exists(filePath) {
   try { fs.accessSync(filePath); return true; } catch { return false; }
 }
 
+function lstat(filePath) {
+  try { return fs.lstatSync(filePath); } catch { return null; }
+}
+
 function ensureDir(dirPath) {
   fs.mkdirSync(dirPath, { recursive: true });
 }
@@ -27,9 +31,40 @@ function readText(filePath, fallback = '') {
   try { return fs.readFileSync(filePath, 'utf8'); } catch { return fallback; }
 }
 
-function writeText(filePath, text) {
-  ensureDir(path.dirname(filePath));
-  fs.writeFileSync(filePath, text, 'utf8');
+function uniqueSibling(filePath, label) {
+  return `${filePath}.${label}-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function writeHookAtomic(hookPath, text, mode) {
+  ensureDir(path.dirname(hookPath));
+  const temporary = uniqueSibling(hookPath, 'tmp');
+  let displaced = null;
+  try {
+    fs.writeFileSync(temporary, text, { encoding: 'utf8', mode });
+    fs.chmodSync(temporary, mode);
+    try {
+      fs.renameSync(temporary, hookPath);
+      return;
+    } catch (error) {
+      if (!exists(hookPath) || !['EEXIST', 'EPERM', 'EACCES'].includes(error?.code)) throw error;
+    }
+
+    displaced = uniqueSibling(hookPath, 'rollback');
+    fs.renameSync(hookPath, displaced);
+    try {
+      fs.renameSync(temporary, hookPath);
+      fs.rmSync(displaced, { force: true });
+      displaced = null;
+    } catch (error) {
+      try { if (exists(displaced) && !exists(hookPath)) fs.renameSync(displaced, hookPath); } catch {}
+      throw error;
+    }
+  } finally {
+    try { fs.rmSync(temporary, { force: true }); } catch {}
+    if (displaced && exists(displaced) && exists(hookPath)) {
+      try { fs.rmSync(displaced, { force: true }); } catch {}
+    }
+  }
 }
 
 function parseArgs(argv) {
@@ -110,6 +145,16 @@ function gitLocations(projectPath) {
   };
 }
 
+function validateHookTarget(hookPath) {
+  const stat = lstat(hookPath);
+  if (stat?.isSymbolicLink()) throw new Error(`Refusing to modify symbolic pre-commit hook: ${hookPath}`);
+  if (stat && !stat.isFile()) throw new Error(`Pre-commit hook is not a regular file: ${hookPath}`);
+  const hooksDir = path.dirname(hookPath);
+  const hooksStat = lstat(hooksDir);
+  if (hooksStat?.isSymbolicLink()) throw new Error(`Refusing to modify through symbolic hooks directory: ${hooksDir}`);
+  if (hooksStat && !hooksStat.isDirectory()) throw new Error(`Git hooks path is not a directory: ${hooksDir}`);
+}
+
 function escapeRegex(text) {
   return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -166,12 +211,13 @@ function mergeHook(existing, options = {}) {
   };
 }
 
-function backupExisting(hookPath, root) {
+function backupExisting(hookPath, root, mode) {
   if (!exists(hookPath)) return null;
   const backupDir = path.join(root, '.agent-kernel-backups');
   ensureDir(backupDir);
-  const backupPath = path.join(backupDir, `pre-commit.${Date.now()}.bak`);
+  const backupPath = path.join(backupDir, `pre-commit.${Date.now()}.${Math.random().toString(16).slice(2)}.bak`);
   fs.copyFileSync(hookPath, backupPath);
+  fs.chmodSync(backupPath, mode);
   return backupPath;
 }
 
@@ -192,6 +238,10 @@ function main() {
   const project = resolveProject(flags._[0] || '.');
   const locations = gitLocations(project);
   const hookPath = path.join(locations.hooksDir, 'pre-commit');
+  validateHookTarget(hookPath);
+  const hookStat = lstat(hookPath);
+  const existingMode = hookStat ? (hookStat.mode & 0o777) : 0o755;
+  const desiredMode = hookStat ? (existingMode | 0o100) : 0o755;
   const existing = readText(hookPath, '');
   const merged = mergeHook(existing, flags);
 
@@ -200,9 +250,8 @@ function main() {
 
   if (flags.dryRun) return;
 
-  if (!flags.noBackup && exists(hookPath)) backupExisting(hookPath, locations.root);
-  writeText(hookPath, merged.next);
-  fs.chmodSync(hookPath, 0o755);
+  if (!flags.noBackup && hookStat) backupExisting(hookPath, locations.root, existingMode);
+  writeHookAtomic(hookPath, merged.next, desiredMode);
   print(`Safe git hook installed: ${hookPath}`);
   if (!flags.noBackup) print('Backups, when needed, were written to .agent-kernel-backups/.');
 }
