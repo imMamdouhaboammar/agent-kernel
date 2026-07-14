@@ -3,6 +3,101 @@
 All notable changes to this project are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.11.0] - 2026-07-14
+
+This release ships the **static local memory dashboard** — a
+self-contained, read-only HTML snapshot of the agent-kernel
+home, generated locally and opened in the user's default
+browser. The dashboard is the first Agent Kernel feature that
+intentionally produces a portable artifact (a single HTML file
+no larger than ~35 KiB).
+
+### Added
+
+- **`agent-kernel dashboard` command family.** New public router
+  commands routed through `bin/agent-kernel-dashboard.mjs`:
+  - `dashboard`                — generate the static snapshot at
+                                `~/.agent-kernel/reports/dashboard.html`
+                                and open it in the user's default browser
+  - `dashboard --out <path>`   — write to a custom path (validated for
+                                unsafe targets, symbolic parents, and
+                                non-regular files)
+  - `dashboard --project <p>`  — point the renderer at a project other
+                                than the cwd
+  - `dashboard --no-open`      — generate without launching a browser
+  - `dashboard --open`         — force-launch even when `--json` is set
+  - `dashboard --json`         — emit a JSON envelope
+                                (`{ ok, path, generatedAt, opened, sections, scripts }`)
+- **Sections rendered in v1.11.0:**
+  Approved proposals, durable memories, rules, policies, agents,
+  update status, retention, audit summary. Each section is
+  adaptive: empty stores stay hidden, malformed records are
+  counted in a diagnostic banner, and the writer records survive
+  even when one upstream store is corrupt.
+- **Inline copy filter** — the search box at the top filters
+  records in place; record IDs are exposed as one-click copy
+  buttons; pending records carry copy-only inbox / approval /
+  rejection / ID controls.
+- **Restrictive Content-Security-Policy.** The generated HTML
+  sets `default-src 'none'`, `script-src 'unsafe-inline'`, and
+  `style-src 'unsafe-inline'`. No external assets are loaded.
+- **Path redaction** — the kernel home, project path, and
+  `$HOME` are replaced with `[AGENT_KERNEL_HOME]`, `[PROJECT]`,
+  and `~` respectively before HTML rendering. Secret patterns
+  (`OPENAI_API_KEY`, `sk-…`, `ghp_…`, `github_pat_…`, `xox-…`,
+  `AIza…`) and sensitive JSON keys (`token`, `password`,
+  `secret`, `credential`, `authorization`, `cookie`, `api_key`,
+  `private_key`) are also redacted.
+- **Audit trail** — every dashboard run appends a bounded record
+  to `~/.agent-kernel/logs/audit.jsonl` with `ok`, `path`,
+  `generatedAt`, `opened`, `browser`, `browserError`, and the
+  list of `sections` rendered.
+- **Discovery docs.** `docs/STATIC_MEMORY_DASHBOARD.md` is the
+  runbook; `docs/superpowers/specs/…-design.md` and
+  `docs/superpowers/plans/…-plan.md` are the design + plan.
+
+### Security
+
+- **Immediate-parent symlink check.** The output target's
+  immediate parent is checked for symbolic links and
+  non-directory status. A user-controlled symlinked parent
+  (e.g. `~/link → /etc`) is rejected with `unsafe-output`.
+  System paths above the immediate parent (e.g. `/var` on
+  macOS) are not walked.
+- **Output must be a regular file.** Writing through an
+  existing symlink is rejected.
+- **Browser invocation is configurable.** A custom
+  `AGENT_KERNEL_BROWSER_BIN` + `AGENT_KERNEL_BROWSER_ARGS_JSON`
+  bypasses the platform default browser. Malformed args JSON
+  fails closed and does **not** write the dashboard.
+- **HTML escaping.** All stored content is escaped before render
+  (the safety test injects `<script>` content and asserts the
+  rendered HTML contains the escaped form).
+- **Pending controls are copy-only.** The dashboard exposes
+  proposal IDs and the next three commands
+  (`agent-kernel approve <id> --publish`,
+  `agent-kernel reject <id>`) as text. It does not expose
+  approval/rejection buttons that could fire actions on the
+  user's behalf.
+
+### Verified
+
+- `npm ci` (clean install)
+- `npm run build` (regenerates `dist/cli.mjs` at v1.11.0)
+- `npm run lint` (zero warnings)
+- `npm run typecheck` (TypeScript types pass)
+- `npm test` (39/39 smoke scenarios pass, including the new
+  `public-cli-dashboard` and `public-cli-dashboard-safety`
+  suites)
+- `npm run docs:check` and `node scripts/check-version.mjs`
+  (18/18 version surfaces agree)
+- `npm pack --dry-run` (clean tarball preview)
+- End-to-end on macOS: `agent-kernel dashboard` generates a
+  32 KiB HTML file with CSP and inline scripts, writes it to
+  `~/.agent-kernel/reports/dashboard.html`, and the file opens
+  cleanly in a browser. A user-controlled symlinked parent
+  (`~/link → /real`) is rejected with `unsafe-output`.
+
 ## [1.10.1] - 2026-07-14
 
 This patch release hardens the CLI surface discovered during an

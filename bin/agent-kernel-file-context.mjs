@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-const VERSION = '1.10.1';
+const VERSION = '1.11.0';
 const DEFAULT_BUDGET = 1800;
 const MAX_BUDGET = 20000;
 const MAX_ITEMS_PER_SECTION = 20;

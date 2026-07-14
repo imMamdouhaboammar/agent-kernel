@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const VERSION = '1.10.1';
+const VERSION = '1.11.0';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const selfPath = path.join(here, 'agent-kernel-daemon.mjs');
 
