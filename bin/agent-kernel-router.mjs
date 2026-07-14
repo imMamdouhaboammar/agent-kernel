@@ -20,6 +20,7 @@ const updatePath = path.join(here, 'agent-kernel-update.mjs');
 const updateGuidancePath = path.join(here, 'agent-kernel-update-guidance.mjs');
 const args = process.argv.slice(2);
 const command = args[0];
+const jsonRequested = args.some((arg) => arg === '--json' || arg.startsWith('--json='));
 const commitLinkHook = command === 'git-hook' && args[1] === 'install' && args.includes('--commit-link');
 const failurePatterns = command === 'failure' && args[1] === 'patterns';
 const patternProposal = command === 'failure' && args[1] === 'propose-pattern';
@@ -52,7 +53,7 @@ function readJson(filePath) {
 
 function shouldRefreshUpdateCheck() {
   if (!['doctor', 'start', 'compile', 'sync', 'status'].includes(command)) return false;
-  if (args.includes('--json') || process.env.AGENT_KERNEL_DISABLE_AUTO_UPDATE_CHECK === '1') return false;
+  if (jsonRequested || process.env.AGENT_KERNEL_DISABLE_AUTO_UPDATE_CHECK === '1') return false;
   const state = updateStatePaths();
   const config = readJson(state.config);
   if (config?.updates?.mode !== 'agent-approved') return false;
@@ -75,7 +76,7 @@ function refreshUpdateCheckIfDue() {
 }
 
 function cachedUpdateNotice() {
-  if (command === 'update' || args.includes('--json')) return '';
+  if (command === 'update' || jsonRequested) return '';
   const cache = readJson(updateStatePaths().cache);
   if (cache?.updateAvailable !== true || !cache.currentVersion || !cache.targetVersion) return '';
   return `Agent Kernel update available: ${cache.currentVersion} -> ${cache.targetVersion}. Run: agent-kernel update status\n`;
