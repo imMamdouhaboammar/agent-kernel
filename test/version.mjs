@@ -2,13 +2,16 @@
 //
 // Invariants:
 //   1. `agent-kernel --version` matches package.json#version.
-//   2. Source and built CLI artifacts expose the same VERSION.
-//   3. Every helper binary that exposes VERSION matches package.json.
-//   4. Claude plugin and marketplace metadata match package.json.
+//   2. package.json exposes an exact SemVer version without a v prefix.
+//   3. Source and built CLI artifacts expose the same VERSION.
+//   4. Every helper binary that exposes VERSION matches package.json.
+//   5. Claude plugin and marketplace metadata match package.json.
 
 import { readFileSync, readdirSync } from 'node:fs';
 import { extname, join, relative } from 'node:path';
 import { assertContains, makeEnv, repo, runCli } from './_lib/helpers.mjs';
+
+const exactSemverPattern = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
 
 function walkMjsFiles(directory) {
   const files = [];
@@ -30,6 +33,10 @@ export async function run() {
   const { env } = makeEnv();
   const pkg = JSON.parse(readFileSync(join(repo.root, 'package.json'), 'utf8'));
   const expected = pkg.version;
+
+  if (typeof expected !== 'string' || !exactSemverPattern.test(expected)) {
+    throw new Error(`package.json version must be exact SemVer without a v prefix, received ${JSON.stringify(expected)}`);
+  }
 
   const cliVersion = runCli(env, '--version').trim();
   assertVersion('CLI --version', cliVersion, expected);
