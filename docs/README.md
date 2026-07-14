@@ -2,7 +2,7 @@
 
 This folder is the canonical documentation set for Agent Kernel.
 
-Use it to understand the current runtime, connect agent surfaces, update memory behavior, review hook safety, prevent architectural drift, troubleshoot setup, decide which doc must change when behavior changes, and plan portable knowledge sharing.
+Use it to understand the current runtime, connect agent surfaces, update memory behavior, review trust and hook safety, prevent architecture drift, troubleshoot setup, and manage portable local state.
 
 ---
 
@@ -10,16 +10,17 @@ Use it to understand the current runtime, connect agent surfaces, update memory 
 
 | Situation | Read first | Then read |
 |---|---|---|
-| I want to install and use Agent Kernel | `INSTALL_AND_AGENT_SETUP.md` | `OPERATING_MODEL.md`, `SAFE_LINKING.md` |
+| I want to install and use Agent Kernel | `INSTALL_AND_AGENT_SETUP.md` | `OPERATING_MODEL.md`, `SAFE_LINKING.md`, `SAFE_GIT_HOOKS.md` |
 | I want to understand how the system works | `OPERATING_MODEL.md` | `ARCHITECTURE_NOW.md` |
-| I want to clean up, back up, restore, or report on local Agent Kernel state | `RETENTION_AND_PORTABILITY.md` | `MEMORY_PROTOCOL.md`, `JSON_FIRST_STORAGE.md` |
+| I want to understand which agents may capture or propose data | `AGENT_WRITE_MODES.md` | `AGENT_PROPOSALS.md`, `MEMORY_PROTOCOL.md` |
+| I want to clean up, back up, restore, or report on local state | `RETENTION_AND_PORTABILITY.md` | `MEMORY_PROTOCOL.md`, `JSON_FIRST_STORAGE.md` |
 | I want to prevent architecture drift in AI-generated code | `ARCHITECTURE_GUARDIAN.md` | `architecture-guardian/COMMAND_REFERENCE.md`, `skills/architecture-guardian/references/` |
-| I want to debug a setup or runtime problem | `TROUBLESHOOTING.md` | Relevant setup, hook, MCP, architecture, or protocol doc |
+| I want to debug a setup or runtime problem | `TROUBLESHOOTING.md` | Relevant setup, hook, MCP, architecture, trust, or protocol doc |
 | I am an AI agent working on this repo | `AGENT_RUNBOOK.md` | `AGENTS.md`, `ARCHITECTURE_NOW.md` |
 | I want to change runtime behavior | `ARCHITECTURE_NOW.md` | Relevant protocol doc and tests |
-| I want to add or change memory behavior | `MEMORY_PROTOCOL.md` | `JSON_FIRST_STORAGE.md` |
+| I want to add or change memory behavior | `MEMORY_PROTOCOL.md` | `JSON_FIRST_STORAGE.md`, `AGENT_PROPOSALS.md` |
 | I want to change Failure Lessons | `FAILURE_LESSONS_PROTOCOL.md` | `hooks/FAILURE_LESSONS_HOOK.md` |
-| I want to change hooks | `hooks/CLAUDE_HOOKS_BEST_PRACTICES.md` | `hooks/FAILURE_LESSONS_HOOK.md`, `ARCHITECTURE_GUARDIAN.md` |
+| I want to change hooks | `hooks/CLAUDE_HOOKS_BEST_PRACTICES.md` | `hooks/FAILURE_LESSONS_HOOK.md`, `SAFE_GIT_HOOKS.md`, `ARCHITECTURE_GUARDIAN.md` |
 | I want to change MCP tools | `MCP_SERVER.md` | `MEMORY_PROTOCOL.md`, `ARCHITECTURE_NOW.md` |
 | I want to connect Claude Code | `integrations/CLAUDE_CODE_LIVE_CONTEXT.md` | `MCP_SERVER.md`, `SAFE_LINKING.md` |
 | I want to connect Codex | `integrations/CODEX_LIVE_CONTEXT.md` | `MCP_SERVER.md`, `SAFE_LINKING.md` |
@@ -35,20 +36,22 @@ Use it to understand the current runtime, connect agent surfaces, update memory 
 
 For a new reader, follow this order:
 
-1. `README.md` at repo root for the product-level overview.
+1. `README.md` at repo root for the product-level overview and current release.
 2. `INSTALL_AND_AGENT_SETUP.md` for the safest setup path.
-3. `OPERATING_MODEL.md` for the propose, approve, publish, capture, promote workflow.
-4. `ARCHITECTURE_NOW.md` for the actual current runtime shape.
-5. `ARCHITECTURE_GUARDIAN.md` when AI agents will make non-trivial code changes.
-6. `SAFE_LINKING.md` before linking Agent Kernel into an existing project.
-7. The relevant file under `integrations/` for exact client setup and rollback.
-8. `TROUBLESHOOTING.md` if setup, linking, hooks, MCP, architecture checks, or memory behave unexpectedly.
+3. `OPERATING_MODEL.md` for the propose, approve, publish, capture, and promote workflow.
+4. `AGENT_WRITE_MODES.md` and `AGENT_PROPOSALS.md` for agent trust boundaries.
+5. `ARCHITECTURE_NOW.md` for the actual current runtime shape.
+6. `ARCHITECTURE_GUARDIAN.md` when AI agents will make non-trivial code changes.
+7. `SAFE_LINKING.md` and `SAFE_GIT_HOOKS.md` before modifying an existing project.
+8. The relevant file under `integrations/` for exact client setup and rollback.
+9. `RETENTION_AND_PORTABILITY.md` before pruning, exporting, importing, or restoring local state.
+10. `TROUBLESHOOTING.md` if setup, linking, hooks, MCP, architecture checks, memory, or portability behave unexpectedly.
 
-This order is deliberately practical. It gets a user from install to safe project adoption before asking them to understand every protocol.
+This order gets a user from installation to safe project adoption before asking them to understand every protocol.
 
 ---
 
-## Runtime docs
+## Runtime and protocol docs
 
 - `ARCHITECTURE_NOW.md` documents the real current runtime. It is the source to check before editing code.
 - `ARCHITECTURE_GUARDIAN.md` documents dependency boundaries, change contracts, baselines, exceptions, reuse-first search, reports, and architecture hooks.
@@ -58,9 +61,11 @@ This order is deliberately practical. It gets a user from install to safe projec
 - `architecture-guardian/SECURITY.md` documents scanner trust and safety boundaries.
 - `OPERATING_MODEL.md` explains the day-to-day governance loop and where each type of knowledge belongs.
 - `MEMORY_PROTOCOL.md` documents durable memory, proposals, approval, publish, and sync.
+- `AGENT_PROPOSALS.md` documents the restricted proposal helper, trust checks, input limits, structured output, and pending-only lifecycle.
+- `AGENT_WRITE_MODES.md` documents `read-only`, `capture-only`, `propose-only`, and `trusted-local` behavior for agent-authored runtime capture.
 - `FAILURE_LESSONS_PROTOCOL.md` documents the error-to-skill loop.
 - `RETENTION_AND_PORTABILITY.md` documents raw-observation retention, deterministic session compaction, redacted export, review-first import, explicit restore, terminal views, and static local reports.
-- `BUNDLE_KB.md` documents the planned portable knowledge bundle format and command contract.
+- `BUNDLE_KB.md` documents the planned portable knowledge bundle format and command contract. It is not a shipped v1.9.0 command surface.
 - `MCP_SERVER.md` documents the local stdio MCP server, context tools, and trust boundary.
 - `STRICT_MODE.md` documents guard and enforcement behavior.
 - `JSON_FIRST_STORAGE.md` documents the JSON-first storage model.
@@ -70,7 +75,8 @@ This order is deliberately practical. It gets a user from install to safe projec
 ## Setup and integration docs
 
 - `INSTALL_AND_AGENT_SETUP.md` gives the safest install and agent setup flow.
-- `SAFE_LINKING.md` explains `agent-kernel-safe-link`, marked blocks, backups, and idempotent project linking.
+- `SAFE_LINKING.md` explains `agent-kernel-safe-link`, managed blocks, backups, atomic project writes, and idempotent linking.
+- `SAFE_GIT_HOOKS.md` explains worktree-aware hook discovery, dry-run and force repair behavior, symlink refusal, permissions, backups, and atomic replacement.
 - `TROUBLESHOOTING.md` gives symptom-based diagnosis for install, memory home, safe-link, hooks, MCP, Failure Lessons, Architecture Guardian, docs drift, and releases.
 - `INTEGRATIONS.md` covers the general integration surface across agents.
 - `integrations/CLAUDE_CODE_LIVE_CONTEXT.md` covers Claude Code files, MCP, hooks, optional runtime, and rollback.
@@ -85,34 +91,36 @@ This order is deliberately practical. It gets a user from install to safe projec
 
 ## Brand and marketing assets
 
-- `brand/agent-kernel-logo.svg` is the minimal repo logo.
+- `brand/agent-kernel-logo.svg` is the minimal repository logo.
 - `brand/agent-kernel-hero.svg` is the README hero visual.
 - `brand/agent-strip.svg` is the brand-safe supported-agent surface strip.
 - `brand/README.md` explains usage and the third-party logo boundary.
 
 ---
 
-## Agent docs
+## Agent contributor docs
 
 - `AGENT_RUNBOOK.md` gives AI coding agents a safe workflow for inspecting, editing, validating, and summarizing work on this repository.
-- `AGENTS.md` at repo root gives repo-level instructions for AGENTS.md-compatible agents.
+- `AGENTS.md` at repo root gives repository-level instructions for AGENTS.md-compatible agents.
 - `skills/architecture-guardian/SKILL.md` is the canonical Architecture Guardian orchestrator skill.
-- `.claude/skills/architecture-guardian/SKILL.md` and `.agents/skills/architecture-guardian/SKILL.md` expose concise repo-local entry points.
+- `.claude/skills/architecture-guardian/SKILL.md` and `.agents/skills/architecture-guardian/SKILL.md` expose concise repository-local entry points.
 
 Agents should read the runbook before making non-trivial changes. It explains runtime boundaries, generated-file boundaries, memory proposal rules, Failure Lessons behavior, architecture conformance, hook boundaries, MCP boundaries, and PR summary expectations.
 
 ---
 
-## Schema docs
+## Schema and state locations
 
 - `schemas/failure-lesson.schema.json` defines the stored Failure Lesson shape.
 - `skills/architecture-guardian/schemas/` defines policy, architecture map, change contract, baseline, exception, and conformance report formats.
 
-Memory and proposal schemas live under the runtime memory home when initialized:
+Memory and proposal schemas live under the initialized runtime home:
 
 ```text
 ~/.agent-kernel/source/schemas/
 ```
+
+Runtime sessions, observations, local reports, and import backups remain under the local Agent Kernel home. See `RETENTION_AND_PORTABILITY.md` before changing or sharing them.
 
 Architecture Guardian project state lives under:
 
@@ -135,7 +143,7 @@ development/SPRINT-PLAN.md
 
 The historical typo path `develpment/` exists as a compatibility pointer. New planning docs should go under `development/`.
 
-Repo-local ECC scaffolds live under:
+Repository-local agent scaffolds live under:
 
 ```text
 .claude/
@@ -147,13 +155,17 @@ Repo-local ECC scaffolds live under:
 
 ## Documentation ownership rules
 
-When changing behavior, update docs in the same PR.
+When behavior changes, update docs in the same PR.
 
 | Change | Docs to update |
 |---|---|
 | New core command | `README.md`, `ARCHITECTURE_NOW.md`, relevant protocol doc, smoke test docs if needed |
 | New helper binary | `README.md`, `ARCHITECTURE_NOW.md`, relevant setup or protocol doc |
+| Proposal helper, identity, or trust behavior | `AGENT_PROPOSALS.md`, `AGENT_WRITE_MODES.md`, `MEMORY_PROTOCOL.md`, focused tests |
+| Runtime capture or observation behavior | `AGENT_WRITE_MODES.md`, `ARCHITECTURE_NOW.md`, focused tests |
 | Retention, export, import, restore, view, or report behavior | `RETENTION_AND_PORTABILITY.md`, `ARCHITECTURE_NOW.md`, focused tests |
+| Safe project linking | `SAFE_LINKING.md`, `INSTALL_AND_AGENT_SETUP.md`, focused tests |
+| Git hook discovery, repair, or write behavior | `SAFE_GIT_HOOKS.md`, `INSTALL_AND_AGENT_SETUP.md`, focused tests |
 | New architecture rule, detector, contract, baseline, exception, or report behavior | `ARCHITECTURE_GUARDIAN.md`, focused reference, schema or template, tests, `ARCHITECTURE_NOW.md` |
 | New memory type | `MEMORY_PROTOCOL.md`, `OPERATING_MODEL.md`, `README.md`, `SKILL.md` |
 | New Failure Lessons behavior | `FAILURE_LESSONS_PROTOCOL.md`, `OPERATING_MODEL.md`, `hooks/FAILURE_LESSONS_HOOK.md`, tests |
