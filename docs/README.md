@@ -12,6 +12,7 @@ Use it to understand the current runtime, connect agent surfaces, update memory 
 |---|---|---|
 | I want to install and use Agent Kernel | `INSTALL_AND_AGENT_SETUP.md` | `OPERATING_MODEL.md`, `SAFE_LINKING.md` |
 | I want to understand how the system works | `OPERATING_MODEL.md` | `ARCHITECTURE_NOW.md` |
+| I want to clean up, back up, restore, or report on local Agent Kernel state | `RETENTION_AND_PORTABILITY.md` | `MEMORY_PROTOCOL.md`, `JSON_FIRST_STORAGE.md` |
 | I want to prevent architecture drift in AI-generated code | `ARCHITECTURE_GUARDIAN.md` | `architecture-guardian/COMMAND_REFERENCE.md`, `skills/architecture-guardian/references/` |
 | I want to debug a setup or runtime problem | `TROUBLESHOOTING.md` | Relevant setup, hook, MCP, architecture, or protocol doc |
 | I am an AI agent working on this repo | `AGENT_RUNBOOK.md` | `AGENTS.md`, `ARCHITECTURE_NOW.md` |
@@ -58,6 +59,7 @@ This order is deliberately practical. It gets a user from install to safe projec
 - `OPERATING_MODEL.md` explains the day-to-day governance loop and where each type of knowledge belongs.
 - `MEMORY_PROTOCOL.md` documents durable memory, proposals, approval, publish, and sync.
 - `FAILURE_LESSONS_PROTOCOL.md` documents the error-to-skill loop.
+- `RETENTION_AND_PORTABILITY.md` documents raw-observation retention, deterministic session compaction, redacted export, review-first import, explicit restore, terminal views, and static local reports.
 - `BUNDLE_KB.md` documents the planned portable knowledge bundle format and command contract.
 - `MCP_SERVER.md` documents the local stdio MCP server, context tools, and trust boundary.
 - `STRICT_MODE.md` documents guard and enforcement behavior.
@@ -151,6 +153,7 @@ When changing behavior, update docs in the same PR.
 |---|---|
 | New core command | `README.md`, `ARCHITECTURE_NOW.md`, relevant protocol doc, smoke test docs if needed |
 | New helper binary | `README.md`, `ARCHITECTURE_NOW.md`, relevant setup or protocol doc |
+| Retention, export, import, restore, view, or report behavior | `RETENTION_AND_PORTABILITY.md`, `ARCHITECTURE_NOW.md`, focused tests |
 | New architecture rule, detector, contract, baseline, exception, or report behavior | `ARCHITECTURE_GUARDIAN.md`, focused reference, schema or template, tests, `ARCHITECTURE_NOW.md` |
 | New memory type | `MEMORY_PROTOCOL.md`, `OPERATING_MODEL.md`, `README.md`, `SKILL.md` |
 | New Failure Lessons behavior | `FAILURE_LESSONS_PROTOCOL.md`, `OPERATING_MODEL.md`, `hooks/FAILURE_LESSONS_HOOK.md`, tests |
