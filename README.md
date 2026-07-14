@@ -48,6 +48,7 @@ Agent Kernel adds a small local operating layer around those tools.
 | Existing AGENTS.md, CLAUDE.md, or Git hooks may be damaged | Dry-run-first, marker-aware, atomic installers |
 | Local runtime evidence grows indefinitely | Retention status, explicit pruning, deterministic compaction, and local reports |
 | You need to move or inspect local state | Redacted exports, review-first imports, replacement backups, and static HTML reports |
+| Installed agent tooling drifts behind a reviewed release channel | Cached update checks, agent notifications, explicit allowlists, exact-version installation, verification, and rollback |
 | You do not want a hosted platform | A Node CLI, local JSON files, optional hooks, optional MCP, and zero runtime dependencies |
 
 The practical result is simple: keep using your current agents without making every session relearn the same standards, failures, and architecture boundaries.
@@ -64,7 +65,7 @@ It sits around them as a local governance layer:
 your rules, preferences, workflows, project notes, policies, failure lessons,
 and reviewed architecture constraints
   -> local Agent Kernel JSON and project-local architecture state
-  -> compile, safe-link, hooks, MCP, retention, and conformance checks
+  -> compile, safe-link, hooks, MCP, retention, updates, and conformance checks
   -> AGENTS.md, CLAUDE.md, GEMINI.md, Cursor rules, Codex files, reports
   -> agents start with better context and clearer boundaries
 ```
@@ -74,8 +75,8 @@ The approval boundary stays explicit:
 ```text
 agent notices a durable lesson
   -> agent captures evidence or creates a pending proposal
-  -> user reviews the inbox, policy, contract, baseline, or exception
-  -> user approves only what should last
+  -> user reviews the inbox, policy, contract, baseline, exception, or updater trust change
+  -> user approves only what should last or which agent may update the CLI
   -> Agent Kernel publishes guidance or enforces the reviewed boundary
 ```
 
@@ -95,6 +96,7 @@ Agent Kernel is currently:
 - optional Git and Claude hooks
 - optional local stdio MCP server
 - optional local daemon for live context capture
+- optional agent-approved CLI updater
 - zero runtime npm dependencies
 
 It is not:
@@ -103,6 +105,7 @@ It is not:
 - a database server
 - a cloud account
 - a background daemon by default
+- a silent updater on every command
 - a replacement for tests, CI, code review, or architecture decisions
 - a secret store
 
@@ -168,6 +171,42 @@ For an existing repository, prefer the safe installers first:
 
 - [`docs/SAFE_LINKING.md`](./docs/SAFE_LINKING.md)
 - [`docs/SAFE_GIT_HOOKS.md`](./docs/SAFE_GIT_HOOKS.md)
+
+---
+
+## Trusted CLI updates
+
+The updater is disabled by default. Enable agent-approved mode once and define the identities that may apply an update:
+
+```bash
+agent-kernel update enable --agents claude,codex
+```
+
+Check the configured channel, which defaults to npm `latest`:
+
+```bash
+agent-kernel update status
+agent-kernel update check
+```
+
+A trusted agent can then install the exact resolved version:
+
+```bash
+agent-kernel update apply --agent claude
+```
+
+Use another dist-tag or pin an exact semantic version:
+
+```bash
+agent-kernel update channel next
+agent-kernel update channel 2.0.0-beta.1
+```
+
+Normal CLI commands never contact npm for updater checks. They read a local cache and may show a concise notice when a newer version is known. Existing Claude, Codex, Cursor, Antigravity, and Gemini guidance files receive the same cached notice after successful update, init, compile, sync, or link commands.
+
+The apply path authorizes the agent before npm runs, installs an exact version without shell interpolation, verifies the reported CLI version, runs health and compile commands, and attempts one rollback when post-install verification fails. All updater actions write bounded audit records without npm output, environment dumps, or credentials.
+
+Read [`docs/UPDATES.md`](./docs/UPDATES.md) before enabling agent-approved installation.
 
 ---
 
@@ -418,6 +457,7 @@ agent-kernel memory list|search|show
 agent-kernel episode add|sync|search|show|stats|reindex
 agent-kernel failure capture|learn|list|search|show|patterns|propose|propose-pattern|promote|validate
 agent-kernel architecture init|discover|baseline|diff|check|reuse|contract|exception|policy|doctor
+agent-kernel update status|check|enable|disable|channel|trust|revoke|apply
 agent-kernel retention status|prune
 agent-kernel export <file.json>
 agent-kernel import <file.json>
@@ -484,6 +524,10 @@ Read [`docs/INTEGRATIONS.md`](./docs/INTEGRATIONS.md) for the support matrix and
 - Agents may propose durable memory. Only reviewed user actions should approve and publish it.
 - Unknown agents default to a transient `read-only` identity.
 - Runtime capture and durable proposals use separate restricted helpers.
+- Updater installation is disabled by default and requires an explicitly allowlisted agent identity.
+- Updater trust and channel changes require terminal confirmation or an explicit reviewed `--yes` command.
+- Normal commands read cached update state only and never query npm.
+- Exact-version updater installs are verified and may roll back once on post-install failure.
 - Failure Lessons capture evidence first. Promotion creates a pending proposal.
 - Architecture policies, baselines, contracts, and exceptions are review artifacts.
 - Review mode reports candidate blockers. Strict mode enforces reviewed blocking severities.
@@ -504,6 +548,7 @@ Start with [`docs/README.md`](./docs/README.md).
 | Need | Read |
 |---|---|
 | Install and connect agents | [`docs/INSTALL_AND_AGENT_SETUP.md`](./docs/INSTALL_AND_AGENT_SETUP.md) |
+| Configure trusted CLI updates | [`docs/UPDATES.md`](./docs/UPDATES.md) |
 | Understand the operating model | [`docs/OPERATING_MODEL.md`](./docs/OPERATING_MODEL.md) |
 | Current repository architecture | [`docs/ARCHITECTURE_NOW.md`](./docs/ARCHITECTURE_NOW.md) |
 | Prevent AI-generated architecture drift | [`docs/ARCHITECTURE_GUARDIAN.md`](./docs/ARCHITECTURE_GUARDIAN.md) |
