@@ -18,7 +18,20 @@ import { makeEnv, repo, runCli } from './_lib/helpers.mjs';
 
 export const name = 'public-cli-update';
 
+const packageName = '@mamdouh-aboammar/agent-kernel';
+const packageMetadata = JSON.parse(fs.readFileSync(path.join(repo.root, 'package.json'), 'utf8'));
+const currentVersion = String(packageMetadata.version);
 const publicCli = path.join(repo.root, 'bin', 'agent-kernel-router.mjs');
+
+function futureMinor(version, offset) {
+  const match = version.match(/^(\d+)\.(\d+)\.(\d+)/);
+  if (!match) throw new Error(`Cannot derive updater test version from ${version}`);
+  return `${match[1]}.${Number(match[2]) + offset}.0`;
+}
+
+const availableVersion = futureMinor(currentVersion, 1);
+const rollbackTargetVersion = futureMinor(currentVersion, 2);
+const guidanceVersion = futureMinor(currentVersion, 3);
 
 function writeExecutable(filePath, content) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -87,13 +100,18 @@ if (args[0] === 'view') {
     process.stderr.write(process.env.FAKE_NPM_ERROR_TEXT || 'registry unavailable');
     process.exit(17);
   }
-  process.stdout.write(JSON.stringify(process.env.FAKE_NPM_VIEW_VERSION || '1.9.0'));
+  process.stdout.write(JSON.stringify(process.env.FAKE_NPM_VIEW_VERSION || process.env.FAKE_CURRENT_VERSION));
   process.exit(0);
 }
 if (args[0] === 'install') {
   if (process.env.FAKE_NPM_INSTALL_FAIL === '1') process.exit(23);
   const spec = args.find((arg) => arg.startsWith('@mamdouh-aboammar/agent-kernel@')) || '';
-  const version = spec.slice('@mamdouh-aboammar/agent-kernel@'.length);
+  const separator = spec.lastIndexOf('@');
+  const version = separator > 0 ? spec.slice(separator + 1) : '';
+  if (!version) {
+    process.stderr.write('missing exact version in package spec');
+    process.exit(29);
+  }
   fs.writeFileSync(process.env.FAKE_INSTALLED_VERSION_FILE, version + '\\n');
   process.stdout.write('installed ' + version);
   process.exit(0);
@@ -108,7 +126,7 @@ const args = process.argv.slice(2);
 fs.appendFileSync(process.env.FAKE_CLI_LOG, JSON.stringify({ args }) + '\\n');
 const installed = fs.existsSync(process.env.FAKE_INSTALLED_VERSION_FILE)
   ? fs.readFileSync(process.env.FAKE_INSTALLED_VERSION_FILE, 'utf8').trim()
-  : '1.9.0';
+  : process.env.FAKE_CURRENT_VERSION;
 if (args[0] === 'version') {
   if (process.env.FAKE_CLI_MISMATCH_TARGET && installed === process.env.FAKE_CLI_MISMATCH_TARGET) {
     process.stdout.write('0.0.0\\n');
@@ -125,7 +143,7 @@ process.stderr.write('unexpected fake cli call: ' + args.join(' '));
 process.exit(41);
 `);
 
-  fs.writeFileSync(installedVersionFile, '1.9.0\n');
+  fs.writeFileSync(installedVersionFile, currentVersion + '\n');
   return { npmPath, cliPath, npmLog, cliLog, installedVersionFile };
 }
 
@@ -140,7 +158,8 @@ export async function run() {
     FAKE_NPM_LOG: tools.npmLog,
     FAKE_CLI_LOG: tools.cliLog,
     FAKE_INSTALLED_VERSION_FILE: tools.installedVersionFile,
-    FAKE_NPM_VIEW_VERSION: '1.10.0'
+    FAKE_CURRENT_VERSION: currentVersion,
+    FAKE_NPM_VIEW_VERSION: availableVersion
   };
 
   runCli(baseEnv, 'init');
@@ -149,11 +168,12 @@ export async function run() {
   assert.equal(status.mode, 'disabled');
   assert.equal(status.channel, 'latest');
   assert.deepEqual(status.trustedAgents, []);
-  assert.equal(status.currentVersion, '1.9.0');
+  assert.equal(status.currentVersion, currentVersion);
 
   const enableWithoutConfirmation = runPublicResult(baseEnv, 'update', 'enable', '--agents', 'claude,codex', '--json');
   assert.notEqual(enableWithoutConfirmation.status, 0);
-  assert.match(enableWithoutConfirmation.stderr, /--yes|confirmation/i);
+  assert.equal(enableWithoutConfirmation.stderr, '');
+  assert.match(enableWithoutConfirmation.stdout, /--yes|confirmation/i);
 
   const enabled = JSON.parse(runPublic(baseEnv, 'update', 'enable', '--agents', 'Claude,codex', '--yes', '--json'));
   assert.equal(enabled.mode, 'agent-approved');
@@ -161,7 +181,8 @@ export async function run() {
 
   const invalidChannel = runPublicResult(baseEnv, 'update', 'channel', 'latest;rm', '--yes', '--json');
   assert.notEqual(invalidChannel.status, 0);
-  assert.match(invalidChannel.stderr, /invalid update channel/i);
+  assert.equal(invalidChannel.stderr, '');
+  assert.match(invalidChannel.stdout, /invalid update channel/i);
 
   const channel = JSON.parse(runPublic(baseEnv, 'update', 'channel', 'next', '--yes', '--json'));
   assert.equal(channel.channel, 'next');
@@ -175,7 +196,7 @@ export async function run() {
 
   const checked = JSON.parse(runPublic(baseEnv, 'update', 'check', '--json'));
   assert.equal(checked.updateAvailable, true);
-  assert.equal(checked.targetVersion, '1.10.0');
+  assert.equal(checked.targetVersion, availableVersion);
   assert.equal(checked.channel, 'latest');
   assert.equal(countNpmCalls(tools.npmLog, 'view'), 1);
 
@@ -189,7 +210,7 @@ export async function run() {
   const cachePath = path.join(fixture.kernelHome, 'runtime', 'update-status.json');
   const cached = readJson(cachePath);
   assert.equal(cached.schemaVersion, 1);
-  assert.equal(cached.packageName, '@mamdouh-aboammar/agent-kernel');
+  assert.equal(cached.packageName, packageName);
 
   const registryFailure = runPublicResult({
     ...baseEnv,
@@ -197,41 +218,44 @@ export async function run() {
     FAKE_NPM_ERROR_TEXT: `registry failed with ${fakeSecret}`
   }, 'update', 'check', '--force', '--json');
   assert.notEqual(registryFailure.status, 0);
-  assert.match(registryFailure.stderr, /registry-unavailable/i);
+  assert.equal(registryFailure.stderr, '');
+  assert.match(registryFailure.stdout, /registry-unavailable/i);
 
   const untrusted = runPublicResult(baseEnv, 'update', 'apply', '--agent', 'cursor', '--json');
   assert.notEqual(untrusted.status, 0);
-  assert.match(untrusted.stderr, /unauthorized-agent/i);
+  assert.equal(untrusted.stderr, '');
+  assert.match(untrusted.stdout, /unauthorized-agent/i);
   assert.equal(countNpmCalls(tools.npmLog, 'install'), 0);
 
   const applied = JSON.parse(runPublic(baseEnv, 'update', 'apply', '--agent', 'claude', '--json'));
   assert.equal(applied.ok, true);
-  assert.equal(applied.previousVersion, '1.9.0');
-  assert.equal(applied.targetVersion, '1.10.0');
+  assert.equal(applied.previousVersion, currentVersion);
+  assert.equal(applied.targetVersion, availableVersion);
   assert.equal(applied.agent, 'claude');
   assert.equal(applied.rollbackAttempted, false);
   assert.equal(countNpmCalls(tools.npmLog, 'install'), 1);
-  assert.ok(readJsonLines(tools.npmLog).some((entry) => entry.args.includes('@mamdouh-aboammar/agent-kernel@1.10.0')));
+  assert.ok(readJsonLines(tools.npmLog).some((entry) => entry.args.includes(`${packageName}@${availableVersion}`)));
 
-  fs.writeFileSync(tools.installedVersionFile, '1.9.0\n');
+  fs.writeFileSync(tools.installedVersionFile, currentVersion + '\n');
   const envIdentityApplied = JSON.parse(runPublic({ ...baseEnv, AGENT_KERNEL_AGENT_ID: 'codex' }, 'update', 'apply', '--json'));
   assert.equal(envIdentityApplied.ok, true);
   assert.equal(envIdentityApplied.agent, 'codex');
 
-  fs.writeFileSync(tools.installedVersionFile, '1.9.0\n');
-  JSON.parse(runPublic(baseEnv, 'update', 'channel', '1.11.0', '--yes', '--json'));
-  JSON.parse(runPublic({ ...baseEnv, FAKE_NPM_VIEW_VERSION: '1.11.0' }, 'update', 'check', '--force', '--json'));
+  fs.writeFileSync(tools.installedVersionFile, currentVersion + '\n');
+  JSON.parse(runPublic(baseEnv, 'update', 'channel', rollbackTargetVersion, '--yes', '--json'));
+  JSON.parse(runPublic({ ...baseEnv, FAKE_NPM_VIEW_VERSION: rollbackTargetVersion }, 'update', 'check', '--force', '--json'));
   const rollback = runPublicResult({
     ...baseEnv,
-    FAKE_NPM_VIEW_VERSION: '1.11.0',
-    FAKE_CLI_MISMATCH_TARGET: '1.11.0'
+    FAKE_NPM_VIEW_VERSION: rollbackTargetVersion,
+    FAKE_CLI_MISMATCH_TARGET: rollbackTargetVersion
   }, 'update', 'apply', '--agent', 'claude', '--json');
   assert.notEqual(rollback.status, 0);
-  const rollbackPayload = JSON.parse(rollback.stderr.trim());
+  assert.equal(rollback.stderr, '');
+  const rollbackPayload = JSON.parse(rollback.stdout.trim());
   assert.equal(rollbackPayload.error, 'verification-failed');
   assert.equal(rollbackPayload.rollbackAttempted, true);
   assert.equal(rollbackPayload.rollbackSucceeded, true);
-  assert.ok(readJsonLines(tools.npmLog).some((entry) => entry.args.includes('@mamdouh-aboammar/agent-kernel@1.9.0')));
+  assert.ok(readJsonLines(tools.npmLog).some((entry) => entry.args.includes(`${packageName}@${currentVersion}`)));
 
   const auditPath = path.join(fixture.kernelHome, 'logs', 'updates.jsonl');
   const auditText = fs.readFileSync(auditPath, 'utf8');
@@ -241,10 +265,10 @@ export async function run() {
 
   fs.writeFileSync(cachePath, JSON.stringify({
     schemaVersion: 1,
-    packageName: '@mamdouh-aboammar/agent-kernel',
-    currentVersion: '1.9.0',
+    packageName,
+    currentVersion,
     channel: 'latest',
-    targetVersion: '1.12.0',
+    targetVersion: guidanceVersion,
     updateAvailable: true,
     checkedAt: new Date().toISOString(),
     error: null
@@ -252,12 +276,13 @@ export async function run() {
   runPublic(baseEnv, 'compile');
   const constitution = fs.readFileSync(path.join(fixture.kernelHome, 'dist', 'AGENTS.md'), 'utf8');
   assert.match(constitution, /Agent Kernel update available/);
-  assert.match(constitution, /1\.9\.0.*1\.12\.0/s);
+  assert.ok(constitution.includes(currentVersion));
+  assert.ok(constitution.includes(guidanceVersion));
   assert.match(constitution, /agent-kernel update apply --agent <agent-id>/);
 
   const routedVersion = runPublicCapture(baseEnv, 'version');
   assert.equal(routedVersion.status, 0);
-  assert.match(routedVersion.stderr, /Agent Kernel update available: 1\.9\.0 -> 1\.12\.0/);
+  assert.ok(routedVersion.stderr.includes(`Agent Kernel update available: ${currentVersion} -> ${guidanceVersion}`));
   const npmCallsBeforeJson = readJsonLines(tools.npmLog).length;
   const routedJsonStatus = runPublicCapture(baseEnv, 'update', 'status', '--json');
   assert.equal(routedJsonStatus.status, 0);
