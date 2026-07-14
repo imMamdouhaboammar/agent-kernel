@@ -27,10 +27,13 @@ function atomicWrite(filePath, text) {
 
 function removeBlock(text) {
   const start = text.indexOf(START);
-  if (start < 0) return text;
+  if (start < 0) return { ok: true, text };
   const end = text.indexOf(END, start);
-  if (end < 0) return text.slice(0, start).trimEnd() + '\n';
-  return (text.slice(0, start) + text.slice(end + END.length)).trimEnd() + '\n';
+  if (end < 0) return { ok: false, text };
+  return {
+    ok: true,
+    text: (text.slice(0, start) + text.slice(end + END.length)).trimEnd() + '\n'
+  };
 }
 
 function renderBlock(config, cache) {
@@ -79,21 +82,26 @@ function publish(projectPath) {
   const cache = readJson(path.join(home, 'runtime', 'update-status.json'), null);
   const block = renderBlock(config, cache);
   let changed = 0;
+  let skippedMalformed = 0;
   for (const filePath of targetFiles(projectPath)) {
     if (!fs.existsSync(filePath)) continue;
     const original = fs.readFileSync(filePath, 'utf8');
-    const clean = removeBlock(original);
-    const next = block ? `${clean.trimEnd()}\n\n${block}` : clean;
+    const cleaned = removeBlock(original);
+    if (!cleaned.ok) {
+      skippedMalformed++;
+      continue;
+    }
+    const next = block ? `${cleaned.text.trimEnd()}\n\n${block}` : cleaned.text;
     if (next !== original) {
       atomicWrite(filePath, next);
       changed++;
     }
   }
-  return changed;
+  return { changed, skippedMalformed };
 }
 
 const args = process.argv.slice(2);
 const projectIndex = args.indexOf('--project');
 const projectPath = projectIndex >= 0 ? args[projectIndex + 1] : null;
-const changed = publish(projectPath);
-if (args.includes('--json')) process.stdout.write(JSON.stringify({ ok: true, changed }) + '\n');
+const result = publish(projectPath);
+if (args.includes('--json')) process.stdout.write(JSON.stringify({ ok: true, ...result }) + '\n');
