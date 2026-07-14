@@ -1008,7 +1008,7 @@ function commandLink(flags = {}) {
   print(`Linked Agent Kernel to ${root}`);
 }
 
-function commandDoctor() {
+function commandDoctor(flags = {}) {
   const p = kernelPaths();
   const checks = [];
   function check(label, ok, detail = '') { checks.push({ label, ok, detail }); }
@@ -1028,11 +1028,24 @@ function commandDoctor() {
   const settings = readJson(path.join(os.homedir(), '.claude', 'settings.json'), null);
   check('Claude settings readable', !!settings, '~/.claude/settings.json');
   check('Claude hooks configured', !!settings?.hooks, 'settings.hooks');
+  const allOk = checks.every(c => c.ok);
+  if (flags.json) {
+    process.stdout.write(JSON.stringify({
+      ok: allOk,
+      version: VERSION,
+      status: allOk ? 'OK' : 'ATTENTION REQUIRED',
+      home: p.root,
+      checks: checks.map(c => ({ label: c.label, ok: c.ok, detail: c.detail }))
+    }, null, 2) + '\n');
+    if (!allOk) process.exitCode = 1;
+    return;
+  }
   print(`Agent Kernel Doctor (${VERSION})`);
   print('');
   for (const c of checks) print(`${c.ok ? '✓' : '!'} ${c.label}${c.detail ? `: ${c.detail}` : ''}`);
   print('');
-  print(checks.every(c => c.ok) ? 'Status: OK' : 'Status: ATTENTION REQUIRED');
+  print(allOk ? 'Status: OK' : 'Status: ATTENTION REQUIRED');
+  if (!allOk) process.exitCode = 1;
 }
 
 function normalizeProposal(input) {
@@ -1128,8 +1141,16 @@ function listPending() {
   return fs.readdirSync(p.pending).filter(f => f.endsWith('.json')).map(f => readJson(path.join(p.pending, f), null)).filter(Boolean);
 }
 
-function commandInbox() {
+function commandInbox(flags = {}) {
   const items = listPending();
+  if (flags.json) {
+    process.stdout.write(JSON.stringify({
+      ok: true,
+      count: items.length,
+      items
+    }, null, 2) + '\n');
+    return;
+  }
   if (!items.length) { print('No pending memory proposals.'); return; }
   print('Pending memory proposals');
   print('');
@@ -1406,16 +1427,45 @@ function scanFiles(root, files) {
 
 function commandGuard(flags = {}) {
   const root = gitRoot(process.cwd());
+  const cwd = root || process.cwd();
   commandCompile({ quiet: true });
+  if (flags.json) flags._ = []; // JSON mode ignores the file scan output
+  if (flags.command) {
+    const message = checkCommandPolicy(String(flags.command), cwd);
+    if (message) {
+      if (flags.json) {
+        process.stdout.write(JSON.stringify({ ok: false, blocked: true, kind: 'command', message }, null, 2) + '\n');
+      } else {
+        print('Agent Kernel Guard blocked command:');
+        print(`- ${message}`);
+      }
+      process.exitCode = 2;
+      return;
+    }
+    if (flags.json) {
+      process.stdout.write(JSON.stringify({ ok: true, kind: 'command', command: String(flags.command) }, null, 2) + '\n');
+    } else {
+      print('Agent Kernel Guard: OK (command policy)');
+    }
+    return;
+  }
   let files = [];
   if (flags.staged) files = getStagedFiles(root);
   else if (flags.file) files = [path.resolve(flags.file)];
   else files = listFiles(root);
   const violations = scanFiles(root, files);
   if (violations.length) {
-    print('Agent Kernel Guard blocked violations:');
-    for (const v of violations) print(`- ${v.file}: ${v.rule}: ${v.message}`);
+    if (flags.json) {
+      process.stdout.write(JSON.stringify({ ok: false, blocked: true, kind: 'files', violations }, null, 2) + '\n');
+    } else {
+      print('Agent Kernel Guard blocked violations:');
+      for (const v of violations) print(`- ${v.file}: ${v.rule}: ${v.message}`);
+    }
     process.exitCode = 2;
+    return;
+  }
+  if (flags.json) {
+    process.stdout.write(JSON.stringify({ ok: true, kind: 'files', scanned: files.length }, null, 2) + '\n');
     return;
   }
   print('Agent Kernel Guard: OK');
@@ -1893,14 +1943,26 @@ function commandMcp(flags = {}) {
   process.exitCode = 1;
 }
 
-function commandStatus() {
+function commandStatus(flags = {}) {
   const p = kernelPaths();
   const rules = readJson(p.rules, []);
   const pending = listPending();
+  const payload = {
+    ok: true,
+    version: VERSION,
+    home: p.root,
+    approvedRules: rules.filter(r => r.status === 'approved').length,
+    pendingProposals: pending.length,
+    dist: p.dist
+  };
+  if (flags.json) {
+    process.stdout.write(JSON.stringify(payload, null, 2) + '\n');
+    return;
+  }
   print(`Agent Kernel ${VERSION}`);
   print(`Home: ${p.root}`);
-  print(`Approved rules: ${rules.filter(r => r.status === 'approved').length}`);
-  print(`Pending proposals: ${pending.length}`);
+  print(`Approved rules: ${payload.approvedRules}`);
+  print(`Pending proposals: ${payload.pendingProposals}`);
   print(`Dist: ${p.dist}`);
 }
 
@@ -1916,7 +1978,7 @@ function commandExport(flags = {}) {
 }
 
 function usage() {
-  print(`agent-kernel ${VERSION}\n\nUsage:\n  agent-kernel init [--sync] [--enforce]\n  agent-kernel doctor\n  agent-kernel compile\n  agent-kernel sync\n  agent-kernel link [project] [--hooks]\n  agent-kernel remember "rule text" [--type rule] [--level critical] [--publish]\n  agent-kernel propose --from claude --text "rule text" --reason "..."\n  agent-kernel inbox\n  agent-kernel approve <id> [--publish]\n  agent-kernel reject <id>\n  agent-kernel publish\n  agent-kernel enforce install\n  agent-kernel guard [--staged|--file path]\n  agent-kernel git-hook install [project]\n  agent-kernel start <claude|codex|cursor|antigravity|gemini> [project]\n  agent-kernel status\n`);
+  print(`agent-kernel ${VERSION}\n\nUsage:\n  agent-kernel init [--sync] [--enforce]\n  agent-kernel doctor\n  agent-kernel compile\n  agent-kernel sync\n  agent-kernel link [project] [--hooks]\n  agent-kernel remember "rule text" [--type rule] [--level critical] [--publish]\n  agent-kernel propose --from claude --text "rule text" --reason "..."\n  agent-kernel inbox\n  agent-kernel approve <id> [--publish]\n  agent-kernel reject <id>\n  agent-kernel publish\n  agent-kernel enforce install\n  agent-kernel guard [--staged|--file path|--command "shell command"] [--json]\n  agent-kernel git-hook install [project]\n  agent-kernel start <claude|codex|cursor|antigravity|gemini> [project]\n  agent-kernel status\n`);
 }
 
 async function main() {

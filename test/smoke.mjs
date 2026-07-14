@@ -45,6 +45,7 @@ import { run as runAgentWriteModes } from './agent-write-modes.mjs';
 import { run as runArchitectureGuardian } from './architecture-guardian.mjs';
 import { run as runPackageFiles } from './package-files.mjs';
 import { run as runDocLinks } from './doc-links.mjs';
+import { run as runCliStatusJson } from './cli-status-json.mjs';
 
 const tests = [
   ['version', runVersion],
@@ -83,7 +84,8 @@ const tests = [
   ['agent-write-modes', runAgentWriteModes],
   ['architecture-guardian', runArchitectureGuardian],
   ['package-files', runPackageFiles],
-  ['doc-links', runDocLinks]
+  ['doc-links', runDocLinks],
+  ['cli-status-json', runCliStatusJson]
 ];
 
 let passed = 0;
