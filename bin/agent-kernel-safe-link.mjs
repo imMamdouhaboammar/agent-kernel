@@ -35,14 +35,32 @@ function writeText(filePath, text) {
 
 function parseArgs(argv) {
   const flags = { _: [] };
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    if (arg === '--dry-run') flags.dryRun = true;
-    else if (arg === '--force') flags.force = true;
-    else if (arg === '--no-backup') flags.noBackup = true;
-    else if (arg === '--help' || arg === '-h') flags.help = true;
-    else flags._.push(arg);
+  const seen = new Set();
+  let positionalOnly = false;
+  for (const arg of argv) {
+    if (positionalOnly) {
+      flags._.push(arg);
+      continue;
+    }
+    if (arg === '--') {
+      positionalOnly = true;
+      continue;
+    }
+    let name = null;
+    if (arg === '--dry-run') name = 'dryRun';
+    else if (arg === '--force') name = 'force';
+    else if (arg === '--no-backup') name = 'noBackup';
+    else if (arg === '--help' || arg === '-h') name = 'help';
+    else if (arg.startsWith('-')) throw new Error(`Unknown option: ${arg}`);
+    else {
+      flags._.push(arg);
+      continue;
+    }
+    if (seen.has(name)) throw new Error(`Duplicate option: ${arg}`);
+    seen.add(name);
+    flags[name] = true;
   }
+  if (flags._.length > 1) throw new Error(`Expected at most one project path, received ${flags._.length}.`);
   return flags;
 }
 
@@ -50,15 +68,24 @@ function kernelHome() {
   return process.env.AGENT_KERNEL_HOME || path.join(os.homedir(), '.agent-kernel');
 }
 
+function resolveProject(projectArg) {
+  const candidate = path.resolve(projectArg || '.');
+  let stat;
+  try { stat = fs.statSync(candidate); } catch { throw new Error(`Project path not found: ${candidate}`); }
+  if (!stat.isDirectory()) throw new Error(`Project path is not a directory: ${candidate}`);
+  return fs.realpathSync(candidate);
+}
+
 function gitRoot(projectPath) {
   try {
-    return childProcess.execFileSync('git', ['rev-parse', '--show-toplevel'], {
+    const discovered = childProcess.execFileSync('git', ['rev-parse', '--show-toplevel'], {
       cwd: projectPath,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore']
     }).trim();
+    return fs.realpathSync(discovered);
   } catch {
-    return path.resolve(projectPath);
+    return projectPath;
   }
 }
 
@@ -136,12 +163,11 @@ function main() {
   if (flags.help) return usage();
 
   const projectArg = flags._[0] || '.';
-  const root = gitRoot(path.resolve(projectArg));
+  const root = gitRoot(resolveProject(projectArg));
   const dist = path.join(kernelHome(), 'dist');
 
   if (!exists(dist)) {
-    fail(`Agent Kernel dist folder not found: ${dist}. Run agent-kernel init or agent-kernel compile first.`);
-    return;
+    throw new Error(`Agent Kernel dist folder not found: ${dist}. Run agent-kernel init or agent-kernel compile first.`);
   }
 
   const targets = [
@@ -157,8 +183,7 @@ function main() {
 
   const plans = targets.map(([relativePath, sourcePath]) => planTarget(root, relativePath, sourcePath)).filter(Boolean);
   if (!plans.length) {
-    fail(`No generated Agent Kernel files were found in ${dist}. Run agent-kernel compile first.`);
-    return;
+    throw new Error(`No generated Agent Kernel files were found in ${dist}. Run agent-kernel compile first.`);
   }
 
   print(flags.dryRun ? 'Agent Kernel safe-link dry run:' : 'Agent Kernel safe-link:');
@@ -179,4 +204,5 @@ function main() {
   if (!flags.noBackup) print('Backups, when needed, were written to .agent-kernel-backups/.');
 }
 
-main();
+try { main(); }
+catch (error) { fail(error?.message || String(error)); }
