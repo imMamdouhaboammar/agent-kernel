@@ -2,13 +2,13 @@
 //
 // Invariants:
 //   1. Agent-approved updates are disabled by default.
-//   2. Governance changes require explicit user confirmation.
-//   3. Channels and agent identities are validated before persistence.
-//   4. Registry checks are cached and never required by unrelated commands.
+//   2. Governance changes require initialized state and explicit user confirmation.
+//   3. Channels, configuration, and agent identities are validated before persistence.
+//   4. Registry checks are cached and selected lifecycle commands refresh stale state.
 //   5. Only allowlisted agents can apply an exact resolved version.
 //   6. Verification failure triggers one rollback attempt.
 //   7. Update notifications reach generated agent guidance and router stderr.
-//   8. Audit records never include arbitrary subprocess output or secrets.
+//   8. Audit and guidance handling never leak secrets or truncate malformed files.
 
 import assert from 'node:assert/strict';
 import childProcess from 'node:child_process';
@@ -148,11 +148,27 @@ process.exit(41);
 }
 
 export async function run() {
+  const uninitialized = makeEnv();
+  const uninitializedEnable = runPublicResult(uninitialized.env, 'update', 'enable', '--agents', 'claude', '--yes', '--json');
+  assert.notEqual(uninitializedEnable.status, 0);
+  assert.match(uninitializedEnable.stdout, /not-initialized/);
+  assert.equal(fs.existsSync(path.join(uninitialized.kernelHome, 'config.json')), false);
+
+  const malformed = makeEnv();
+  fs.mkdirSync(malformed.kernelHome, { recursive: true });
+  const malformedConfigPath = path.join(malformed.kernelHome, 'config.json');
+  fs.writeFileSync(malformedConfigPath, '{ malformed json\n');
+  const malformedStatus = runPublicResult(malformed.env, 'update', 'status', '--json');
+  assert.notEqual(malformedStatus.status, 0);
+  assert.match(malformedStatus.stdout, /invalid-config/);
+  assert.equal(fs.readFileSync(malformedConfigPath, 'utf8'), '{ malformed json\n');
+
   const fixture = makeEnv();
   const tools = createFakeTools(fixture.homeDir);
   const fakeSecret = 'ghp_' + 'abcdefghijklmnopqrstuvwxyz123456';
   const baseEnv = {
     ...fixture.env,
+    AGENT_KERNEL_DISABLE_AUTO_UPDATE_CHECK: '1',
     AGENT_KERNEL_NPM_BIN: tools.npmPath,
     AGENT_KERNEL_UPDATE_CLI_BIN: tools.cliPath,
     FAKE_NPM_LOG: tools.npmLog,
@@ -220,6 +236,10 @@ export async function run() {
   assert.notEqual(registryFailure.status, 0);
   assert.equal(registryFailure.stderr, '');
   assert.match(registryFailure.stdout, /registry-unavailable/i);
+  const cacheAfterFailure = readJson(cachePath);
+  assert.equal(cacheAfterFailure.updateAvailable, true);
+  assert.equal(cacheAfterFailure.targetVersion, availableVersion);
+  assert.equal(cacheAfterFailure.error, 'registry-unavailable');
 
   const untrusted = runPublicResult(baseEnv, 'update', 'apply', '--agent', 'cursor', '--json');
   assert.notEqual(untrusted.status, 0);
@@ -261,6 +281,7 @@ export async function run() {
   const auditText = fs.readFileSync(auditPath, 'utf8');
   assert.ok(auditText.includes('registry-unavailable'));
   assert.ok(auditText.includes('unauthorized-agent'));
+  assert.ok(auditText.includes('verification-failed'));
   assert.ok(!auditText.includes(fakeSecret));
 
   fs.writeFileSync(cachePath, JSON.stringify({
@@ -280,6 +301,13 @@ export async function run() {
   assert.ok(constitution.includes(guidanceVersion));
   assert.match(constitution, /agent-kernel update apply --agent <agent-id>/);
 
+  const malformedGuidancePath = path.join(fixture.homeDir, '.codex', 'AGENTS.md');
+  fs.mkdirSync(path.dirname(malformedGuidancePath), { recursive: true });
+  const malformedGuidance = 'User guidance\n<!-- agent-kernel-update:start -->\nKeep this tail intact\n';
+  fs.writeFileSync(malformedGuidancePath, malformedGuidance);
+  JSON.parse(runPublic(baseEnv, 'update', 'status', '--json'));
+  assert.equal(fs.readFileSync(malformedGuidancePath, 'utf8'), malformedGuidance);
+
   const routedVersion = runPublicCapture(baseEnv, 'version');
   assert.equal(routedVersion.status, 0);
   assert.ok(routedVersion.stderr.includes(`Agent Kernel update available: ${currentVersion} -> ${guidanceVersion}`));
@@ -291,4 +319,36 @@ export async function run() {
 
   const disabled = JSON.parse(runPublic(baseEnv, 'update', 'disable', '--yes', '--json'));
   assert.equal(disabled.mode, 'disabled');
+
+  const autoFixture = makeEnv();
+  const autoTools = createFakeTools(autoFixture.homeDir);
+  const autoEnv = {
+    ...autoFixture.env,
+    AGENT_KERNEL_NPM_BIN: autoTools.npmPath,
+    AGENT_KERNEL_UPDATE_CLI_BIN: autoTools.cliPath,
+    FAKE_NPM_LOG: autoTools.npmLog,
+    FAKE_CLI_LOG: autoTools.cliLog,
+    FAKE_INSTALLED_VERSION_FILE: autoTools.installedVersionFile,
+    FAKE_CURRENT_VERSION: currentVersion,
+    FAKE_NPM_VIEW_VERSION: availableVersion
+  };
+  runCli(autoEnv, 'init');
+  JSON.parse(runPublic(autoEnv, 'update', 'enable', '--agents', 'claude', '--yes', '--json'));
+  const autoCompile = runPublicCapture(autoEnv, 'compile');
+  assert.equal(autoCompile.status, 0);
+  assert.equal(countNpmCalls(autoTools.npmLog, 'view'), 1);
+  assert.ok(autoCompile.stderr.includes(`Agent Kernel update available: ${currentVersion} -> ${availableVersion}`));
+  const autoConstitution = fs.readFileSync(path.join(autoFixture.kernelHome, 'dist', 'AGENTS.md'), 'utf8');
+  assert.ok(autoConstitution.includes(availableVersion));
+
+  const autoCachePath = path.join(autoFixture.kernelHome, 'runtime', 'update-status.json');
+  const staleCache = readJson(autoCachePath);
+  staleCache.checkedAt = '2000-01-01T00:00:00.000Z';
+  fs.writeFileSync(autoCachePath, JSON.stringify(staleCache, null, 2) + '\n');
+  const resilientStatus = runPublicCapture({ ...autoEnv, FAKE_NPM_VIEW_FAIL: '1' }, 'status');
+  assert.equal(resilientStatus.status, 0);
+  const preservedCache = readJson(autoCachePath);
+  assert.equal(preservedCache.updateAvailable, true);
+  assert.equal(preservedCache.targetVersion, availableVersion);
+  assert.equal(preservedCache.error, 'registry-unavailable');
 }
