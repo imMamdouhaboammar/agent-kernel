@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 import childProcess from 'node:child_process';
 import readline from 'node:readline';
 
-const VERSION = '1.9.0';
+const VERSION = '1.10.0';
 const MARKER_START = '<!-- agent-kernel:start -->';
 const MARKER_END = '<!-- agent-kernel:end -->';
 const DEFAULT_AGENTS = ['claude', 'codex', 'cursor', 'antigravity', 'gemini'];

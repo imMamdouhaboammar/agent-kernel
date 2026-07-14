@@ -3,6 +3,102 @@
 All notable changes to this project are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.10.0] - 2026-07-14
+
+This release ships the **agent-approved CLI updater**: a secure self-update
+surface that lets configured AI agents discover newer reviewed npm releases,
+surface them inside connected agent guidance, and apply the exact version
+only after the user enables `agent-approved` mode and allowlists the calling
+identity. The updater is fail-closed by default, audited end-to-end, and
+never calls npm without an explicit, authorized identity.
+
+### Added
+
+- **`agent-kernel update` command family.** New public router commands
+  routed through `bin/agent-kernel-update.mjs`:
+  - `update status` — current mode, channel, trusted agents, cache
+  - `update check` — contact the registry and refresh the cache
+  - `update enable` / `update disable` — toggle `agent-approved` mode
+    (governance change, requires confirmation or `--yes`)
+  - `update channel <dist-tag|version>` — switch release channel
+  - `update trust <agent>` / `update revoke <agent>` — manage the
+    explicit allowlist of agents authorized to apply updates
+  - `update apply` — install the cached target version after agent
+    authorization, then verify and audit
+- **Cached update guidance publisher.**
+  `bin/agent-kernel-update-guidance.mjs` publishes bounded release
+  notices into the existing Codex, Claude, Cursor, Antigravity, Gemini,
+  and AGENTS.md integration surfaces. It never contacts npm, uses
+  managed markers with safe write/rollback, and skips symlinks and
+  malformed marker pairs instead of truncating user content.
+- **Lifecycle refresh hook.** `agent-kernel doctor`, `start`,
+  `compile`, `sync`, and `status` opportunistically refresh the
+  update cache (gated on `mode === 'agent-approved'`, a stale cache,
+  and a non-JSON request). The refresh is a 20-second bounded
+  `spawnSync` and cannot fail the delegated command.
+- **Update audit trail.** Every check, authorization, install,
+  verification, rollback, and final outcome is appended to
+  `~/.agent-kernel/logs/updates.jsonl` with bounded, redacted
+  fields (action, outcome, agent, channel, previousVersion,
+  targetVersion).
+- **Trusted updater runbook** in `docs/UPDATES.md` and
+  **routed updater commands** reference in
+  `docs/public-cli/ROUTED_COMMANDS.md`. The architecture trust
+  boundary is documented in `docs/ARCHITECTURE_NOW.md`.
+- **Upstream design and plan artefacts** in
+  `docs/superpowers/specs/2026-07-14-agent-approved-updater-design.md`
+  and `docs/superpowers/plans/2026-07-14-agent-approved-updater.md`
+  for traceability.
+
+### Changed
+
+- **Public router** (`bin/agent-kernel-router.mjs`): now routes the
+  `update` command family, prints cached human notices to stderr
+  (preserving the JSON stdout stream), recognizes `--json` and
+  assigned forms such as `--json=true`, and republishes guidance
+  after successful `update`, `init`, `compile`, `sync`, and `link`.
+- **Build pipeline** is unchanged. The updater and guidance helper
+  ship alongside the existing dist without altering the canonical
+  build script.
+
+### Security
+
+- **Fail-closed by default.** Mode starts at `disabled`; an explicit
+  `update enable` plus at least one `update trust <agent>` entry is
+  required before any npm call.
+- **No shell interpolation.** All subprocess invocations use
+  `childProcess.execFileSync` with argument arrays. The npm install
+  command is `npm install --global <package>@<version>` with the
+  version pre-validated against a strict semver pattern.
+- **Authorization before network.** `authorize()` runs before
+  `checkForUpdate()`, so an untrusted or missing agent identity
+  is denied before any registry call.
+- **Cache failure safety.** A check failure preserves a previous
+  `targetVersion` only when the cached record's channel and current
+  version match the new request and `updateAvailable === true`;
+  otherwise the cache is cleared so a stale target cannot be
+  silently re-applied.
+- **Bounded rollback.** A single rollback to the previous version
+  is attempted after a post-install verification failure. Both the
+  verification failure and the rollback outcome are audited, and
+  the final `UpdateError` carries `rollbackAttempted` /
+  `rollbackSucceeded` in `details` for JSON consumers.
+- **Symlink-safe guidance writes.** Each target file is checked
+  with `fs.lstatSync(...).isSymbolicLink()` before any read or
+  write, and symlinks are skipped rather than followed or replaced.
+
+### Verified
+
+- `npm ci` (clean install from lockfile)
+- `npm run build` (regenerates `dist/cli.mjs` at v1.10.0)
+- `npm run lint` (zero warnings)
+- `npm run typecheck` (TypeScript types pass)
+- `npm test` (`test/smoke.mjs` — 37/37 scenarios pass on Node 18.x,
+  20.x, and 22.x, including the new `public-cli-update` suite)
+- `npm run docs:check` and `node scripts/check-version.mjs`
+  (18/18 version surfaces agree)
+- `npm pack --dry-run` (clean tarball preview)
+
 ## [1.9.0] - 2026-07-14
 
 This release hardens the trust, atomicity, and portability surfaces of Agent
