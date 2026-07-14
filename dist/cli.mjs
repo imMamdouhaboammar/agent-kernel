@@ -161,6 +161,27 @@ function kernelPaths() {
   };
 }
 
+function deepMerge(defaults, overrides) {
+  if (overrides === null || overrides === undefined) return defaults;
+  if (typeof defaults !== 'object' || typeof overrides !== 'object') return overrides;
+  if (defaults === null || Array.isArray(defaults) !== Array.isArray(overrides)) {
+    if (Array.isArray(defaults) !== Array.isArray(overrides)) return overrides;
+    return overrides;
+  }
+  if (Array.isArray(defaults)) {
+    return overrides.slice();
+  }
+  const merged = { ...defaults };
+  for (const key of Object.keys(overrides)) {
+    if (key in merged) {
+      merged[key] = deepMerge(merged[key], overrides[key]);
+    } else {
+      merged[key] = overrides[key];
+    }
+  }
+  return merged;
+}
+
 function defaultConfig() {
   return {
     version: VERSION,
@@ -830,7 +851,10 @@ function initSkillFolders(paths) {
 function commandInit(flags = {}) {
   const p = kernelPaths();
   [p.root, p.source, p.memoriesDir, p.schemasDir, p.policiesDir, p.episodesDir, p.episodeArchive, p.dist, p.pending, p.approved, p.rejected, p.skills, p.hooks, p.logs].forEach(ensureDir);
-  if (!exists(p.config) || flags.force) writeJson(p.config, defaultConfig());
+  if (!exists(p.config) || flags.force) {
+    const existing = flags.force ? readJson(p.config, {}) : {};
+    writeJson(p.config, deepMerge(defaultConfig(), existing));
+  }
   if (flags.force) {
     writeJson(p.rules, defaultRules());
     writeJson(p.preferences, defaultPreferences());
