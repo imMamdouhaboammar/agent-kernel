@@ -185,7 +185,7 @@ function defaultConfig() {
         { scope: 'global' }
       ]
     },
-    packageManagerPreference: 'pnpm',
+    packageManagerPreference: 'npm',
     episodicMemory: {
       enabled: true,
       exclusionMarker: EPISODIC_EXCLUSION_MARKER,
