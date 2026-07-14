@@ -1,6 +1,6 @@
 # Retention, portability, and local reporting
 
-Agent Kernel keeps approved memory, policies, Failure Lessons, episodes, session metadata, and raw runtime observations in separate local stores. The commands in this guide make cleanup and transfer explicit, reviewable, and local-first.
+Agent Kernel keeps approved memory, policies, Failure Lessons, episodes, session metadata, and raw runtime observations in separate local stores. The commands in this guide make cleanup, transfer, and inspection explicit, reviewable, and local-first.
 
 ## Retention status
 
@@ -155,17 +155,37 @@ agent-kernel view --json
 
 The default view reports approved-memory count, pending proposals, recent Failure Lessons, recent sessions, runtime state, file hotspots, and suggested next commands. Unknown sections fail with a non-zero exit code instead of silently showing the summary.
 
+## Static memory dashboard
+
+```bash
+agent-kernel dashboard
+agent-kernel dashboard --no-open
+agent-kernel dashboard --out ./agent-kernel-dashboard.html --no-open
+agent-kernel dashboard --json
+agent-kernel dashboard --json --open
+```
+
+The command creates an adaptive, read-only HTML snapshot and opens it in the browser in human mode. The stable default target is `~/.agent-kernel/reports/dashboard.html`.
+
+The dashboard can show proposal lifecycle history, durable memory, rules, skill triggers, policies, episodes, Failure Lessons, sessions, registries, commit links, updater state, retention, bounded audit history, and a selected project's Architecture Guardian summary. Empty sections are omitted.
+
+Pending records offer copy-only commands. The browser cannot approve, reject, publish, or mutate state. Stored values are redacted and HTML-escaped; absolute local paths, raw observations, environment variables, full audit metadata, and external assets are excluded.
+
+The output is atomically replaced. Symbolic or non-regular targets and symbolic existing parent directories are rejected. Browser-open failure leaves the generated file valid. See [`STATIC_MEMORY_DASHBOARD.md`](./STATIC_MEMORY_DASHBOARD.md) for the complete contract.
+
 ## Static HTML report
 
 ```bash
 agent-kernel report ./agent-kernel-report.html
 ```
 
-The report is one static HTML file with inline CSS. It contains no scripts, external assets, or network requests. Stored content is redacted and HTML-escaped before rendering.
+The compatibility report is one static HTML file with inline CSS. It contains no scripts, external assets, or network requests. Stored content is redacted and HTML-escaped before rendering.
+
+Use `dashboard` for adaptive browser inspection and copy assistance. Use `report` when a script-free compatibility report at an explicit path is required.
 
 ## Audit trail
 
-Compaction, prune previews, prune execution, export, import, replacement, and report generation append redacted JSONL records to:
+Compaction, prune previews, prune execution, export, import, replacement, dashboard generation, and report generation append redacted JSONL records to:
 
 ```text
 ~/.agent-kernel/logs/audit.jsonl
@@ -180,4 +200,5 @@ Audit records include operation, actor or agent where available, target type, ta
 - use review-first inbox imports for untrusted or shared exports
 - keep approved memory and Failure Lessons outside raw-observation retention
 - include observations explicitly when a complete runtime restore is needed
-- do not commit exports or reports containing local project metadata without review
+- treat dashboard controls as copy helpers, not browser-side approval actions
+- do not commit exports, dashboards, or reports containing local project metadata without review

@@ -7,6 +7,7 @@ The public CLI routes selected commands to focused implementations with their ow
 ```text
 agent-kernel update <status|check|enable|disable|channel|trust|revoke|apply>
 agent-kernel architecture <command>
+agent-kernel dashboard [--out file.html] [--project path] [--no-open|--open] [--json]
 agent-kernel retention <command>
 agent-kernel export <file>
 agent-kernel import <file>
@@ -15,12 +16,15 @@ agent-kernel report <file>
 agent-kernel session compact <session-id>
 agent-kernel link
 agent-kernel git-hook install
+ak dashboard <options>
 ak update <command>
 ak link
 ak git-hook install
 ```
 
-The updater is routed to `bin/agent-kernel-update.mjs`. It is the only public command boundary in this feature that may query the npm registry or install a global package.
+The dashboard is routed to `bin/agent-kernel-dashboard.mjs`, which delegates to focused modules under `bin/dashboard/`. It reads known local stores, creates one sanitized static HTML snapshot, writes it atomically, and may open it through the operating system browser. Browser JavaScript is limited to filtering and copying rendered text; it cannot mutate Agent Kernel state.
+
+The updater is routed to `bin/agent-kernel-update.mjs`. It is the only public command boundary that may query the npm registry or install a global package.
 
 When agent-approved mode is enabled, the router may call the updater helper in check-only mode before stale `doctor`, `start`, `compile`, `sync`, or `status` operations. This interval-limited path cannot install a package and cannot fail the requested command.
 
@@ -33,6 +37,9 @@ Commands without an explicit router rule delegate to `dist/cli.mjs` or an existi
 ## Safety rules
 
 - Routed commands must be covered by smoke tests.
+- Dashboard generation is local-only, read-only, redacted, HTML-escaped, CSP-restricted, and atomic.
+- Dashboard output rejects symbolic or non-regular targets and symbolic existing parent directories.
+- Dashboard browser opening uses argument arrays without a shell and does not invalidate a generated file when opening fails.
 - Only the updater helper may perform registry checks or global package installation.
 - Opportunistic checks are restricted to approved lifecycle commands, stale caches, non-JSON mode, and agent-approved configuration.
 - Opportunistic check failure must not fail the delegated lifecycle command.

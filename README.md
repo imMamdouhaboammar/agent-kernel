@@ -21,8 +21,8 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
 </p>
 
 <p>
-  <strong>Current stable release: <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'>v1.9.0</a></strong><br />
-  Trust-aware agent proposal and runtime capture helpers, transaction-safe project linking, worktree-safe Git hooks, retention controls, redacted export and import, and local reporting.
+  <strong>Current stable release: <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'>v1.10.0</a></strong><br />
+  Trust-aware agent proposals and runtime capture, transaction-safe project linking, worktree-safe Git hooks, retention and portability, trusted CLI updates, Architecture Guardian, and local reporting.
 </p>
 
 <img src='./docs/brand/agent-strip.svg' alt='Agent Kernel supported agent stack' width='900' />
@@ -47,7 +47,8 @@ Agent Kernel adds a small local operating layer around those tools.
 | Agents identify useful rules but should not save them silently | A pending proposal inbox with explicit user approval |
 | Existing AGENTS.md, CLAUDE.md, or Git hooks may be damaged | Dry-run-first, marker-aware, atomic installers |
 | Local runtime evidence grows indefinitely | Retention status, explicit pruning, deterministic compaction, and local reports |
-| You need to move or inspect local state | Redacted exports, review-first imports, replacement backups, and static HTML reports |
+| You need to move local state safely | Redacted exports, review-first imports, and replacement backups |
+| You need to inspect everything already stored | One adaptive, read-only static HTML dashboard with copy-assisted review commands |
 | Installed agent tooling drifts behind a reviewed release channel | Cached update checks, agent notifications, explicit allowlists, exact-version installation, verification, and rollback |
 | You do not want a hosted platform | A Node CLI, local JSON files, optional hooks, optional MCP, and zero runtime dependencies |
 
@@ -65,8 +66,8 @@ It sits around them as a local governance layer:
 your rules, preferences, workflows, project notes, policies, failure lessons,
 and reviewed architecture constraints
   -> local Agent Kernel JSON and project-local architecture state
-  -> compile, safe-link, hooks, MCP, retention, updates, and conformance checks
-  -> AGENTS.md, CLAUDE.md, GEMINI.md, Cursor rules, Codex files, reports
+  -> compile, safe-link, hooks, MCP, retention, dashboard, updates, and conformance checks
+  -> AGENTS.md, CLAUDE.md, GEMINI.md, Cursor rules, Codex files, dashboards, reports
   -> agents start with better context and clearer boundaries
 ```
 
@@ -75,7 +76,7 @@ The approval boundary stays explicit:
 ```text
 agent notices a durable lesson
   -> agent captures evidence or creates a pending proposal
-  -> user reviews the inbox, policy, contract, baseline, exception, or updater trust change
+  -> user reviews the inbox, dashboard, policy, contract, baseline, exception, or updater trust change
   -> user approves only what should last or which agent may update the CLI
   -> Agent Kernel publishes guidance or enforces the reviewed boundary
 ```
@@ -96,6 +97,7 @@ Agent Kernel is currently:
 - optional Git and Claude hooks
 - optional local stdio MCP server
 - optional local daemon for live context capture
+- optional static read-only memory dashboard
 - optional agent-approved CLI updater
 - zero runtime npm dependencies
 
@@ -105,6 +107,7 @@ It is not:
 - a database server
 - a cloud account
 - a background daemon by default
+- a browser administration API
 - a silent updater on every command
 - a replacement for tests, CI, code review, or architecture decisions
 - a secret store
@@ -176,8 +179,6 @@ For an existing repository, prefer the safe installers first:
 
 ## Trusted CLI updates
 
-> The updater is implemented in the repository and will reach npm users in the first published release after v1.9.0.
-
 Initialize Agent Kernel, then enable agent-approved mode once and define the identities that may apply an update:
 
 ```bash
@@ -212,6 +213,34 @@ Existing Claude, Codex, Cursor, Antigravity, and Gemini guidance files receive t
 The apply path authorizes the agent before npm runs, installs an exact version without shell interpolation, verifies the reported CLI version, runs health and compile commands, and attempts one rollback when post-install verification fails. A valid prior cache remains available when a later registry refresh fails. All updater actions write bounded audit records without npm output, environment dumps, or credentials.
 
 Read [`docs/UPDATES.md`](./docs/UPDATES.md) before enabling agent-approved installation.
+
+---
+
+## Local memory dashboard
+
+Generate one adaptive HTML snapshot of the Agent Kernel state already stored on the machine and open it in the default browser:
+
+```bash
+agent-kernel dashboard
+```
+
+Generate only, choose another output, or request structured CLI output:
+
+```bash
+agent-kernel dashboard --no-open
+agent-kernel dashboard --out ./agent-kernel-dashboard.html --no-open
+agent-kernel dashboard --json
+agent-kernel dashboard --json --open
+agent-kernel dashboard --project /path/to/repository
+```
+
+The stable default file is `~/.agent-kernel/reports/dashboard.html`. Empty sections are omitted. Available sections include proposal lifecycle history, memories, rules, skill triggers, policies, episodes, Failure Lessons, sessions, agents, projects, commit links, updater status, retention, bounded audit history, and the selected project's Architecture Guardian summary.
+
+Pending cards expose copy-only text for `inbox`, `approve --publish`, and `reject`. The browser cannot execute those commands or mutate Agent Kernel state. The self-contained page uses no remote assets or network requests, HTML-escapes stored content, redacts sensitive values, replaces absolute paths with neutral labels, and applies a restrictive Content Security Policy.
+
+Output is atomic. Symbolic or non-regular targets and symbolic existing parents are rejected. If the operating system browser cannot open, the generated file remains valid.
+
+Read [`docs/STATIC_MEMORY_DASHBOARD.md`](./docs/STATIC_MEMORY_DASHBOARD.md) for the complete privacy and browser boundary.
 
 ---
 
@@ -396,15 +425,16 @@ agent-kernel import ./agent-kernel-backup.json --to inbox
 agent-kernel import ./agent-kernel-backup.json --replace
 ```
 
-Inspect local state or create a static report:
+Inspect local state, open the adaptive dashboard, or create a script-free report:
 
 ```bash
 agent-kernel view
 agent-kernel view failures
+agent-kernel dashboard
 agent-kernel report ./agent-kernel-report.html
 ```
 
-Exports and reports remain local files. Review them before sharing or committing them.
+Exports, dashboards, and reports remain local files. Review them before sharing or committing them.
 
 Read [`docs/RETENTION_AND_PORTABILITY.md`](./docs/RETENTION_AND_PORTABILITY.md).
 
@@ -462,6 +492,7 @@ agent-kernel memory list|search|show
 agent-kernel episode add|sync|search|show|stats|reindex
 agent-kernel failure capture|learn|list|search|show|patterns|propose|propose-pattern|promote|validate
 agent-kernel architecture init|discover|baseline|diff|check|reuse|contract|exception|policy|doctor
+agent-kernel dashboard [--out file.html] [--project path] [--no-open|--open] [--json]
 agent-kernel update status|check|enable|disable|channel|trust|revoke|apply
 agent-kernel retention status|prune
 agent-kernel export <file.json>
@@ -529,6 +560,9 @@ Read [`docs/INTEGRATIONS.md`](./docs/INTEGRATIONS.md) for the support matrix and
 - Agents may propose durable memory. Only reviewed user actions should approve and publish it.
 - Unknown agents default to a transient `read-only` identity.
 - Runtime capture and durable proposals use separate restricted helpers.
+- Dashboard generation is local, read-only, adaptive, redacted, HTML-escaped, CSP-restricted, and atomic.
+- Dashboard controls copy text only; the browser cannot execute approval or mutation commands.
+- Dashboard output rejects symbolic and non-regular targets and symbolic existing parent directories.
 - Updater governance changes require initialized state and preserve malformed configuration instead of overwriting it.
 - Updater installation is disabled by default and requires an explicitly allowlisted agent identity.
 - Updater trust and channel changes require terminal confirmation or an explicit reviewed `--yes` command.
@@ -554,6 +588,7 @@ Start with [`docs/README.md`](./docs/README.md).
 | Need | Read |
 |---|---|
 | Install and connect agents | [`docs/INSTALL_AND_AGENT_SETUP.md`](./docs/INSTALL_AND_AGENT_SETUP.md) |
+| Inspect local memory and runtime state in a browser | [`docs/STATIC_MEMORY_DASHBOARD.md`](./docs/STATIC_MEMORY_DASHBOARD.md) |
 | Configure trusted CLI updates | [`docs/UPDATES.md`](./docs/UPDATES.md) |
 | Understand the operating model | [`docs/OPERATING_MODEL.md`](./docs/OPERATING_MODEL.md) |
 | Current repository architecture | [`docs/ARCHITECTURE_NOW.md`](./docs/ARCHITECTURE_NOW.md) |
@@ -577,7 +612,7 @@ Start with [`docs/README.md`](./docs/README.md).
 
 Knowledge Bundle is a planned sharing layer for approved memory, Failure Lessons, policies, skills, workflows, and selected episodes in a portable `.akb` file.
 
-It is not part of the current v1.9.0 command surface. The proposed design remains review-first so a bundle cannot silently overwrite another user's approved memory.
+It is not part of the current v1.10.0 command surface. The proposed design remains review-first so a bundle cannot silently overwrite another user's approved memory.
 
 Read [`docs/BUNDLE_KB.md`](./docs/BUNDLE_KB.md).
 

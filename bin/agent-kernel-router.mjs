@@ -16,6 +16,7 @@ const identityCommandPath = path.join(here, 'agent-kernel-identity-command.mjs')
 const registryPath = path.join(here, 'agent-kernel-registry.mjs');
 const architecturePath = path.join(here, 'agent-kernel-architecture.mjs');
 const portabilityPath = path.join(here, 'agent-kernel-portability.mjs');
+const dashboardPath = path.join(here, 'agent-kernel-dashboard.mjs');
 const updatePath = path.join(here, 'agent-kernel-update.mjs');
 const updateGuidancePath = path.join(here, 'agent-kernel-update-guidance.mjs');
 const args = process.argv.slice(2);
@@ -97,28 +98,30 @@ refreshUpdateCheckIfDue();
 const notice = cachedUpdateNotice();
 if (notice) process.stderr.write(notice);
 
-const target = command === 'update'
-  ? updatePath
-  : command === 'architecture'
-    ? architecturePath
-    : command === 'reindex' || (command === 'search' && !identityAware)
-      ? searchPath
-      : command === 'mcp'
-        ? mcpPath
-        : portabilityCommand
-          ? portabilityPath
-          : command === 'commit' || commitLinkHook
-            ? commitPath
-            : failurePatterns
-              ? failurePatternsPath
-              : patternProposal
-                ? patternProposalPath
-                : registryCommand
-                  ? registryPath
-                  : identityAware
-                    ? identityCommandPath
-                    : wrapperPath;
-const targetArgs = command === 'architecture' || command === 'update' ? args.slice(1) : args;
+const target = command === 'dashboard'
+  ? dashboardPath
+  : command === 'update'
+    ? updatePath
+    : command === 'architecture'
+      ? architecturePath
+      : command === 'reindex' || (command === 'search' && !identityAware)
+        ? searchPath
+        : command === 'mcp'
+          ? mcpPath
+          : portabilityCommand
+            ? portabilityPath
+            : command === 'commit' || commitLinkHook
+              ? commitPath
+              : failurePatterns
+                ? failurePatternsPath
+                : patternProposal
+                  ? patternProposalPath
+                  : registryCommand
+                    ? registryPath
+                    : identityAware
+                      ? identityCommandPath
+                      : wrapperPath;
+const targetArgs = command === 'architecture' || command === 'update' || command === 'dashboard' ? args.slice(1) : args;
 const result = childProcess.spawnSync(process.execPath, [target, ...targetArgs], {
   cwd: process.cwd(),
   env: process.env,
