@@ -200,7 +200,7 @@ Apply as a trusted agent:
 agent-kernel update apply --agent claude --json
 ```
 
-Structured errors are written to stderr and return a non-zero exit status.
+Structured successes and failures are written to stdout. Failures still return a non-zero exit status. Stderr remains available for human-readable warnings and cached notices outside JSON mode.
 
 ## Disable or adjust trust
 
