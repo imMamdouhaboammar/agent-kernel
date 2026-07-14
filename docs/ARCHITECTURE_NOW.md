@@ -61,9 +61,20 @@ agent-kernel update ...
   -> npm view or exact global npm install
 ```
 
-`bin/agent-kernel-update.mjs` is the only updater component allowed to contact npm or install a package. It validates configuration, channels, semantic versions, confirmations, agent identities, and allowlist membership before executing npm.
+`bin/agent-kernel-update.mjs` is the only updater component allowed to contact npm or install a package. It validates initialized governance state, strict JSON configuration, channels, semantic versions, confirmations, agent identities, and allowlist membership before executing npm.
 
-Normal commands do not query the registry. They read only `runtime/update-status.json` and may print a cached notice to stderr.
+Read-only status and explicit checks can use updater defaults before initialization. Governance mutations require the canonical `config.json` created by `agent-kernel init`; they never create a partial core config. Malformed config is rejected and preserved.
+
+The router can perform an opportunistic metadata refresh before `doctor`, `start`, `compile`, `sync`, and `status` when all of these conditions hold:
+
+- agent-approved mode is enabled
+- the command is not using `--json`
+- the cache is missing or older than `checkIntervalHours`
+- `AGENT_KERNEL_DISABLE_AUTO_UPDATE_CHECK` is not `1`
+
+This path invokes `update check --json` with a 20-second subprocess timeout. It may contact npm, but it never installs a package and its failure never fails the requested lifecycle command. All other normal commands read cached state only.
+
+A failed refresh preserves a compatible previously known update target and records the failure category. This lets existing notices remain visible while the next stale check retries the registry.
 
 Agent guidance notifications use a separate offline path:
 
@@ -74,7 +85,7 @@ successful update/init/compile/sync/link
   -> refresh bounded managed blocks in existing agent guidance files
 ```
 
-The guidance publisher never contacts npm and does not create missing agent integration files. It exists separately so compile and sync stay offline-friendly while generated files can be rewritten safely and then receive the current cached notice.
+The guidance publisher never contacts npm and does not create missing agent integration files. It exists separately so compile and sync stay free of updater installation logic while generated files can be rewritten safely and then receive the current cached notice. An unmatched start marker causes the publisher to skip that file rather than truncate or repair surrounding user content.
 
 ## What the CLI does
 
@@ -114,9 +125,9 @@ Only new unsuppressed blocking findings fail a check. Known baseline debt remain
 |---|---|
 | `src/cli.mjs` | Core single-file CLI source. Edit this for core runtime commands. |
 | `dist/cli.mjs` | Built CLI copied from `src/cli.mjs` by `scripts/build.mjs`. Do not hand-edit. |
-| `bin/agent-kernel-router.mjs` | Public router for `agent-kernel` and `ak`, including cached update notices and lifecycle guidance refresh. |
-| `bin/agent-kernel-update.mjs` | Configurable npm channel checks, agent authorization, exact-version installation, verification, rollback, cache, and audit. |
-| `bin/agent-kernel-update-guidance.mjs` | Offline publisher for bounded cached update notices in existing agent guidance files. |
+| `bin/agent-kernel-router.mjs` | Public router for `agent-kernel` and `ak`, including stale update refreshes, cached notices, and lifecycle guidance publication. |
+| `bin/agent-kernel-update.mjs` | Configurable npm channel checks, strict config handling, agent authorization, exact-version installation, verification, rollback, cache, and audit. |
+| `bin/agent-kernel-update-guidance.mjs` | Offline, marker-safe publisher for bounded cached update notices in existing agent guidance files. |
 | `bin/agent-kernel-portability.mjs` | Retention, compaction, redacted export, review-first import, explicit restore, local view, and static report helper. |
 | `bin/agent-kernel-architecture.mjs` | Architecture Guardian command surface. |
 | `bin/agent-kernel-architecture-hook.mjs` | Claude `PreToolUse` scope adapter. |
@@ -130,7 +141,7 @@ Only new unsuppressed blocking findings fail a check. Known baseline debt remain
 | `scripts/lint-modes.mjs` | Mode/write helper sanity checks. |
 | `scripts/check-version.mjs` | Version single-source-of-truth check. |
 | `test/smoke.mjs` | Test orchestrator that imports focused test modules. |
-| `test/public-cli-update.mjs` | End-to-end updater configuration, cache, authorization, install, verification, rollback, audit, guidance, and router notice coverage. |
+| `test/public-cli-update.mjs` | End-to-end updater config, cache, lifecycle refresh, authorization, install, verification, rollback, audit, guidance, and router notice coverage. |
 | `test/public-cli-portability.mjs` | End-to-end retention, export/import, restore, reporting, and path-safety coverage. |
 | `test/architecture-guardian.mjs` | Focused Architecture Guardian smoke coverage. |
 | `test/architecture-guardian-evals.mjs` | Data-driven Architecture Guardian torture bench. |
@@ -167,7 +178,7 @@ node scripts/check-version.mjs && node test/smoke.mjs
 
 `test/smoke.mjs` is an orchestrator. It imports focused modules such as `test/init.mjs`, `test/memory.mjs`, `test/episode.mjs`, `test/mcp.mjs`, `test/failure-lessons.mjs`, `test/public-cli-update.mjs`, `test/public-cli-portability.mjs`, `test/architecture-guardian.mjs`, and package-file checks.
 
-The updater module uses an isolated Agent Kernel home and injected fake npm and CLI executables. It covers default-disabled state, confirmation gates, channel and identity validation, cache reuse, forced registry checks, registry failure, denial before installation, trusted-agent installation, environment identity, verification, rollback, redacted audit records, managed guidance publication, and cached router notices without real network or global package mutation.
+The updater module uses an isolated Agent Kernel home and injected fake npm and CLI executables. It covers uninitialized governance rejection, malformed config preservation, default-disabled state, confirmation gates, channel and identity validation, cache reuse, forced and stale lifecycle checks, registry failure with compatible-cache preservation, denial before installation, trusted-agent installation, environment identity, verification, rollback, Windows-safe executable selection by implementation inspection, redacted audit records, marker-safe guidance publication, and cached router notices without real network or global package mutation.
 
 The portability module runs the public router against isolated temporary homes. It covers deterministic compaction, retention preview and force requirements, protected state, redaction, schema rejection, review-first imports, duplicate detection, path traversal rejection before writes, complete replacement restore, offline views, static reports, and audit records.
 
