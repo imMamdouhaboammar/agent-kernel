@@ -9,8 +9,8 @@
 //   6. Linked Git worktrees resolve and update the repository's actual hooks path.
 //   7. Complete duplicate blocks collapse and corrupt markers require explicit repair.
 //   8. Existing permissions are preserved while ensuring user execute permission.
-//   9. Symbolic hook targets are rejected and temporary files are cleaned up.
-//  10. Git-configured custom hooks paths are respected.
+//   9. Symbolic hook targets and hooks directories are rejected.
+//  10. Temporary files are cleaned up and custom hooks paths are respected.
 
 import { execFileSync } from 'node:child_process';
 import {
@@ -20,6 +20,7 @@ import {
   mkdirSync,
   readFileSync,
   readdirSync,
+  rmSync,
   symlinkSync,
   writeFileSync
 } from 'node:fs';
@@ -65,9 +66,9 @@ function assertFailure(result, message) {
   if (result.status === 0) throw new Error(message);
 }
 
-function trySymlink(target, linkPath) {
+function trySymlink(target, linkPath, type = 'file') {
   try {
-    symlinkSync(target, linkPath, 'file');
+    symlinkSync(target, linkPath, type);
     return true;
   } catch (error) {
     if (error?.code === 'EPERM' || error?.code === 'EACCES' || error?.code === 'ENOSYS') return false;
@@ -224,6 +225,22 @@ export async function run() {
   const customHook = readFileSync(customHookPath, 'utf8');
   assertContains(customHook, 'custom-path', 'custom hooks path lost existing logic');
   assertContains(customHook, 'agent-kernel guard --staged', 'custom hooks path did not receive Agent Kernel block');
+
+  const symlinkDirectoryProject = join(homeDir, 'symlink-hooks-directory-project');
+  mkdirSync(symlinkDirectoryProject, { recursive: true });
+  runGit(symlinkDirectoryProject, env, 'init');
+  const externalHooksDir = join(homeDir, 'external-hooks-directory');
+  mkdirSync(externalHooksDir, { recursive: true });
+  const projectHooksDir = join(symlinkDirectoryProject, '.git', 'hooks');
+  rmSync(projectHooksDir, { recursive: true, force: true });
+  if (trySymlink(externalHooksDir, projectHooksDir, 'dir')) {
+    const directorySymlinkResult = runSafeGitHookFailure(env, symlinkDirectoryProject);
+    assertFailure(directorySymlinkResult, 'safe git-hook followed a symbolic hooks directory');
+    assertContains(directorySymlinkResult.stderr, 'Refusing to modify through symbolic hooks directory', 'symbolic hooks directory error was not actionable');
+    if (existsSync(join(externalHooksDir, 'pre-commit'))) {
+      throw new Error('safe git-hook created a hook through a symbolic hooks directory');
+    }
+  }
 
   const symlinkProject = join(homeDir, 'symlink-hook-project');
   mkdirSync(symlinkProject, { recursive: true });
