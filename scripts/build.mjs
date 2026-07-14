@@ -93,7 +93,7 @@ function redactEpisodeText(value) {
     "  if (!cache || cache.updateAvailable !== true || !cache.currentVersion || !cache.targetVersion) return '';",
     "  const updates = { mode: 'disabled', channel: cache.channel || 'latest', trustedAgents: [], ...(data.config?.updates || {}) };",
     "  const trusted = Array.isArray(updates.trustedAgents) && updates.trustedAgents.length ? updates.trustedAgents.join(', ') : 'none';",
-    "  return `\\n## Agent Kernel update available\\n\\n- Installed: ${cache.currentVersion}\\n- Available: ${cache.targetVersion}\\n- Channel: ${cache.channel || updates.channel}\\n- Mode: ${updates.mode}\\n- Trusted agents: ${trusted}\\n\\nTrusted agents may run:\\n\\n```bash\\nagent-kernel update apply --agent <agent-id>\\n```\\n`;",
+    "  return '\\n## Agent Kernel update available\\n\\n- Installed: ' + cache.currentVersion + '\\n- Available: ' + cache.targetVersion + '\\n- Channel: ' + (cache.channel || updates.channel) + '\\n- Mode: ' + updates.mode + '\\n- Trusted agents: ' + trusted + '\\n\\nRun: agent-kernel update apply --agent <agent-id>\\n';",
     '}',
     '',
     updateRendererAnchor
