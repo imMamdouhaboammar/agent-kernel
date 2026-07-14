@@ -17,6 +17,7 @@ const registryPath = path.join(here, 'agent-kernel-registry.mjs');
 const architecturePath = path.join(here, 'agent-kernel-architecture.mjs');
 const portabilityPath = path.join(here, 'agent-kernel-portability.mjs');
 const updatePath = path.join(here, 'agent-kernel-update.mjs');
+const updateGuidancePath = path.join(here, 'agent-kernel-update-guidance.mjs');
 const args = process.argv.slice(2);
 const command = args[0];
 const commitLinkHook = command === 'git-hook' && args[1] === 'install' && args.includes('--commit-link');
@@ -44,6 +45,17 @@ function cachedUpdateNotice() {
   } catch {
     return '';
   }
+}
+
+function refreshUpdateGuidance() {
+  if (!['update', 'init', 'compile', 'sync', 'link'].includes(command)) return;
+  const guidanceArgs = [updateGuidancePath];
+  if (command === 'link') guidanceArgs.push('--project', args[1] || '.');
+  childProcess.spawnSync(process.execPath, guidanceArgs, {
+    cwd: process.cwd(),
+    env: process.env,
+    stdio: 'ignore'
+  });
 }
 
 const notice = cachedUpdateNotice();
@@ -80,4 +92,5 @@ if (result.error) {
   process.stderr.write(`${result.error.message}\n`);
   process.exit(1);
 }
+if (result.status === 0) refreshUpdateGuidance();
 process.exit(result.status ?? 1);
