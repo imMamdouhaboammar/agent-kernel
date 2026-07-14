@@ -50,6 +50,20 @@ function readJson(filePath, fallback = null) {
   }
 }
 
+function readConfigFile(filePath) {
+  if (!fs.existsSync(filePath)) return {};
+  let parsed;
+  try {
+    parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch {
+    throw new UpdateError('invalid-config', `Invalid JSON configuration at ${filePath}`);
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new UpdateError('invalid-config', `Update configuration must be an object at ${filePath}`);
+  }
+  return parsed;
+}
+
 function atomicWriteJson(filePath, value) {
   ensureDir(path.dirname(filePath));
   const temporary = `${filePath}.tmp-${process.pid}-${Date.now()}`;
@@ -176,10 +190,7 @@ function validateUpdates(updates) {
 
 function loadConfig() {
   const p = paths();
-  const base = readJson(p.config, {});
-  if (!base || typeof base !== 'object' || Array.isArray(base)) {
-    throw new UpdateError('invalid-config', `Invalid JSON configuration at ${p.config}`);
-  }
+  const base = readConfigFile(p.config);
   return {
     ...base,
     updates: validateUpdates({ ...DEFAULT_UPDATES, ...(base.updates || {}) })
@@ -187,8 +198,12 @@ function loadConfig() {
 }
 
 function saveConfig(config) {
+  const p = paths();
+  if (!fs.existsSync(p.config)) {
+    throw new UpdateError('not-initialized', 'Initialize Agent Kernel before changing updater governance: agent-kernel init');
+  }
   const validated = { ...config, updates: validateUpdates(config.updates) };
-  atomicWriteJson(paths().config, validated);
+  atomicWriteJson(p.config, validated);
   return validated;
 }
 
@@ -206,7 +221,8 @@ function cacheIsFresh(cache, config) {
 }
 
 function npmBin() {
-  return process.env.AGENT_KERNEL_NPM_BIN || 'npm';
+  if (process.env.AGENT_KERNEL_NPM_BIN) return process.env.AGENT_KERNEL_NPM_BIN;
+  return process.platform === 'win32' ? 'npm.cmd' : 'npm';
 }
 
 function cliBin() {
@@ -238,18 +254,24 @@ function selectVersion(raw) {
 }
 
 function writeCheckFailure(config, category) {
+  const prior = readCache();
+  const reusable = prior &&
+    prior.channel === config.updates.channel &&
+    prior.currentVersion === CURRENT_VERSION &&
+    prior.targetVersion &&
+    prior.updateAvailable === true;
   const cache = {
     schemaVersion: 1,
     packageName: PACKAGE_NAME,
     currentVersion: CURRENT_VERSION,
     channel: config.updates.channel,
-    targetVersion: null,
-    updateAvailable: false,
+    targetVersion: reusable ? prior.targetVersion : null,
+    updateAvailable: Boolean(reusable),
     checkedAt: nowIso(),
     error: category
   };
   atomicWriteJson(paths().cache, cache);
-  appendAudit({ action: 'check', outcome: 'failure', error: category, channel: config.updates.channel, previousVersion: CURRENT_VERSION });
+  appendAudit({ action: 'check', outcome: 'failure', error: category, channel: config.updates.channel, previousVersion: CURRENT_VERSION, targetVersion: cache.targetVersion });
 }
 
 function checkForUpdate(config, { force = false } = {}) {
@@ -286,7 +308,7 @@ function checkForUpdate(config, { force = false } = {}) {
 
 async function confirmed(action, flags) {
   if (flags.yes === true || flags.yes === 'true') return true;
-  if (!process.stdin.isTTY || !process.stdout.isTTY) {
+  if (flags.json || !process.stdin.isTTY || !process.stdout.isTTY) {
     throw new UpdateError('confirmation-required', `${action} requires interactive confirmation or --yes.`);
   }
   const interfaceHandle = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -482,7 +504,9 @@ async function main() {
 
       try {
         verifyInstalled(targetVersion, inherit);
+        appendAudit({ action: 'verification', outcome: 'success', agent, channel: config.updates.channel, previousVersion: CURRENT_VERSION, targetVersion });
       } catch {
+        appendAudit({ action: 'verification', outcome: 'failure', error: 'verification-failed', agent, channel: config.updates.channel, previousVersion: CURRENT_VERSION, targetVersion });
         const rollbackSucceeded = rollbackVersion(CURRENT_VERSION, inherit);
         appendAudit({
           action: 'rollback',
