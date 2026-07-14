@@ -147,20 +147,32 @@ export function ensureSafeTarget(target) {
     if (stat.isSymbolicLink()) throw new DashboardError('unsafe-output', `Dashboard output cannot be a symbolic link: ${resolved}`);
     if (!stat.isFile()) throw new DashboardError('unsafe-output', `Dashboard output must be a regular file: ${resolved}`);
   }
-  let current = path.dirname(resolved);
-  const missing = [];
-  while (!exists(current)) {
-    missing.push(current);
-    const parent = path.dirname(current);
-    if (parent === current) break;
-    current = parent;
+  // The TOCTOU concern is about the *immediate* parent of the output file:
+  // an attacker with write access to a parent directory could swap a regular
+  // dir for a symlink that points at a sensitive location, and our write
+  // would follow the symlink. We check only the resolved parent. Walking
+  // the full chain to "/" would break on macOS, where /var, /tmp, and /etc
+  // are all symlinks the user does not control and cannot be a TOCTOU
+  // vector for the kernel home or any user-writable target they pick.
+  const immediateParent = path.dirname(resolved);
+  if (exists(immediateParent)) {
+    const stat = fs.lstatSync(immediateParent);
+    if (stat.isSymbolicLink()) throw new DashboardError('unsafe-output', `Dashboard output parent cannot be symbolic: ${immediateParent}`);
+    if (!stat.isDirectory()) throw new DashboardError('unsafe-output', `Dashboard output parent must be a directory: ${immediateParent}`);
+  } else {
+    // Walk up from the target to the first existing directory, mkdir the
+    // missing segment, then re-validate the *new* immediate parent (the
+    // segment we just created is a normal directory, so this is safe).
+    const missing = [];
+    let current = immediateParent;
+    while (!exists(current)) {
+      missing.push(current);
+      const parent = path.dirname(current);
+      if (parent === current) break;
+      current = parent;
+    }
+    for (const dir of missing.reverse()) fs.mkdirSync(dir);
   }
-  while (current && current !== path.dirname(current)) {
-    const stat = fs.lstatSync(current);
-    if (stat.isSymbolicLink()) throw new DashboardError('unsafe-output', `Dashboard output parent cannot be symbolic: ${current}`);
-    current = path.dirname(current);
-  }
-  for (const dir of missing.reverse()) fs.mkdirSync(dir);
   return resolved;
 }
 
