@@ -176,9 +176,12 @@ For an existing repository, prefer the safe installers first:
 
 ## Trusted CLI updates
 
-The updater is disabled by default. Enable agent-approved mode once and define the identities that may apply an update:
+> The updater is implemented in the repository and will reach npm users in the first published release after v1.9.0.
+
+Initialize Agent Kernel, then enable agent-approved mode once and define the identities that may apply an update:
 
 ```bash
+agent-kernel init
 agent-kernel update enable --agents claude,codex
 ```
 
@@ -202,9 +205,11 @@ agent-kernel update channel next
 agent-kernel update channel 2.0.0-beta.1
 ```
 
-Normal CLI commands never contact npm for updater checks. They read a local cache and may show a concise notice when a newer version is known. Existing Claude, Codex, Cursor, Antigravity, and Gemini guidance files receive the same cached notice after successful update, init, compile, sync, or link commands.
+When agent-approved mode is enabled, `doctor`, `start`, `compile`, `sync`, and `status` opportunistically refresh a stale update cache at most once per configured interval. The refresh never installs a package, is skipped for `--json`, and does not fail the requested lifecycle command when npm is unavailable. Other commands read cached state only.
 
-The apply path authorizes the agent before npm runs, installs an exact version without shell interpolation, verifies the reported CLI version, runs health and compile commands, and attempts one rollback when post-install verification fails. All updater actions write bounded audit records without npm output, environment dumps, or credentials.
+Existing Claude, Codex, Cursor, Antigravity, and Gemini guidance files receive the cached notice after successful update, init, compile, sync, or link commands. A malformed managed marker causes that file to be skipped rather than truncated.
+
+The apply path authorizes the agent before npm runs, installs an exact version without shell interpolation, verifies the reported CLI version, runs health and compile commands, and attempts one rollback when post-install verification fails. A valid prior cache remains available when a later registry refresh fails. All updater actions write bounded audit records without npm output, environment dumps, or credentials.
 
 Read [`docs/UPDATES.md`](./docs/UPDATES.md) before enabling agent-approved installation.
 
@@ -524,9 +529,10 @@ Read [`docs/INTEGRATIONS.md`](./docs/INTEGRATIONS.md) for the support matrix and
 - Agents may propose durable memory. Only reviewed user actions should approve and publish it.
 - Unknown agents default to a transient `read-only` identity.
 - Runtime capture and durable proposals use separate restricted helpers.
+- Updater governance changes require initialized state and preserve malformed configuration instead of overwriting it.
 - Updater installation is disabled by default and requires an explicitly allowlisted agent identity.
 - Updater trust and channel changes require terminal confirmation or an explicit reviewed `--yes` command.
-- Normal commands read cached update state only and never query npm.
+- Selected lifecycle commands may refresh stale update metadata, but never install a package.
 - Exact-version updater installs are verified and may roll back once on post-install failure.
 - Failure Lessons capture evidence first. Promotion creates a pending proposal.
 - Architecture policies, baselines, contracts, and exceptions are review artifacts.
