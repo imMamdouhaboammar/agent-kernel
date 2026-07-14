@@ -2,11 +2,11 @@
 
 ## Status
 
-Implemented on branch `feat/agent-approved-updater` through a test-first workflow. The design source is `docs/superpowers/specs/2026-07-14-agent-approved-updater-design.md`.
+Implemented on branch `feat/agent-approved-updater` through a test-first workflow. The final design is recorded in `docs/superpowers/specs/2026-07-14-agent-approved-updater-design.md`.
 
 ## Goal
 
-Add a secure, configurable CLI updater that trusted AI agents can invoke after one-time user authorization and that surfaces cached update notices across connected agent guidance.
+Add a secure, configurable CLI updater that trusted AI agents can invoke after one-time user authorization and that surfaces update notices across connected agent guidance.
 
 ## Final architecture
 
@@ -14,7 +14,9 @@ The public router sends the `update` command family to `bin/agent-kernel-update.
 
 Registry access and exact-version global installation are isolated in that helper. Configuration, cache, and audit state remain under `AGENT_KERNEL_HOME`.
 
-`bin/agent-kernel-update-guidance.mjs` is a separate offline publisher. The router invokes it after successful `update`, `init`, `compile`, `sync`, and `link` commands so cached notices survive generated-file rewrites without adding updater logic or network access to the monolithic core CLI.
+`bin/agent-kernel-update-guidance.mjs` is a separate offline publisher. The router invokes it after successful `update`, `init`, `compile`, `sync`, and `link` commands so cached notices survive generated-file rewrites without adding installation logic to the monolithic core CLI.
+
+When agent-approved mode is enabled, the router also refreshes stale metadata before selected human lifecycle commands. This bounded check may contact npm but cannot install a package, is skipped for JSON calls, and cannot fail the requested command.
 
 The canonical `src/cli.mjs -> scripts/build.mjs -> dist/cli.mjs` pipeline remains unchanged.
 
@@ -26,25 +28,29 @@ The canonical `src/cli.mjs -> scripts/build.mjs -> dist/cli.mjs` pipeline remain
 - Agent-approved mode is disabled by default.
 - Default update channel is `latest`.
 - Trust and channel changes require terminal confirmation or `--yes`.
+- Governance changes require initialized, valid core config.
 - Apply requires an explicitly allowlisted agent identity.
-- Normal commands never make blocking registry requests.
+- Lifecycle refreshes never install a package and are interval-limited.
 - No daemon, release, publish, version bump, default-branch write, or merge is part of this work.
 
 ## Implemented files
 
+### Runtime
+
 - `bin/agent-kernel-update.mjs`
-  - command parsing
+  - strict config parsing and preservation
   - safe channel and identity validation
-  - additive config defaults
+  - additive updater defaults
   - atomic config and cache writes
-  - cache expiry
-  - npm channel lookup
-  - agent authorization
-  - exact-version installation
+  - explicit and cached channel checks
+  - compatible-cache preservation after outages
+  - agent authorization before npm
+  - exact-version global installation
+  - Windows-safe command selection
   - post-install verification
   - one rollback attempt
-  - bounded audit records
-  - human and JSON output
+  - separate verification and rollback audit records
+  - deterministic human and JSON output
 
 - `bin/agent-kernel-update-guidance.mjs`
   - local cache and config reads only
@@ -52,86 +58,73 @@ The canonical `src/cli.mjs -> scripts/build.mjs -> dist/cli.mjs` pipeline remain
   - existing Codex, Claude, Cursor, Antigravity, and Gemini targets
   - atomic writes
   - block removal when no update is available
+  - skip-on-malformed-marker behavior
 
 - `bin/agent-kernel-router.mjs`
   - `update` routing
-  - cached stderr notice for non-JSON commands
-  - lifecycle guidance refresh after successful operations
+  - stale metadata refresh for `doctor`, `start`, `compile`, `sync`, and `status`
+  - cache interval and offline override handling
+  - cached stderr notices for non-JSON commands
+  - lifecycle guidance publication
+
+### Tests
 
 - `test/public-cli-update.mjs`
   - fake npm and installed-CLI executables
-  - isolated Agent Kernel home
-  - complete behavioral coverage without real network or global install mutation
+  - isolated Agent Kernel homes
+  - uninitialized and malformed config coverage
+  - confirmation, channel, trust, cache, outage, authorization, install, rollback, audit, guidance, and lifecycle refresh coverage
+  - no real registry or global package mutation
 
 - `test/smoke.mjs`
   - updater test registration
 
-- `docs/UPDATES.md`
-  - operator and agent runbook
+### Documentation
 
+- `docs/UPDATES.md`
 - `README.md`
 - `docs/README.md`
 - `docs/ARCHITECTURE_NOW.md`
 - `docs/public-cli/ROUTED_COMMANDS.md`
-  - discovery, architecture, safety, and command reference updates
+- updater design and implementation records
 
-## Test-first execution
+## Test-first evidence
 
 ### RED
 
 The updater contract test was added and wired before implementation.
 
-The first useful RED run passed lint, typecheck, manifest, dependency audit, and docs checks while the smoke matrix failed because the routed updater behavior did not exist.
+The accepted RED workflow passed lint, typecheck, manifest, dependency audit, and docs checks while the Node 18, 20, and 22 smoke jobs failed because the routed updater behavior did not exist.
 
-A prior lint failure caused by a literal secret-shaped fixture was corrected before accepting RED evidence.
+An earlier lint failure caused by a literal secret-shaped fixture was corrected before accepting RED evidence.
 
 ### GREEN
 
-The focused updater, router integration, guidance publisher, and test seams were implemented.
+The helper, router integration, guidance publisher, and test seams were implemented. Subsequent CI passed the complete Node matrix and repository checks.
 
-GitHub Actions CI run 547 passed:
+Review feedback then identified JSON stream, hardcoded-version, and package-spec parsing weaknesses. All were corrected with regression coverage.
 
-- build, lint, and smoke on Node 18.x
-- build, lint, and smoke on Node 20.x
-- build, lint, and smoke on Node 22.x
-- TypeScript typecheck
-- manifest discipline and package dry-run
-- dependency audit
-- docs sanity
+A final hardening pass added:
 
-## Covered behavior
-
-The smoke module verifies:
-
-- default disabled state
-- confirmation requirements
-- safe dist-tags and exact semantic versions
-- invalid channel rejection
-- normalized trusted agent allowlists
-- trust and revoke operations
-- update availability checks
-- cache reuse and forced refresh
-- registry failure handling
-- authorization before npm execution
-- identity from `--agent` and `AGENT_KERNEL_AGENT_ID`
-- exact target installation
-- CLI version, doctor, compile, and sync verification
-- verification failure and rollback
-- bounded audit output without secret-shaped subprocess text
-- managed guidance publication
-- cached router notices
-- JSON output without extra cached notice stderr
+- strict malformed-config preservation
+- initialized governance requirements
+- valid-cache retention after registry failure
+- Windows executable selection
+- verification audit events
+- malformed guidance marker preservation
+- interval-limited lifecycle metadata checks
 
 ## Implementation correction
 
-An initial attempt to inject update guidance through `scripts/build.mjs` was rejected after CI showed that extending the existing compatibility-patch generator created an unnecessarily fragile escaping boundary.
+An initial attempt to inject update guidance through `scripts/build.mjs` was rejected after CI showed that extending the existing compatibility-patch generator created a fragile escaping boundary.
 
-The final implementation restored the exact canonical build script blob and moved notification publication to a focused offline helper. This reduced core coupling and preserved the existing generated-file workflow.
+The exact canonical build script blob was restored. Notification publication moved to the focused offline helper, reducing core coupling and preserving the existing generated-file workflow.
 
-## Remaining handoff steps
+## Final handoff checklist
 
-1. Run CI on the final documentation head.
-2. Review the complete compare diff for scope, generated drift, secrets, and remote drift.
-3. Update the pull request body with exact validation evidence and independent verification commands.
-4. Mark the draft pull request ready for independent review when all final checks pass.
-5. Do not merge.
+- Run the complete CI matrix on the final documentation and hardening head.
+- Review the compare diff for scope, secrets, generated drift, and remote drift.
+- Resolve review threads only after the final checks prove the fixes.
+- Update the PR body with exact evidence and unavailable local checks.
+- Mark the draft PR ready for independent review.
+- Do not merge.
