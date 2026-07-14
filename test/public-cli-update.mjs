@@ -249,7 +249,7 @@ export async function run() {
     checkedAt: new Date().toISOString(),
     error: null
   }, null, 2) + '\n');
-  runCli(baseEnv, 'compile');
+  runPublic(baseEnv, 'compile');
   const constitution = fs.readFileSync(path.join(fixture.kernelHome, 'dist', 'AGENTS.md'), 'utf8');
   assert.match(constitution, /Agent Kernel update available/);
   assert.match(constitution, /1\.9\.0.*1\.12\.0/s);
