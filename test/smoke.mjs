@@ -27,6 +27,7 @@ import { run as runPublicCliCommitLinks } from './public-cli-commit-links.mjs';
 import { run as runPublicCliObservation } from './public-cli-observation.mjs';
 import { run as runPublicCliContext } from './public-cli-context.mjs';
 import { run as runPublicCliArchitecture } from './public-cli-architecture.mjs';
+import { run as runPublicCliPortability } from './public-cli-portability.mjs';
 import { run as runFileContext } from './file-context.mjs';
 import { run as runFileReferences } from './file-references.mjs';
 import { run as runStructuredSearch } from './structured-search.mjs';
@@ -64,6 +65,7 @@ const tests = [
   ['public-cli-observation', runPublicCliObservation],
   ['public-cli-context', runPublicCliContext],
   ['public-cli-architecture', runPublicCliArchitecture],
+  ['public-cli-portability', runPublicCliPortability],
   ['file-context', runFileContext],
   ['file-references', runFileReferences],
   ['structured-search', runStructuredSearch],
