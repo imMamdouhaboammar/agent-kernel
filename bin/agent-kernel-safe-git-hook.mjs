@@ -110,21 +110,60 @@ function gitLocations(projectPath) {
   };
 }
 
+function escapeRegex(text) {
+  return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function managedBlockRegex() {
+  return new RegExp(
+    `(?:\\r?\\n){0,2}^[\\t ]*${escapeRegex(MARKER_START)}[\\t ]*\\r?\\n[\\s\\S]*?^[\\t ]*${escapeRegex(MARKER_END)}[\\t ]*(?:\\r?\\n){0,2}`,
+    'gm'
+  );
+}
+
+function countMarker(text, marker) {
+  return (String(text || '').match(new RegExp(`^[\\t ]*${escapeRegex(marker)}[\\t ]*$`, 'gm')) || []).length;
+}
+
+function markerState(existing) {
+  const text = String(existing || '');
+  const starts = countMarker(text, MARKER_START);
+  const ends = countMarker(text, MARKER_END);
+  const completeBlocks = (text.match(managedBlockRegex()) || []).length;
+  return { starts, ends, completeBlocks, corrupt: starts !== ends || completeBlocks !== starts };
+}
+
+function stripMarkerLines(existing) {
+  const markerLine = new RegExp(`^[\\t ]*(?:${escapeRegex(MARKER_START)}|${escapeRegex(MARKER_END)})[\\t ]*\\r?\\n?`, 'gm');
+  return String(existing || '').replace(markerLine, '').replace(/\n{3,}/g, '\n\n').trimEnd();
+}
+
+function stripManagedBlocks(existing) {
+  return String(existing || '').replace(managedBlockRegex(), '\n').replace(/\n{3,}/g, '\n\n').trimEnd();
+}
+
 function agentKernelBlock() {
   return `${MARKER_START}\nagent-kernel guard --staged\nstatus=$?\nif [ $status -ne 0 ]; then\n  echo "Agent Kernel blocked this commit."\n  exit $status\nfi\n${MARKER_END}\n`;
 }
 
-function mergeHook(existing) {
-  const block = agentKernelBlock();
-  const start = existing.indexOf(MARKER_START);
-  const end = existing.indexOf(MARKER_END);
-  if (start >= 0 && end > start) {
-    const afterEnd = end + MARKER_END.length;
-    return `${existing.slice(0, start)}${block}${existing.slice(afterEnd).replace(/^\n/, '')}`;
+function mergeHook(existing, options = {}) {
+  const state = markerState(existing);
+  if (state.corrupt && !options.force) {
+    throw new Error('Corrupt Agent Kernel markers in pre-commit. Review the hook, then rerun with --force to preserve non-marker shell code and rebuild one managed block.');
   }
-  const base = existing.trim() ? existing.trimEnd() : '#!/usr/bin/env sh';
+  const preserved = state.corrupt ? stripMarkerLines(existing) : stripManagedBlocks(existing);
+  const base = preserved.trim() ? preserved.trimEnd() : '#!/usr/bin/env sh';
   const withShebang = base.startsWith('#!') ? base : `#!/usr/bin/env sh\n${base}`;
-  return `${withShebang}\n\n${block}`;
+  return {
+    next: `${withShebang}\n\n${agentKernelBlock()}`,
+    action: state.corrupt
+      ? 'repair-corrupt-markers'
+      : state.completeBlocks > 0
+        ? 'replace-marked-block'
+        : existing.trim()
+          ? 'append-marked-block'
+          : 'create'
+  };
 }
 
 function backupExisting(hookPath, root) {
@@ -143,7 +182,7 @@ function displayPath(root, targetPath) {
 }
 
 function usage() {
-  print(`agent-kernel-safe-git-hook\n\nUsage:\n  agent-kernel-safe-git-hook [project] [--dry-run] [--force] [--no-backup]\n\nSafely injects the Agent Kernel pre-commit block without deleting existing hook logic.\n`);
+  print(`agent-kernel-safe-git-hook\n\nUsage:\n  agent-kernel-safe-git-hook [project] [--dry-run] [--force] [--no-backup]\n\nSafely injects the Agent Kernel pre-commit block without deleting existing hook logic.\n\n--force repairs unmatched or nested Agent Kernel marker lines while preserving non-marker shell code.\n`);
 }
 
 function main() {
@@ -154,18 +193,15 @@ function main() {
   const locations = gitLocations(project);
   const hookPath = path.join(locations.hooksDir, 'pre-commit');
   const existing = readText(hookPath, '');
-  const next = mergeHook(existing);
-  const action = exists(hookPath)
-    ? (existing.includes(MARKER_START) ? 'replace-marked-block' : 'append-marked-block')
-    : 'create';
+  const merged = mergeHook(existing, flags);
 
   print(flags.dryRun ? 'Agent Kernel safe git-hook dry run:' : 'Agent Kernel safe git-hook:');
-  print(`- ${action}: ${displayPath(locations.root, hookPath)}`);
+  print(`- ${merged.action}: ${displayPath(locations.root, hookPath)}`);
 
   if (flags.dryRun) return;
 
   if (!flags.noBackup && exists(hookPath)) backupExisting(hookPath, locations.root);
-  writeText(hookPath, next);
+  writeText(hookPath, merged.next);
   fs.chmodSync(hookPath, 0o755);
   print(`Safe git hook installed: ${hookPath}`);
   if (!flags.noBackup) print('Backups, when needed, were written to .agent-kernel-backups/.');
