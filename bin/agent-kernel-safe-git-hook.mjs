@@ -118,8 +118,12 @@ function gitOutput(projectPath, args, errorMessage) {
   }
 }
 
+function gitPathCandidate(projectPath, value) {
+  return path.isAbsolute(value) ? path.normalize(value) : path.resolve(projectPath, value);
+}
+
 function resolveGitPath(projectPath, value) {
-  const candidate = path.isAbsolute(value) ? value : path.resolve(projectPath, value);
+  const candidate = gitPathCandidate(projectPath, value);
   const existingAncestor = (() => {
     let current = candidate;
     while (!exists(current)) {
@@ -138,6 +142,14 @@ function gitLocations(projectPath) {
   const root = fs.realpathSync(gitOutput(projectPath, ['rev-parse', '--show-toplevel'], `Not a Git worktree: ${projectPath}`));
   const commonRaw = gitOutput(projectPath, ['rev-parse', '--git-common-dir'], `Could not resolve Git common directory for ${projectPath}`);
   const hooksRaw = gitOutput(projectPath, ['rev-parse', '--git-path', 'hooks'], `Could not resolve Git hooks directory for ${projectPath}`);
+  const hooksCandidate = gitPathCandidate(projectPath, hooksRaw);
+  const hooksCandidateStat = lstat(hooksCandidate);
+  if (hooksCandidateStat?.isSymbolicLink()) {
+    throw new Error(`Refusing to modify through symbolic hooks directory: ${hooksCandidate}`);
+  }
+  if (hooksCandidateStat && !hooksCandidateStat.isDirectory()) {
+    throw new Error(`Git hooks path is not a directory: ${hooksCandidate}`);
+  }
   return {
     root,
     commonDir: resolveGitPath(projectPath, commonRaw),
