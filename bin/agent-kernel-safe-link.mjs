@@ -32,9 +32,16 @@ function readText(filePath, fallback = '') {
   try { return fs.readFileSync(filePath, 'utf8'); } catch { return fallback; }
 }
 
-function writeText(filePath, text) {
+function writeTextAtomic(filePath, text) {
   ensureDir(path.dirname(filePath));
-  fs.writeFileSync(filePath, text, 'utf8');
+  const temporary = `${filePath}.tmp-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  try {
+    fs.writeFileSync(temporary, text, 'utf8');
+    fs.renameSync(temporary, filePath);
+  } catch (error) {
+    try { fs.rmSync(temporary, { force: true }); } catch {}
+    throw error;
+  }
 }
 
 function parseArgs(argv) {
@@ -121,6 +128,10 @@ function validateTargetPath(root, targetPath, relativePath) {
   }
   const ancestor = nearestExistingAncestor(path.dirname(targetPath));
   if (!ancestor) throw new Error(`Could not resolve target parent: ${relativePath}`);
+  const ancestorStat = lstat(ancestor);
+  if (!ancestorStat?.isDirectory()) {
+    throw new Error(`Target parent is not a directory: ${relativePath}`);
+  }
   const resolvedAncestor = fs.realpathSync(ancestor);
   if (!isInside(root, resolvedAncestor)) {
     throw new Error(`Target parent resolves outside project root: ${relativePath}`);
@@ -206,6 +217,7 @@ function planTarget(root, relativePath, sourcePath, options = {}) {
   if (!sourceText.trim()) return null;
   const targetPath = path.join(root, relativePath);
   validateTargetPath(root, targetPath, relativePath);
+  const targetStat = lstat(targetPath);
   const existing = readText(targetPath, '');
   const state = markerState(existing);
   if (state.corrupt && !options.force) {
@@ -216,10 +228,45 @@ function planTarget(root, relativePath, sourcePath, options = {}) {
   const next = replaceMarkedBlock(mergeBase, generatedBlock);
   const action = state.corrupt
     ? 'repair-corrupt-markers'
-    : exists(targetPath)
+    : targetStat
       ? (hasMarkedBlock(existing) ? 'replace-marked-block' : 'append-marked-block')
       : 'create';
-  return { relativePath, targetPath, sourcePath, action, existing, next };
+  return { relativePath, targetPath, sourcePath, action, existed: !!targetStat, existing, next, backupPath: null };
+}
+
+function rollbackPlans(plans) {
+  const failures = [];
+  for (const plan of [...plans].reverse()) {
+    try {
+      if (plan.existed) writeTextAtomic(plan.targetPath, plan.existing);
+      else fs.rmSync(plan.targetPath, { force: true });
+    } catch (error) {
+      failures.push(`${plan.relativePath}: ${error?.message || String(error)}`);
+    }
+  }
+  return failures;
+}
+
+function applyPlans(plans, root, options = {}) {
+  if (!options.noBackup) {
+    for (const plan of plans) {
+      if (plan.existed) plan.backupPath = backupExisting(plan.targetPath, root);
+    }
+  }
+
+  const applied = [];
+  try {
+    for (const plan of plans) {
+      writeTextAtomic(plan.targetPath, plan.next);
+      applied.push(plan);
+    }
+  } catch (error) {
+    const rollbackFailures = rollbackPlans(applied);
+    const suffix = rollbackFailures.length
+      ? ` Rollback also failed for: ${rollbackFailures.join('; ')}`
+      : ' All earlier safe-link writes were restored.';
+    throw new Error(`Safe-link write failed: ${error?.message || String(error)}.${suffix}`);
+  }
 }
 
 function usage() {
@@ -255,18 +302,13 @@ function main() {
   }
 
   print(flags.dryRun ? 'Agent Kernel safe-link dry run:' : 'Agent Kernel safe-link:');
-  for (const p of plans) {
-    print(`- ${p.action}: ${p.relativePath}`);
+  for (const plan of plans) {
+    print(`- ${plan.action}: ${plan.relativePath}`);
   }
 
   if (flags.dryRun) return;
 
-  for (const p of plans) {
-    if (!flags.noBackup && exists(p.targetPath)) {
-      backupExisting(p.targetPath, root);
-    }
-    writeText(p.targetPath, p.next);
-  }
+  applyPlans(plans, root, flags);
 
   print(`Safe link complete: ${root}`);
   if (!flags.noBackup) print('Backups, when needed, were written to .agent-kernel-backups/.');
