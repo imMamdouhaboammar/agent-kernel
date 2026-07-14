@@ -34,24 +34,52 @@ function writeText(filePath, text) {
 
 function parseArgs(argv) {
   const flags = { _: [] };
+  const seen = new Set();
+  let positionalOnly = false;
   for (const arg of argv) {
-    if (arg === '--dry-run') flags.dryRun = true;
-    else if (arg === '--no-backup') flags.noBackup = true;
-    else if (arg === '--help' || arg === '-h') flags.help = true;
-    else flags._.push(arg);
+    if (positionalOnly) {
+      flags._.push(arg);
+      continue;
+    }
+    if (arg === '--') {
+      positionalOnly = true;
+      continue;
+    }
+    let name = null;
+    if (arg === '--dry-run') name = 'dryRun';
+    else if (arg === '--no-backup') name = 'noBackup';
+    else if (arg === '--force') name = 'force';
+    else if (arg === '--help' || arg === '-h') name = 'help';
+    else if (arg.startsWith('-')) throw new Error(`Unknown option: ${arg}`);
+    else {
+      flags._.push(arg);
+      continue;
+    }
+    if (seen.has(name)) throw new Error(`Duplicate option: ${arg}`);
+    seen.add(name);
+    flags[name] = true;
   }
+  if (flags._.length > 1) throw new Error(`Expected at most one project path, received ${flags._.length}.`);
   return flags;
+}
+
+function resolveProject(projectArg) {
+  const candidate = path.resolve(projectArg || '.');
+  let stat;
+  try { stat = fs.statSync(candidate); } catch { throw new Error(`Project path not found: ${candidate}`); }
+  if (!stat.isDirectory()) throw new Error(`Project path is not a directory: ${candidate}`);
+  return fs.realpathSync(candidate);
 }
 
 function gitRoot(projectPath) {
   try {
-    return childProcess.execFileSync('git', ['rev-parse', '--show-toplevel'], {
+    return fs.realpathSync(childProcess.execFileSync('git', ['rev-parse', '--show-toplevel'], {
       cwd: projectPath,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore']
-    }).trim();
+    }).trim());
   } catch {
-    return path.resolve(projectPath);
+    throw new Error(`Not a Git worktree: ${projectPath}`);
   }
 }
 
@@ -82,19 +110,18 @@ function backupExisting(hookPath, root) {
 }
 
 function usage() {
-  print(`agent-kernel-safe-git-hook\n\nUsage:\n  agent-kernel-safe-git-hook [project] [--dry-run] [--no-backup]\n\nSafely injects the Agent Kernel pre-commit block without deleting existing hook logic.\n`);
+  print(`agent-kernel-safe-git-hook\n\nUsage:\n  agent-kernel-safe-git-hook [project] [--dry-run] [--force] [--no-backup]\n\nSafely injects the Agent Kernel pre-commit block without deleting existing hook logic.\n`);
 }
 
 function main() {
   const flags = parseArgs(process.argv.slice(2));
   if (flags.help) return usage();
 
-  const project = path.resolve(flags._[0] || '.');
+  const project = resolveProject(flags._[0] || '.');
   const root = gitRoot(project);
   const gitDir = path.join(root, '.git');
   if (!exists(gitDir)) {
-    fail(`No .git directory found in ${root}`);
-    return;
+    throw new Error(`No .git directory found in ${root}`);
   }
 
   const hookPath = path.join(gitDir, 'hooks', 'pre-commit');
@@ -116,4 +143,5 @@ function main() {
   if (!flags.noBackup) print('Backups, when needed, were written to .agent-kernel-backups/.');
 }
 
-main();
+try { main(); }
+catch (error) { fail(error?.message || String(error)); }
