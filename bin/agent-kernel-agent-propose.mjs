@@ -16,6 +16,12 @@ const BOOLEAN_FLAGS = new Set(['help']);
 const MEMORY_TYPES = new Set(['rule', 'policy', 'preference', 'workflow', 'project-note', 'skill-trigger']);
 const MEMORY_SCOPES = new Set(['global', 'project']);
 const MEMORY_LEVELS = new Set(['critical', 'standard', 'note']);
+const ERROR_REDACTIONS = [
+  /sk-[A-Za-z0-9_-]{16,}/g,
+  /ghp_[A-Za-z0-9]{16,}/g,
+  /github_pat_[A-Za-z0-9_]{16,}/g,
+  /Bearer\s+[^\s]+/gi
+];
 
 function print(message = '') {
   process.stdout.write(String(message) + '\n');
@@ -164,6 +170,41 @@ function cliCommand() {
   return ['agent-kernel'];
 }
 
+function helperTimeoutMs() {
+  const parsed = Number(process.env.AGENT_KERNEL_HELPER_TIMEOUT_MS || 30000);
+  if (!Number.isFinite(parsed)) return 30000;
+  return Math.min(300000, Math.max(100, Math.floor(parsed)));
+}
+
+function redactedDiagnostic(value) {
+  let text = String(value || '').replace(/\s+/g, ' ').trim();
+  for (const pattern of ERROR_REDACTIONS) {
+    pattern.lastIndex = 0;
+    text = text.replace(pattern, '[REDACTED_SECRET]');
+  }
+  return text.slice(0, 1000);
+}
+
+function runCoreProposal(command, args) {
+  try {
+    return childProcess.execFileSync(command, args, {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: process.env,
+      timeout: helperTimeoutMs(),
+      maxBuffer: 1024 * 1024
+    });
+  } catch (error) {
+    if (error?.code === 'ETIMEDOUT' || error?.signal) {
+      throw new Error(`Proposal command timed out after ${helperTimeoutMs()}ms.`);
+    }
+    const stderr = redactedDiagnostic(error?.stderr);
+    const stdout = redactedDiagnostic(error?.stdout);
+    const code = redactedDiagnostic(error?.code || 'unknown-error');
+    throw new Error(`Proposal command failed: ${stderr || stdout || code}`);
+  }
+}
+
 function kernelHome() {
   return process.env.AGENT_KERNEL_HOME || path.join(os.homedir(), '.agent-kernel');
 }
@@ -213,11 +254,7 @@ function main() {
   ];
   if (input.tags) args.push('--tags', input.tags);
 
-  const out = childProcess.execFileSync(cmd, args, {
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-    env: process.env
-  });
+  const out = runCoreProposal(cmd, args);
   const proposalId = proposalIdFrom(out);
   if (proposalId) {
     const proposalPath = path.join(kernelHome(), 'inbox', 'pending', `${proposalId}.json`);
