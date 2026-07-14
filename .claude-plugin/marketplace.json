@@ -1,8 +1,8 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "agent-kernel",
-  "version": "1.8.0",
-  "description": "Local-first governance kernel for AI coding agents — shared memory, architecture conformance, rule distribution, approval inbox, episodic memory archive, MCP tools, hooks, and deterministic policy guards.",
+  "version": "1.9.0",
+  "description": "Local-first governance kernel for AI coding agents \u2014 shared memory, architecture conformance, rule distribution, approval inbox, episodic memory archive, MCP tools, hooks, and deterministic policy guards.",
   "owner": {
     "name": "Mamdouh Aboammar",
     "email": "mamdouhfces1997@gmail.com"
@@ -29,7 +29,7 @@
     {
       "name": "agent-kernel",
       "displayName": "Agent Kernel",
-      "version": "1.8.0",
+      "version": "1.9.0",
       "description": "Local-first agent governance with shared memory, architecture conformance, approval workflows, Failure Lessons, MCP tools, hooks, and deterministic policy guards.",
       "author": {
         "name": "Mamdouh Aboammar",

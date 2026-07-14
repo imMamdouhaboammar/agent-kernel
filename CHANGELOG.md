@@ -3,6 +3,98 @@
 All notable changes to this project are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.9.0] - 2026-07-14
+
+This release hardens the trust, atomicity, and portability surfaces of Agent
+Kernel. The agent proposal helper now enforces strict option parsing and JSON
+envelopes, the safe-link and safe Git hook installers ship worktree- and
+transaction-aware fixes, and a new portability helper makes retention exports
+and imports safe to run against an existing home. Agent runtime write modes
+gain a dedicated reference for capture-only and propose-only identities.
+
+### Added
+
+- **`agent-kernel portability` (experimental).** New
+  `bin/agent-kernel-portability.mjs` helper wired to the public router
+  with `export`, `import`, `view`, and `report` subcommands. Retention
+  defaults to 30 days, secret patterns are redacted before write, and
+  `import` refuses to merge into a non-empty home without `--force`.
+  The retention + portability guide ships in
+  `docs/RETENTION_AND_PORTABILITY.md`.
+- **Agent write modes reference.** `docs/AGENT_WRITE_MODES.md` documents
+  the four trust modes (`read-only`, `capture-only`, `propose-only`,
+  `trusted-local`), the unknown-agent fallback, and the structured
+  JSON envelopes for `mode`, `session`, and `observe` commands.
+- **Agent proposal trust boundary reference.**
+  `docs/AGENT_PROPOSALS.md` documents strict option parsing, the
+  `--from` / `--agent` alias conflict, single-source text resolution,
+  enum and CSV validation, subprocess timeouts, atomic identity
+  enrichment, and the review-first lifecycle.
+
+### Changed
+
+- **Agent proposal helper** (`bin/agent-kernel-agent-propose.mjs`):
+  rejects unknown and duplicate options, refuses `--from` and `--agent`
+  used together, accepts text from exactly one source
+  (`--text` / positional / stdin), validates `type`, `scope`, and
+  `level` against fixed enums, deduplicates CSV values, bounds
+  subprocess execution to a 30 s timeout and 1 MiB output buffer,
+  redacts secrets in failure diagnostics, and returns structured
+  JSON envelopes with `--json`.
+- **safe-link installer** (`bin/agent-kernel-safe-link.mjs`): option
+  parser now validates project paths up front, marker edits are
+  guarded by explicit prefix checks, symbolic target writes are
+  classified precisely, and the project write is made atomic and
+  reversible.
+- **safe Git hook installer** (`bin/agent-kernel-safe-git-hook.mjs`):
+  resolves hooks through the active Git worktree path, validates
+  custom options, repairs managed blocks explicitly, writes hooks
+  atomically while preserving modes, and rejects symbolic hooks
+  directories. New `docs/SAFE_GIT_HOOKS.md` documents the
+  worktree-safe installation path.
+- **Public router** (`bin/agent-kernel-router.mjs`): routes the new
+  `portability` subcommand alongside architecture without
+  regressing architecture-specific handlers.
+
+### Fixed
+
+- `agent-kernel portability import` will not silently merge into a
+  populated home. The CLI now reports the conflict and exits non-zero
+  unless `--force` is supplied.
+- safe-link marker repair no longer overwrites unmanaged content
+  outside the Agent Kernel block and no longer creates dangling
+  symlinks on rollback.
+- safe Git hook installation in a worktree no longer resolves hooks
+  through the main checkout's `.git` directory.
+- The agent-propose smoke test no longer fails on a fresh sandbox
+  when the persistent agents file has not been seeded by `init`.
+
+### Security
+
+- The agent-propose helper redacts `OPENAI_API_KEY`,
+  `ANTHROPIC_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `sk-...`,
+  `ghp_...`, `github_pat_...`, and `Bearer ...` tokens in any
+  subprocess diagnostic it surfaces.
+- The portability helper applies the same redactor plus
+  `AIza...`, `xox[abposr]-...`, and a key-name heuristic
+  (`token`, `password`, `secret`, `credential`, `authorization`,
+  `cookie`, `api_key`, `private_key`) before writing export data.
+- A denied unknown agent no longer creates a persistent registry
+  entry. Lookups return a transient read-only identity and the
+  helper refuses to create a proposal against it.
+
+### Verified
+
+- `npm ci` (clean install from lockfile)
+- `npm run build` (regenerates `dist/cli.mjs` at v1.9.0)
+- `npm run lint` (zero warnings)
+- `npm run typecheck` (TypeScript types pass)
+- `npm test` (`test/smoke.mjs` — 35/35 scenarios pass on Node 18.x,
+  20.x, and 22.x)
+- `npm run docs:check` and `node scripts/check-version.mjs`
+  (18/18 version surfaces agree)
+- `npm pack --dry-run` (clean tarball preview)
+
 ## [1.8.0] - 2026-07-11
 
 Architecture Guardian is now a first-class, production-ready Agent Kernel
