@@ -13,11 +13,14 @@ const patternProposalPath = path.join(here, 'agent-kernel-pattern-proposal.mjs')
 const identityCommandPath = path.join(here, 'agent-kernel-identity-command.mjs');
 const registryPath = path.join(here, 'agent-kernel-registry.mjs');
 const architecturePath = path.join(here, 'agent-kernel-architecture.mjs');
+const portabilityPath = path.join(here, 'agent-kernel-portability.mjs');
 const args = process.argv.slice(2);
 const command = args[0];
 const commitLinkHook = command === 'git-hook' && args[1] === 'install' && args.includes('--commit-link');
 const failurePatterns = command === 'failure' && args[1] === 'patterns';
 const patternProposal = command === 'failure' && args[1] === 'propose-pattern';
+const portabilityCommand = ['retention', 'export', 'import', 'view', 'report'].includes(command) ||
+  (command === 'session' && args[1] === 'compact');
 const searchIdentityOrProject = command === 'search' && args.some((arg) =>
   arg === '--agent' || arg.startsWith('--agent=') ||
   arg === '--project' || arg.startsWith('--project=') ||
@@ -32,17 +35,19 @@ const target = command === 'architecture'
     ? searchPath
     : command === 'mcp'
       ? mcpPath
-      : command === 'commit' || commitLinkHook
-        ? commitPath
-        : failurePatterns
-          ? failurePatternsPath
-          : patternProposal
-            ? patternProposalPath
-            : registryCommand
-              ? registryPath
-              : identityAware
-                ? identityCommandPath
-                : wrapperPath;
+      : portabilityCommand
+        ? portabilityPath
+        : command === 'commit' || commitLinkHook
+          ? commitPath
+          : failurePatterns
+            ? failurePatternsPath
+            : patternProposal
+              ? patternProposalPath
+              : registryCommand
+                ? registryPath
+                : identityAware
+                  ? identityCommandPath
+                  : wrapperPath;
 const targetArgs = command === 'architecture' ? args.slice(1) : args;
 const result = childProcess.spawnSync(process.execPath, [target, ...targetArgs], {
   cwd: process.cwd(),
