@@ -34,17 +34,51 @@ const searchIdentityOrProject = command === 'search' && args.some((arg) =>
 const identityAware = command === 'propose' || command === 'session' || searchIdentityOrProject;
 const registryCommand = command === 'agent' || command === 'project';
 
+function updateStatePaths() {
+  const root = process.env.AGENT_KERNEL_HOME || path.join(os.homedir(), '.agent-kernel');
+  return {
+    config: path.join(root, 'config.json'),
+    cache: path.join(root, 'runtime', 'update-status.json')
+  };
+}
+
+function readJson(filePath) {
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function shouldRefreshUpdateCheck() {
+  if (!['doctor', 'start', 'compile', 'sync', 'status'].includes(command)) return false;
+  if (args.includes('--json') || process.env.AGENT_KERNEL_DISABLE_AUTO_UPDATE_CHECK === '1') return false;
+  const state = updateStatePaths();
+  const config = readJson(state.config);
+  if (config?.updates?.mode !== 'agent-approved') return false;
+  const hours = Number(config.updates.checkIntervalHours || 24);
+  const intervalMs = Number.isFinite(hours) && hours > 0 ? hours * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+  const cache = readJson(state.cache);
+  const checkedAt = Date.parse(cache?.checkedAt || '');
+  if (!Number.isFinite(checkedAt)) return true;
+  return Date.now() - checkedAt >= intervalMs;
+}
+
+function refreshUpdateCheckIfDue() {
+  if (!shouldRefreshUpdateCheck()) return;
+  childProcess.spawnSync(process.execPath, [updatePath, 'check', '--json'], {
+    cwd: process.cwd(),
+    env: process.env,
+    stdio: 'ignore',
+    timeout: 20000
+  });
+}
+
 function cachedUpdateNotice() {
   if (command === 'update' || args.includes('--json')) return '';
-  const root = process.env.AGENT_KERNEL_HOME || path.join(os.homedir(), '.agent-kernel');
-  const cachePath = path.join(root, 'runtime', 'update-status.json');
-  try {
-    const cache = JSON.parse(fs.readFileSync(cachePath, 'utf8'));
-    if (cache?.updateAvailable !== true || !cache.currentVersion || !cache.targetVersion) return '';
-    return `Agent Kernel update available: ${cache.currentVersion} -> ${cache.targetVersion}. Run: agent-kernel update status\n`;
-  } catch {
-    return '';
-  }
+  const cache = readJson(updateStatePaths().cache);
+  if (cache?.updateAvailable !== true || !cache.currentVersion || !cache.targetVersion) return '';
+  return `Agent Kernel update available: ${cache.currentVersion} -> ${cache.targetVersion}. Run: agent-kernel update status\n`;
 }
 
 function refreshUpdateGuidance() {
@@ -58,6 +92,7 @@ function refreshUpdateGuidance() {
   });
 }
 
+refreshUpdateCheckIfDue();
 const notice = cachedUpdateNotice();
 if (notice) process.stderr.write(notice);
 
