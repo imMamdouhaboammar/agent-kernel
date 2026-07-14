@@ -7,8 +7,12 @@
 //   3. `init --sync --enforce` adds schemas/ and dist/ directories.
 //   4. `validate` returns "ok" against a freshly-initialized home.
 //   5. Re-running `init --sync` is idempotent (does not duplicate data).
+//   6. `init --sync --force` deep-merges the existing config.json: new
+//      top-level keys from the default config are added, and user
+//      customizations (e.g. updates, packageManagerPreference) are
+//      preserved.
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { assertContains, makeEnv, runCli } from './_lib/helpers.mjs';
 
@@ -51,6 +55,53 @@ export async function run() {
   const rulesAfter = JSON.parse(readFileSync(join(memoriesDir, 'rules.json'), 'utf8'));
   if (!Array.isArray(rulesAfter)) {
     throw new Error('re-running init broke rules.json shape');
+  }
+
+  // 6. `init --force` deep-merges the existing config.json. New top-level
+  //    keys from the default config are added, and user customizations
+  //    (updates, packageManagerPreference overrides) are preserved.
+  {
+    const { env: env2, kernelHome: home2 } = makeEnv();
+    runCli(env2, 'init', '--sync');
+    const configPath = join(home2, 'config.json');
+    const original = JSON.parse(readFileSync(configPath, 'utf8'));
+    const userOverrides = {
+      ...original,
+      packageManagerPreference: 'pnpm', // user override
+      updates: {                          // brand-new section
+        mode: 'agent-approved',
+        channel: 'latest',
+        trustedAgents: ['claude', 'codex', 'mavis', 'gemini'],
+        checkIntervalHours: 24
+      },
+      memoryWritePolicy: {
+        ...original.memoryWritePolicy,
+        mode: 'bypass'                    // user override nested
+      }
+    };
+    writeFileSync(configPath, JSON.stringify(userOverrides, null, 2) + '\n');
+
+    runCli(env2, 'init', '--sync', '--force');
+
+    const merged = JSON.parse(readFileSync(configPath, 'utf8'));
+    if (merged.packageManagerPreference !== 'pnpm') {
+      throw new Error(`init --force overrode user packageManagerPreference (got ${merged.packageManagerPreference})`);
+    }
+    if (!merged.updates || merged.updates.mode !== 'agent-approved') {
+      throw new Error('init --force dropped the user updates section');
+    }
+    if (JSON.stringify(merged.updates.trustedAgents) !== JSON.stringify(['claude', 'codex', 'mavis', 'gemini'])) {
+      throw new Error(`init --force changed user trustedAgents: ${JSON.stringify(merged.updates.trustedAgents)}`);
+    }
+    if (merged.memoryWritePolicy?.mode !== 'bypass') {
+      throw new Error('init --force overrode user memoryWritePolicy.mode');
+    }
+    if (merged.version !== original.version) {
+      throw new Error(`init --force changed config version (got ${merged.version})`);
+    }
+    if (merged.createdAt !== original.createdAt) {
+      throw new Error('init --force rewrote createdAt (should preserve original install date)');
+    }
   }
 }
 
