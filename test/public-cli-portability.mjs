@@ -4,10 +4,11 @@
 //   1. Retention dry-run writes no deletion and actual prune removes raw observations only.
 //   2. Session compaction is deterministic and does not create approved memory.
 //   3. Export includes schema and redaction metadata and never leaks secrets.
-//   4. Import validates the schema and defaults to pending inbox proposals.
-//   5. Repeated import reports conflicts instead of overwriting local memory.
-//   6. Terminal view and static HTML reporting work offline with no external assets.
-//   7. Prune and import operations create audit records.
+//   4. Import validates file-backed identifiers before any replacement write.
+//   5. Default import creates pending proposals and repeated import reports conflicts.
+//   6. Explicit replacement restores sessions, observations, and commit links after backup.
+//   7. Terminal view and static HTML reporting work offline with no external assets.
+//   8. Destructive and reporting operations create redacted audit records.
 
 import childProcess from 'node:child_process';
 import fs from 'node:fs';
@@ -45,7 +46,8 @@ function writeJson(filePath, value) {
 
 function approvedText(kernelHome) {
   const dir = path.join(kernelHome, 'source', 'memories');
-  return fs.readdirSync(dir).filter((name) => name.endsWith('.json')).map((name) => fs.readFileSync(path.join(dir, name), 'utf8')).join('\n');
+  return fs.readdirSync(dir).filter((name) => name.endsWith('.json'))
+    .map((name) => fs.readFileSync(path.join(dir, name), 'utf8')).join('\n');
 }
 
 function sessionFixture(id, timestamp, agentId = 'codex') {
@@ -101,6 +103,23 @@ export async function run() {
   });
   fs.writeFileSync(notesPath, JSON.stringify(notes, null, 2) + '\n');
 
+  const failurePath = path.join(source.kernelHome, 'source', 'failures', 'failure-lessons.json');
+  writeJson(failurePath, [{
+    id: 'failure_portability_fixture',
+    status: 'active',
+    errorSignature: 'PORTABILITY_FIXTURE',
+    occurrences: 1,
+    updatedAt: '2025-01-01T00:00:00.000Z'
+  }]);
+
+  const commitsPath = path.join(source.kernelHome, 'runtime', 'commits', 'index.json');
+  writeJson(commitsPath, {
+    version: 1,
+    commits: {
+      abc1234: { sha: 'abc1234567890', shortSha: 'abc1234', subject: 'test portability restore', sessions: ['session_portability_recent'] }
+    }
+  });
+
   const oldId = 'session_portability_old';
   const recentId = 'session_portability_recent';
   const oldTime = '2025-01-01T00:00:00.000Z';
@@ -112,8 +131,12 @@ export async function run() {
 
   const approvedBefore = approvedText(source.kernelHome);
   const compactPreview = JSON.parse(runPublic(source.env, 'session', 'compact', oldId, '--dry-run', '--json'));
-  if (!compactPreview.dryRun || compactPreview.summary.observationCount !== 3) {
+  const compactPreviewAgain = JSON.parse(runPublic(source.env, 'session', 'compact', oldId, '--dry-run', '--json'));
+  if (!compactPreview.dryRun || compactPreview.summary.observationCount !== 3 || compactPreview.summary.generatedAt !== oldTime) {
     throw new Error(`session compaction preview failed: ${JSON.stringify(compactPreview)}`);
+  }
+  if (JSON.stringify(compactPreview.summary) !== JSON.stringify(compactPreviewAgain.summary)) {
+    throw new Error('session compaction preview was not deterministic');
   }
   const beforeCompactSession = JSON.parse(fs.readFileSync(path.join(sessionsDir, `${oldId}.json`), 'utf8'));
   if (beforeCompactSession.compactSummary) throw new Error('session compact dry-run wrote session state');
@@ -126,12 +149,10 @@ export async function run() {
   if (!compactedSession.compactSummary || compactedSession.compactedObservationCount !== 3) {
     throw new Error(`compacted session metadata was not stored: ${JSON.stringify(compactedSession)}`);
   }
-  if (approvedText(source.kernelHome) !== approvedBefore) {
-    throw new Error('session compaction changed approved memory');
-  }
+  if (approvedText(source.kernelHome) !== approvedBefore) throw new Error('session compaction changed approved memory');
 
   const status = JSON.parse(runPublic(source.env, 'retention', 'status', '--older-than', '30d', '--json'));
-  if (status.rawLogCount !== 2 || status.eligibleCount !== 1) {
+  if (status.rawLogCount !== 2 || status.eligibleCount !== 1 || status.malformedLineCount !== 0) {
     throw new Error(`retention status returned incorrect eligibility: ${JSON.stringify(status)}`);
   }
 
@@ -154,7 +175,9 @@ export async function run() {
     throw new Error('retention prune removed summary metadata or a recent log');
   }
   if (approvedText(source.kernelHome) !== approvedBefore) throw new Error('retention prune changed approved memory');
-  if (!fs.existsSync(path.join(source.kernelHome, 'source', 'failures', 'failure-lessons.json'))) throw new Error('retention prune removed Failure Lessons');
+  if (!fs.existsSync(failurePath) || !fs.readFileSync(failurePath, 'utf8').includes('PORTABILITY_FIXTURE')) {
+    throw new Error('retention prune changed Failure Lessons');
+  }
 
   const backupPath = path.join(source.homeDir, 'agent-kernel-backup.json');
   const exported = JSON.parse(runPublic(source.env, 'export', backupPath, '--redact', '--include-observations', '--json'));
@@ -173,7 +196,7 @@ export async function run() {
   const target = makeEnv();
   runCli(target.env, 'init', '--sync');
   const inspect = JSON.parse(runPublic(target.env, 'import', backupPath, '--inspect', '--json'));
-  if (inspect.schemaVersion !== 1 || inspect.memoryRecords < 1) {
+  if (inspect.schemaVersion !== 1 || inspect.memoryRecords < 1 || inspect.observationSessions !== 1) {
     throw new Error(`import inspection failed: ${JSON.stringify(inspect)}`);
   }
   const targetApprovedBefore = approvedText(target.kernelHome);
@@ -203,6 +226,38 @@ export async function run() {
     throw new Error(`invalid import schema was accepted: ${JSON.stringify(invalidImport)}`);
   }
 
+  const traversalPath = path.join(source.homeDir, 'traversal-backup.json');
+  const traversalBundle = JSON.parse(backupText);
+  traversalBundle.data.memories['../../config'] = [];
+  writeJson(traversalPath, traversalBundle);
+  const sentinelConfig = path.join(target.kernelHome, 'config.json');
+  writeJson(sentinelConfig, { sentinel: 'preserve-me' });
+  const traversalImport = runPublicFailure(target.env, 'import', traversalPath, '--replace', '--json');
+  if (traversalImport.status === 0 || !traversalImport.stderr.includes('Invalid memory bucket')) {
+    throw new Error(`path-traversal bucket was accepted: ${JSON.stringify(traversalImport)}`);
+  }
+  if (!fs.readFileSync(sentinelConfig, 'utf8').includes('preserve-me')) {
+    throw new Error('invalid replacement modified local state before validation completed');
+  }
+
+  const replacement = JSON.parse(runPublic(target.env, 'import', backupPath, '--replace', '--json'));
+  if (!replacement.ok || replacement.mode !== 'replace' || !fs.existsSync(replacement.backup)) {
+    throw new Error(`explicit replacement did not create a backup: ${JSON.stringify(replacement)}`);
+  }
+  if (replacement.restored.sessions !== 2 || replacement.restored.observationSessions !== 1 || replacement.restored.commitLinks !== 1) {
+    throw new Error(`replacement restore counts were incomplete: ${JSON.stringify(replacement)}`);
+  }
+  const restoredSessions = path.join(target.kernelHome, 'runtime', 'sessions');
+  if (!fs.existsSync(path.join(restoredSessions, `${recentId}.json`)) || !fs.existsSync(path.join(restoredSessions, `${recentId}.jsonl`))) {
+    throw new Error('replacement did not restore session metadata and observations');
+  }
+  const restoredCommits = fs.readFileSync(path.join(target.kernelHome, 'runtime', 'commits', 'index.json'), 'utf8');
+  if (!restoredCommits.includes('abc1234')) throw new Error('replacement did not restore commit links');
+
+  const invalidView = runPublicFailure(source.env, 'view', 'unknown-section');
+  if (invalidView.status === 0 || !invalidView.stderr.includes('Unknown view section')) {
+    throw new Error(`unknown view section was accepted: ${JSON.stringify(invalidView)}`);
+  }
   const view = runPublic(source.env, 'view');
   if (!view.includes('Agent Kernel local view') || !view.includes('Approved memory:')) {
     throw new Error(`terminal viewer output was incomplete: ${view}`);
@@ -230,7 +285,9 @@ export async function run() {
     if (!sourceAudit.includes(operation)) throw new Error(`source audit log omitted ${operation}`);
   }
   const targetAudit = fs.readFileSync(path.join(target.kernelHome, 'logs', 'audit.jsonl'), 'utf8');
-  if (!targetAudit.includes('import.inbox')) throw new Error('import operation was not audited');
+  for (const operation of ['import.inbox', 'import.replace']) {
+    if (!targetAudit.includes(operation)) throw new Error(`target audit log omitted ${operation}`);
+  }
   if (sourceAudit.includes(fakeSecret) || targetAudit.includes(fakeSecret)) throw new Error('audit logs leaked a secret');
 }
 
