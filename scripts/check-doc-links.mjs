@@ -4,9 +4,11 @@ import { existsSync, lstatSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root = dirname(dirname(fileURLToPath(import.meta.url)));
+const repositoryRoot = dirname(dirname(fileURLToPath(import.meta.url)));
+const root = resolve(process.argv[2] || repositoryRoot);
 const ignoredDirectories = new Set(['.git', 'node_modules', 'coverage']);
 const markdownLinkPattern = /!?\[[^\]]*\]\(([^)]+)\)/g;
+const referenceDefinitionPattern = /^\s{0,3}\[[^\]]+\]:\s*(<[^>]+>|\S+)/gm;
 
 function walk(dir, results = []) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -53,6 +55,16 @@ function resolveTarget(sourceFile, destination) {
   return resolve(dirname(sourceFile), decoded);
 }
 
+function collectDestinations(text) {
+  const destinations = [];
+  for (const pattern of [markdownLinkPattern, referenceDefinitionPattern]) {
+    pattern.lastIndex = 0;
+    let match;
+    while ((match = pattern.exec(text)) !== null) destinations.push(match[1]);
+  }
+  return destinations;
+}
+
 const failures = [];
 let checkedLinks = 0;
 const markdownFiles = walk(root);
@@ -60,9 +72,8 @@ const markdownFiles = walk(root);
 for (const file of markdownFiles) {
   const relativeFile = relative(root, file).replace(/\\/g, '/');
   const text = stripFencedCode(readFileSync(file, 'utf8'));
-  let match;
-  while ((match = markdownLinkPattern.exec(text)) !== null) {
-    const destination = parseDestination(match[1]);
+  for (const rawDestination of collectDestinations(text)) {
+    const destination = parseDestination(rawDestination);
     if (!destination || shouldIgnore(destination)) continue;
     const target = resolveTarget(file, destination);
     if (!target) continue;
