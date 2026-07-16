@@ -42,6 +42,30 @@ export async function run() {
 
     writeFileSync(
       join(fixtureRoot, 'README.md'),
+      [
+        '[Setup](./docs/setup.md)',
+        '',
+        '````markdown',
+        '[Ignored inline](./docs/missing-inline.md)',
+        '```',
+        '[Ignored reference][missing]',
+        '',
+        '[missing]: ./docs/missing-reference.md',
+        '````',
+        '',
+        '~~~text',
+        '[Ignored tilde](./docs/missing-tilde.md)',
+        '~~~~',
+        ''
+      ].join('\n')
+    );
+
+    const fenced = runChecker(fixtureRoot);
+    assert.equal(fenced.status, 0, `links inside variable-length fences should be ignored\n${fenced.stderr}`);
+    assert.match(fenced.stdout, /Checked 1 local links across 2 markdown files\./);
+
+    writeFileSync(
+      join(fixtureRoot, 'README.md'),
       '[Missing guide][missing]\n\n[missing]: <.\/docs\/missing.md>\n'
     );
     const broken = runChecker(fixtureRoot);
