@@ -21,7 +21,28 @@ function walk(dir, results = []) {
 }
 
 function stripFencedCode(text) {
-  return text.replace(/```[\s\S]*?```/g, '').replace(/~~~[\s\S]*?~~~/g, '');
+  const lines = text.split(/(?<=\n)/);
+  const output = [];
+  let fence = null;
+
+  for (const line of lines) {
+    const match = line.match(/^ {0,3}(`{3,}|~{3,})/);
+    if (!fence) {
+      if (match) {
+        fence = { marker: match[1][0], length: match[1].length };
+        output.push(line.replace(/[^\n]/g, ' '));
+      } else {
+        output.push(line);
+      }
+      continue;
+    }
+
+    const closingPattern = new RegExp(`^ {0,3}${fence.marker === '`' ? '`' : '~'}{${fence.length},}\\s*(?:\\n)?$`);
+    output.push(line.replace(/[^\n]/g, ' '));
+    if (closingPattern.test(line)) fence = null;
+  }
+
+  return output.join('');
 }
 
 function parseDestination(rawDestination) {
