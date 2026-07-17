@@ -66,6 +66,24 @@ export async function run() {
 
     writeFileSync(
       join(fixtureRoot, 'README.md'),
+      [
+        '[Setup](./docs/setup.md)',
+        '',
+        '`[Ignored](./docs/missing-inline.md)`',
+        '',
+        '``Use `[Ignored nested](./docs/missing-nested.md)` literally``',
+        '',
+        'Unmatched ` opener keeps [Setup](./docs/setup.md) visible.',
+        ''
+      ].join('\n')
+    );
+
+    const inlineCode = runChecker(fixtureRoot);
+    assert.equal(inlineCode.status, 0, `links inside inline code should be ignored\n${inlineCode.stderr}`);
+    assert.match(inlineCode.stdout, /Checked 2 local links across 2 markdown files\./);
+
+    writeFileSync(
+      join(fixtureRoot, 'README.md'),
       '[Missing guide][missing]\n\n[missing]: <.\/docs\/missing.md>\n'
     );
     const broken = runChecker(fixtureRoot);
