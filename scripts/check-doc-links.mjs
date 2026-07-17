@@ -45,6 +45,46 @@ function stripFencedCode(text) {
   return output.join('');
 }
 
+function stripInlineCode(text) {
+  const output = [...text];
+  let index = 0;
+
+  while (index < text.length) {
+    if (text[index] !== '`') {
+      index += 1;
+      continue;
+    }
+
+    let runEnd = index;
+    while (text[runEnd] === '`') runEnd += 1;
+    const runLength = runEnd - index;
+    let closingStart = runEnd;
+
+    while (closingStart < text.length) {
+      closingStart = text.indexOf('`'.repeat(runLength), closingStart);
+      if (closingStart === -1) break;
+
+      const beforeIsBacktick = closingStart > 0 && text[closingStart - 1] === '`';
+      const afterIsBacktick = text[closingStart + runLength] === '`';
+      if (!beforeIsBacktick && !afterIsBacktick) break;
+      closingStart += runLength;
+    }
+
+    if (closingStart === -1) {
+      index = runEnd;
+      continue;
+    }
+
+    const closingEnd = closingStart + runLength;
+    for (let cursor = index; cursor < closingEnd; cursor += 1) {
+      if (output[cursor] !== '\n') output[cursor] = ' ';
+    }
+    index = closingEnd;
+  }
+
+  return output.join('');
+}
+
 function parseDestination(rawDestination) {
   const trimmed = rawDestination.trim();
   if (!trimmed) return null;
@@ -92,7 +132,7 @@ const markdownFiles = walk(root);
 
 for (const file of markdownFiles) {
   const relativeFile = relative(root, file).replace(/\\/g, '/');
-  const text = stripFencedCode(readFileSync(file, 'utf8'));
+  const text = stripInlineCode(stripFencedCode(readFileSync(file, 'utf8')));
   for (const rawDestination of collectDestinations(text)) {
     const destination = parseDestination(rawDestination);
     if (!destination || shouldIgnore(destination)) continue;
