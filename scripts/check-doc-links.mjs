@@ -85,6 +85,28 @@ function stripInlineCode(text) {
   return output.join('');
 }
 
+function stripHtmlComments(text) {
+  const output = [...text];
+  let searchFrom = 0;
+
+  while (searchFrom < text.length) {
+    const openingStart = text.indexOf('<!--', searchFrom);
+    if (openingStart === -1) break;
+
+    const closingStart = text.indexOf('-->', openingStart + 4);
+    const commentEnd = closingStart === -1 ? text.length : closingStart + 3;
+
+    for (let cursor = openingStart; cursor < commentEnd; cursor += 1) {
+      if (output[cursor] !== '\n') output[cursor] = ' ';
+    }
+
+    if (closingStart === -1) break;
+    searchFrom = commentEnd;
+  }
+
+  return output.join('');
+}
+
 function parseDestination(rawDestination) {
   const trimmed = rawDestination.trim();
   if (!trimmed) return null;
@@ -132,7 +154,7 @@ const markdownFiles = walk(root);
 
 for (const file of markdownFiles) {
   const relativeFile = relative(root, file).replace(/\\/g, '/');
-  const text = stripInlineCode(stripFencedCode(readFileSync(file, 'utf8')));
+  const text = stripHtmlComments(stripInlineCode(stripFencedCode(readFileSync(file, 'utf8'))));
   for (const rawDestination of collectDestinations(text)) {
     const destination = parseDestination(rawDestination);
     if (!destination || shouldIgnore(destination)) continue;
