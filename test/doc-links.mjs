@@ -84,6 +84,47 @@ export async function run() {
 
     writeFileSync(
       join(fixtureRoot, 'README.md'),
+      [
+        '[Setup](./docs/setup.md)',
+        '',
+        '<!-- [Ignored inline](./docs/missing-comment-inline.md) -->',
+        '',
+        '<!--',
+        '[Ignored reference][comment-missing]',
+        '',
+        '[comment-missing]: ./docs/missing-comment-reference.md',
+        '-->',
+        '',
+        'Before <!-- [Ignored embedded](./docs/missing-comment-embedded.md) --> after.',
+        ''
+      ].join('\n')
+    );
+
+    const htmlComments = runChecker(fixtureRoot);
+    assert.equal(htmlComments.status, 0, `links inside HTML comments should be ignored\n${htmlComments.stderr}`);
+    assert.match(htmlComments.stdout, /Checked 1 local links across 2 markdown files\./);
+
+    writeFileSync(
+      join(fixtureRoot, 'README.md'),
+      [
+        '[Setup](./docs/setup.md)',
+        '',
+        '<!--',
+        '[Ignored unterminated](./docs/missing-comment-unterminated.md)',
+        ''
+      ].join('\n')
+    );
+
+    const unterminatedComment = runChecker(fixtureRoot);
+    assert.equal(
+      unterminatedComment.status,
+      0,
+      `unterminated HTML comment should hide the remaining comment body\n${unterminatedComment.stderr}`
+    );
+    assert.match(unterminatedComment.stdout, /Checked 1 local links across 2 markdown files\./);
+
+    writeFileSync(
+      join(fixtureRoot, 'README.md'),
       '[Missing guide][missing]\n\n[missing]: <.\/docs\/missing.md>\n'
     );
     const broken = runChecker(fixtureRoot);
