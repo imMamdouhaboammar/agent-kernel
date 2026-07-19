@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const repositoryRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const root = resolve(process.argv[2] || repositoryRoot);
 const ignoredDirectories = new Set(['.git', 'node_modules', 'coverage']);
-const markdownLinkPattern = /!?\[[^\]]*\]\(([^)]+)\)/g;
+const markdownLinkStartPattern = /!?\[[^\]]*\]\(/g;
 const referenceDefinitionPattern = /^\s{0,3}\[[^\]]+\]:\s*(<[^>]+>|\S+)/gm;
 
 function walk(dir, results = []) {
@@ -138,13 +138,44 @@ function resolveTarget(sourceFile, destination) {
   return resolve(dirname(sourceFile), decoded);
 }
 
-function collectDestinations(text) {
+function collectMarkdownLinkDestinations(text) {
   const destinations = [];
-  for (const pattern of [markdownLinkPattern, referenceDefinitionPattern]) {
-    pattern.lastIndex = 0;
-    let match;
-    while ((match = pattern.exec(text)) !== null) destinations.push(match[1]);
+  markdownLinkStartPattern.lastIndex = 0;
+  let match;
+
+  while ((match = markdownLinkStartPattern.exec(text)) !== null) {
+    const destinationStart = markdownLinkStartPattern.lastIndex;
+    let nestedParentheses = 0;
+    let cursor = destinationStart;
+
+    while (cursor < text.length) {
+      const character = text[cursor];
+      if (character === '\\') {
+        cursor += 2;
+        continue;
+      }
+      if (character === '(') {
+        nestedParentheses += 1;
+      } else if (character === ')') {
+        if (nestedParentheses === 0) {
+          destinations.push(text.slice(destinationStart, cursor));
+          markdownLinkStartPattern.lastIndex = cursor + 1;
+          break;
+        }
+        nestedParentheses -= 1;
+      }
+      cursor += 1;
+    }
   }
+
+  return destinations;
+}
+
+function collectDestinations(text) {
+  const destinations = collectMarkdownLinkDestinations(text);
+  referenceDefinitionPattern.lastIndex = 0;
+  let match;
+  while ((match = referenceDefinitionPattern.exec(text)) !== null) destinations.push(match[1]);
   return destinations;
 }
 
