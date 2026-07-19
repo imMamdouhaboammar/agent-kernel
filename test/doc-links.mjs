@@ -123,6 +123,16 @@ export async function run() {
     );
     assert.match(unterminatedComment.stdout, /Checked 1 local links across 2 markdown files\./);
 
+    writeFileSync(join(fixtureRoot, 'docs', 'guide(v2).md'), '# Guide v2\n');
+    writeFileSync(join(fixtureRoot, 'README.md'), '[Guide v2](./docs/guide(v2).md)\n');
+    const parenthesized = runChecker(fixtureRoot);
+    assert.equal(
+      parenthesized.status,
+      0,
+      `balanced parentheses in local link destinations should resolve\n${parenthesized.stderr}`
+    );
+    assert.match(parenthesized.stdout, /Checked 1 local links across 3 markdown files\./);
+
     writeFileSync(
       join(fixtureRoot, 'README.md'),
       '[Missing guide][missing]\n\n[missing]: <.\/docs\/missing.md>\n'
