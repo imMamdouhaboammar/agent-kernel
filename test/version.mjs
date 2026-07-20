@@ -40,11 +40,11 @@ export async function run() {
   }
 
   const readmeText = readFileSync(join(repo.root, 'README.md'), 'utf8');
-  const readmeStableRelease = readmeText.match(/Current stable release:\s*<a\b[^>]*>v([^<]+)<\/a>/);
-  if (!readmeStableRelease) {
-    throw new Error('README.md must contain a parseable Current stable release marker');
+  const readmeStableReleases = [...readmeText.matchAll(/Current stable release:\s*<a\b[^>]*>v([^<]+)<\/a>/g)];
+  if (readmeStableReleases.length !== 1) {
+    throw new Error(`README.md must contain exactly one parseable Current stable release marker, found ${readmeStableReleases.length}`);
   }
-  assertVersion('README.md stable release', readmeStableRelease[1], expected);
+  assertVersion('README.md stable release', readmeStableReleases[0][1], expected);
 
   const cliVersion = runCli(env, '--version').trim();
   assertVersion('CLI --version', cliVersion, expected);
