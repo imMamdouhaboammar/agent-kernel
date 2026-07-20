@@ -20,6 +20,7 @@ const distPath = join(root, 'dist', 'cli.mjs');
 const binPath = join(root, 'bin');
 const pluginPath = join(root, '.claude-plugin', 'plugin.json');
 const marketplacePath = join(root, '.claude-plugin', 'marketplace.json');
+const readmePath = join(root, 'README.md');
 const exactSemverPattern = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
 
 let failed = false;
@@ -71,6 +72,22 @@ function readCliVersion(label, path, expected) {
   checkVersion(`${label} VERSION`, match[1], expected);
 }
 
+function readReadmeVersion(path) {
+  if (!existsSync(path)) {
+    console.error(`README.md not found at ${path}`);
+    process.exit(2);
+  }
+
+  const text = readFileSync(path, 'utf8');
+  const matches = [...text.matchAll(/Current stable release:\s*<a\b[^>]*>v([^<]+)<\/a>/g)];
+  if (matches.length !== 1) {
+    err(`README.md must contain exactly one parseable Current stable release marker (found ${matches.length})`);
+    return false;
+  }
+
+  return matches[0][1];
+}
+
 function walkMjsFiles(directory) {
   const files = [];
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -91,6 +108,10 @@ if (typeof expected !== 'string' || !exactSemverPattern.test(expected)) {
 }
 
 checkVersion('package.json version', expected, expected);
+const readmeVersion = readReadmeVersion(readmePath);
+if (readmeVersion !== false) {
+  checkVersion('README.md stable release', readmeVersion, expected);
+}
 readCliVersion('src/cli.mjs', srcPath, expected);
 readCliVersion('dist/cli.mjs', distPath, expected);
 

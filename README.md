@@ -21,7 +21,7 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
 </p>
 
 <p>
-  <strong>Current stable release: <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'>v1.10.0</a></strong><br />
+  <strong>Current stable release: <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'>v1.11.0</a></strong><br />
   Trust-aware agent proposals and runtime capture, transaction-safe project linking, worktree-safe Git hooks, retention and portability, trusted CLI updates, Architecture Guardian, and local reporting.
 </p>
 
@@ -612,7 +612,7 @@ Start with [`docs/README.md`](./docs/README.md).
 
 Knowledge Bundle is a planned sharing layer for approved memory, Failure Lessons, policies, skills, workflows, and selected episodes in a portable `.akb` file.
 
-It is not part of the current v1.10.0 command surface. The proposed design remains review-first so a bundle cannot silently overwrite another user's approved memory.
+It is not part of the current command surface. The proposed design remains review-first so a bundle cannot silently overwrite another user's approved memory.
 
 Read [`docs/BUNDLE_KB.md`](./docs/BUNDLE_KB.md).
 
