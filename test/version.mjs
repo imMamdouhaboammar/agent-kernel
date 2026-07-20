@@ -6,6 +6,7 @@
 //   3. Source and built CLI artifacts expose the same VERSION.
 //   4. Every helper binary that exposes VERSION matches package.json.
 //   5. Claude plugin and marketplace metadata match package.json.
+//   6. README stable release metadata matches package.json.
 
 import { readFileSync, readdirSync } from 'node:fs';
 import { extname, join, relative } from 'node:path';
@@ -37,6 +38,13 @@ export async function run() {
   if (typeof expected !== 'string' || !exactSemverPattern.test(expected)) {
     throw new Error(`package.json version must be exact SemVer without a v prefix, received ${JSON.stringify(expected)}`);
   }
+
+  const readmeText = readFileSync(join(repo.root, 'README.md'), 'utf8');
+  const readmeStableRelease = readmeText.match(/Current stable release:\s*<a\b[^>]*>v([^<]+)<\/a>/);
+  if (!readmeStableRelease) {
+    throw new Error('README.md must contain a parseable Current stable release marker');
+  }
+  assertVersion('README.md stable release', readmeStableRelease[1], expected);
 
   const cliVersion = runCli(env, '--version').trim();
   assertVersion('CLI --version', cliVersion, expected);
