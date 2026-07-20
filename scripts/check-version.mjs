@@ -82,7 +82,7 @@ function readReadmeVersion(path) {
   const matches = [...text.matchAll(/Current stable release:\s*<a\b[^>]*>v([^<]+)<\/a>/g)];
   if (matches.length !== 1) {
     err(`README.md must contain exactly one parseable Current stable release marker (found ${matches.length})`);
-    return null;
+    return false;
   }
 
   return matches[0][1];
@@ -109,7 +109,7 @@ if (typeof expected !== 'string' || !exactSemverPattern.test(expected)) {
 
 checkVersion('package.json version', expected, expected);
 const readmeVersion = readReadmeVersion(readmePath);
-if (readmeVersion !== null) {
+if (readmeVersion !== false) {
   checkVersion('README.md stable release', readmeVersion, expected);
 }
 readCliVersion('src/cli.mjs', srcPath, expected);
