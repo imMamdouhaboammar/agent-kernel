@@ -77,10 +77,10 @@ export async function run() {
     assert.equal(privateLinuxPath.status, 1, 'repository owner Linux home paths should fail documentation checks');
     assert.match(privateLinuxPath.stderr, /development\/BACKLOG\.md:2: \/home\/mamdouh\//);
 
-    writeFileSync(backlogPath, ['```json', '{ "path": "C:\\\\Users\\\\mamdouh\\\\Projects\\\\internal-repo" }', '```', ''].join('\n'));
+    writeFileSync(backlogPath, ['```json', '{ "path": "C:/Users/mamdouh/Projects/internal-repo" }', '```', ''].join('\n'));
     const privateWindowsPath = runChecker(fixtureRoot);
     assert.equal(privateWindowsPath.status, 1, 'repository owner Windows home paths should fail documentation checks');
-    assert.match(privateWindowsPath.stderr, /development\/BACKLOG\.md:2: C:\\Users\\mamdouh\\/);
+    assert.match(privateWindowsPath.stderr, /development\/BACKLOG\.md:2: C:\/Users\/mamdouh\//);
 
     writeFileSync(backlogPath, ['Use `$HOME/Projects/example`, `~/Projects/example`, or `/Users/<user>/Projects/example`.', ''].join('\n'));
     const portablePaths = runChecker(fixtureRoot);
