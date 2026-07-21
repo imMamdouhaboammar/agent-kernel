@@ -19,11 +19,7 @@ function runChecker(targetRoot) {
 
 export async function run() {
   const repositoryResult = runChecker(root);
-  assert.equal(
-    repositoryResult.status,
-    0,
-    `documentation link check failed\nstdout:\n${repositoryResult.stdout}\nstderr:\n${repositoryResult.stderr}`
-  );
+  assert.equal(repositoryResult.status, 0, `documentation link check failed\nstdout:\n${repositoryResult.stdout}\nstderr:\n${repositoryResult.stderr}`);
   assert.match(repositoryResult.stdout, /Checked \d+ local links across \d+ markdown files\./);
   assert.match(repositoryResult.stdout, /All local markdown links resolve\./);
 
@@ -69,12 +65,24 @@ export async function run() {
     assert.match(broken.stderr, /README\.md: \.\/docs\/missing\.md/);
 
     writeFileSync(join(fixtureRoot, 'README.md'), '[Setup](./docs/setup.md)\n');
-    writeFileSync(join(fixtureRoot, 'development', 'BACKLOG.md'), ['```json', '{ "path": "/Users/mamdouh/Projects/internal-repo" }', '```', ''].join('\n'));
+    const backlogPath = join(fixtureRoot, 'development', 'BACKLOG.md');
+
+    writeFileSync(backlogPath, ['```json', '{ "path": "/Users/mamdouh/Projects/internal-repo" }', '```', ''].join('\n'));
     const privateMacPath = runChecker(fixtureRoot);
     assert.equal(privateMacPath.status, 1, 'repository owner macOS home paths should fail documentation checks');
     assert.match(privateMacPath.stderr, /development\/BACKLOG\.md:2: \/Users\/mamdouh\//);
 
-    writeFileSync(join(fixtureRoot, 'development', 'BACKLOG.md'), ['Use `$HOME/Projects/example`, `~/Projects/example`, or `/Users/<user>/Projects/example`.', ''].join('\n'));
+    writeFileSync(backlogPath, ['```json', '{ "path": "/home/mamdouh/Projects/internal-repo" }', '```', ''].join('\n'));
+    const privateLinuxPath = runChecker(fixtureRoot);
+    assert.equal(privateLinuxPath.status, 1, 'repository owner Linux home paths should fail documentation checks');
+    assert.match(privateLinuxPath.stderr, /development\/BACKLOG\.md:2: \/home\/mamdouh\//);
+
+    writeFileSync(backlogPath, ['```json', '{ "path": "C:\\\\Users\\\\mamdouh\\\\Projects\\\\internal-repo" }', '```', ''].join('\n'));
+    const privateWindowsPath = runChecker(fixtureRoot);
+    assert.equal(privateWindowsPath.status, 1, 'repository owner Windows home paths should fail documentation checks');
+    assert.match(privateWindowsPath.stderr, /development\/BACKLOG\.md:2: C:\\Users\\mamdouh\\/);
+
+    writeFileSync(backlogPath, ['Use `$HOME/Projects/example`, `~/Projects/example`, or `/Users/<user>/Projects/example`.', ''].join('\n'));
     const portablePaths = runChecker(fixtureRoot);
     assert.equal(portablePaths.status, 0, `portable path placeholders should pass\n${portablePaths.stderr}`);
   } finally {
