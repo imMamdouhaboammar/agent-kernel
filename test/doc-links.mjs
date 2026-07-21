@@ -19,127 +19,78 @@ function runChecker(targetRoot) {
 
 export async function run() {
   const repositoryResult = runChecker(root);
-  assert.equal(
-    repositoryResult.status,
-    0,
-    `documentation link check failed\nstdout:\n${repositoryResult.stdout}\nstderr:\n${repositoryResult.stderr}`
-  );
+  assert.equal(repositoryResult.status, 0, `documentation link check failed\nstdout:\n${repositoryResult.stdout}\nstderr:\n${repositoryResult.stderr}`);
   assert.match(repositoryResult.stdout, /Checked \d+ local links across \d+ markdown files\./);
   assert.match(repositoryResult.stdout, /All local markdown links resolve\./);
 
   const fixtureRoot = mkdtempSync(join(tmpdir(), 'agent-kernel-doc-links-'));
   try {
     mkdirSync(join(fixtureRoot, 'docs'));
+    mkdirSync(join(fixtureRoot, 'development'));
     writeFileSync(join(fixtureRoot, 'docs', 'setup.md'), '# Setup\n');
-    writeFileSync(
-      join(fixtureRoot, 'README.md'),
-      '[Setup guide][setup]\n\n[setup]: ./docs/setup.md "Setup"\n'
-    );
-
+    writeFileSync(join(fixtureRoot, 'README.md'), '[Setup guide][setup]\n\n[setup]: ./docs/setup.md "Setup"\n');
     const valid = runChecker(fixtureRoot);
     assert.equal(valid.status, 0, `valid reference link failed\n${valid.stderr}`);
     assert.match(valid.stdout, /Checked 1 local links across 2 markdown files\./);
 
-    writeFileSync(
-      join(fixtureRoot, 'README.md'),
-      [
-        '[Setup](./docs/setup.md)',
-        '',
-        '````markdown',
-        '[Ignored inline](./docs/missing-inline.md)',
-        '```',
-        '[Ignored reference][missing]',
-        '',
-        '[missing]: ./docs/missing-reference.md',
-        '````',
-        '',
-        '~~~text',
-        '[Ignored tilde](./docs/missing-tilde.md)',
-        '~~~~',
-        ''
-      ].join('\n')
-    );
-
+    writeFileSync(join(fixtureRoot, 'README.md'), ['[Setup](./docs/setup.md)', '', '````markdown', '[Ignored inline](./docs/missing-inline.md)', '```', '[Ignored reference][missing]', '', '[missing]: ./docs/missing-reference.md', '````', '', '~~~text', '[Ignored tilde](./docs/missing-tilde.md)', '~~~~', ''].join('\n'));
     const fenced = runChecker(fixtureRoot);
     assert.equal(fenced.status, 0, `links inside variable-length fences should be ignored\n${fenced.stderr}`);
     assert.match(fenced.stdout, /Checked 1 local links across 2 markdown files\./);
 
-    writeFileSync(
-      join(fixtureRoot, 'README.md'),
-      [
-        '[Setup](./docs/setup.md)',
-        '',
-        '`[Ignored](./docs/missing-inline.md)`',
-        '',
-        '``Use `[Ignored nested](./docs/missing-nested.md)` literally``',
-        '',
-        'Unmatched ` opener keeps [Setup](./docs/setup.md) visible.',
-        ''
-      ].join('\n')
-    );
-
+    writeFileSync(join(fixtureRoot, 'README.md'), ['[Setup](./docs/setup.md)', '', '`[Ignored](./docs/missing-inline.md)`', '', '``Use `[Ignored nested](./docs/missing-nested.md)` literally``', '', 'Unmatched ` opener keeps [Setup](./docs/setup.md) visible.', ''].join('\n'));
     const inlineCode = runChecker(fixtureRoot);
     assert.equal(inlineCode.status, 0, `links inside inline code should be ignored\n${inlineCode.stderr}`);
     assert.match(inlineCode.stdout, /Checked 2 local links across 2 markdown files\./);
 
-    writeFileSync(
-      join(fixtureRoot, 'README.md'),
-      [
-        '[Setup](./docs/setup.md)',
-        '',
-        '<!-- [Ignored inline](./docs/missing-comment-inline.md) -->',
-        '',
-        '<!--',
-        '[Ignored reference][comment-missing]',
-        '',
-        '[comment-missing]: ./docs/missing-comment-reference.md',
-        '-->',
-        '',
-        'Before <!-- [Ignored embedded](./docs/missing-comment-embedded.md) --> after.',
-        ''
-      ].join('\n')
-    );
-
+    writeFileSync(join(fixtureRoot, 'README.md'), ['[Setup](./docs/setup.md)', '', '<!-- [Ignored inline](./docs/missing-comment-inline.md) -->', '', '<!--', '[Ignored reference][comment-missing]', '', '[comment-missing]: ./docs/missing-comment-reference.md', '-->', '', 'Before <!-- [Ignored embedded](./docs/missing-comment-embedded.md) --> after.', ''].join('\n'));
     const htmlComments = runChecker(fixtureRoot);
     assert.equal(htmlComments.status, 0, `links inside HTML comments should be ignored\n${htmlComments.stderr}`);
     assert.match(htmlComments.stdout, /Checked 1 local links across 2 markdown files\./);
 
-    writeFileSync(
-      join(fixtureRoot, 'README.md'),
-      [
-        '[Setup](./docs/setup.md)',
-        '',
-        '<!--',
-        '[Ignored unterminated](./docs/missing-comment-unterminated.md)',
-        ''
-      ].join('\n')
-    );
-
+    writeFileSync(join(fixtureRoot, 'README.md'), ['[Setup](./docs/setup.md)', '', '<!--', '[Ignored unterminated](./docs/missing-comment-unterminated.md)', ''].join('\n'));
     const unterminatedComment = runChecker(fixtureRoot);
-    assert.equal(
-      unterminatedComment.status,
-      0,
-      `unterminated HTML comment should hide the remaining comment body\n${unterminatedComment.stderr}`
-    );
+    assert.equal(unterminatedComment.status, 0, `unterminated HTML comment should hide the remaining comment body\n${unterminatedComment.stderr}`);
     assert.match(unterminatedComment.stdout, /Checked 1 local links across 2 markdown files\./);
 
     writeFileSync(join(fixtureRoot, 'docs', 'guide(v2).md'), '# Guide v2\n');
     writeFileSync(join(fixtureRoot, 'README.md'), '[Guide v2](./docs/guide(v2).md)\n');
     const parenthesized = runChecker(fixtureRoot);
-    assert.equal(
-      parenthesized.status,
-      0,
-      `balanced parentheses in local link destinations should resolve\n${parenthesized.stderr}`
-    );
+    assert.equal(parenthesized.status, 0, `balanced parentheses in local link destinations should resolve\n${parenthesized.stderr}`);
     assert.match(parenthesized.stdout, /Checked 1 local links across 3 markdown files\./);
 
-    writeFileSync(
-      join(fixtureRoot, 'README.md'),
-      '[Missing guide][missing]\n\n[missing]: <.\/docs\/missing.md>\n'
-    );
+    writeFileSync(join(fixtureRoot, 'README.md'), '[Missing guide][missing]\n\n[missing]: <.\/docs\/missing.md>\n');
     const broken = runChecker(fixtureRoot);
     assert.equal(broken.status, 1, 'broken reference-style link should fail');
     assert.match(broken.stderr, /README\.md: \.\/docs\/missing\.md/);
+
+    writeFileSync(join(fixtureRoot, 'README.md'), '[Setup](./docs/setup.md)\n');
+    const backlogPath = join(fixtureRoot, 'development', 'BACKLOG.md');
+    const portableExample = 'Use `$HOME/Projects/example`, `~/Projects/example`, or `/Users/<user>/Projects/example`.\n';
+
+    writeFileSync(backlogPath, ['```json', '{ "path": "/Users/mamdouh/Projects/internal-repo" }', '```', ''].join('\n'));
+    const privateMacPath = runChecker(fixtureRoot);
+    assert.equal(privateMacPath.status, 1, 'repository owner macOS home paths should fail documentation checks');
+    assert.match(privateMacPath.stderr, /development\/BACKLOG\.md:2: \/Users\/mamdouh/);
+
+    writeFileSync(backlogPath, 'Owner home: /Users/mamdouh\n');
+    const terminalOwnerPath = runChecker(fixtureRoot);
+    assert.equal(terminalOwnerPath.status, 1, 'terminal owner paths should fail in checked backlog examples');
+    assert.match(terminalOwnerPath.stderr, /development\/BACKLOG\.md:1: \/Users\/mamdouh/);
+
+    writeFileSync(backlogPath, ['```json', '{ "path": "/home/mamdouh/Projects/internal-repo" }', '```', ''].join('\n'));
+    const privateLinuxPath = runChecker(fixtureRoot);
+    assert.equal(privateLinuxPath.status, 1, 'repository owner Linux home paths should fail documentation checks');
+    assert.match(privateLinuxPath.stderr, /development\/BACKLOG\.md:2: \/home\/mamdouh/);
+
+    writeFileSync(backlogPath, ['```json', '{ "path": "C:/Users/mamdouh/Projects/internal-repo" }', '```', ''].join('\n'));
+    const privateWindowsPath = runChecker(fixtureRoot);
+    assert.equal(privateWindowsPath.status, 1, 'repository owner Windows home paths should fail documentation checks');
+    assert.match(privateWindowsPath.stderr, /development\/BACKLOG\.md:2: C:\/Users\/mamdouh/);
+
+    writeFileSync(backlogPath, portableExample);
+    const portablePaths = runChecker(fixtureRoot);
+    assert.equal(portablePaths.status, 0, `portable path placeholders should pass\n${portablePaths.stderr}`);
   } finally {
     rmSync(fixtureRoot, { recursive: true, force: true });
   }
