@@ -10,12 +10,11 @@ const ignoredDirectories = new Set(['.git', 'node_modules', 'coverage']);
 const markdownLinkStartPattern = /!?\[[^\]]*\]\(/g;
 const referenceDefinitionPattern = /^\s{0,3}\[[^\]]+\]:\s*(<[^>]+>|\S+)/gm;
 const privateHomePathPatterns = [
-  /\/Users\/([^/\s"'`]+)\//g,
-  /\/home\/([^/\s"'`]+)\//g,
-  /[A-Za-z]:[\\/]Users[\\/]([^\\/\s"'`]+)[\\/]/g
+  /\/Users\/([^/\s"'`]+)(?=\/|[\s"'`]|$)/g,
+  /\/home\/([^/\s"'`]+)(?=\/|[\s"'`]|$)/g,
+  /[A-Za-z]:[\\/]Users[\\/]([^\\/\s"'`]+)(?=[\\/]|[\s"'`]|$)/g
 ];
 const privateUserNames = new Set(['mamdouh', 'mamdouhaboammar', 'mamdouh-aboammar']);
-const privacyCheckedFiles = new Set(['development/BACKLOG.md']);
 
 function walk(dir, results = []) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -204,10 +203,8 @@ for (const file of markdownFiles) {
       linkFailures.push(`${relativeFile}: ${destination}`);
     }
   }
-  if (privacyCheckedFiles.has(relativeFile)) {
-    for (const finding of collectPrivateHomePaths(rawText)) {
-      privacyFailures.push(`${relativeFile}:${finding.line}: ${finding.path}`);
-    }
+  for (const finding of collectPrivateHomePaths(rawText)) {
+    privacyFailures.push(`${relativeFile}:${finding.line}: ${finding.path}`);
   }
 }
 
@@ -222,4 +219,4 @@ if (privacyFailures.length > 0) {
 }
 if (linkFailures.length > 0 || privacyFailures.length > 0) process.exit(1);
 console.log('All local markdown links resolve.');
-console.log('No repository owner home paths found in checked Markdown examples.');
+console.log('No repository owner home paths found in Markdown documentation.');
