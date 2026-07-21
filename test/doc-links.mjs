@@ -68,6 +68,7 @@ export async function run() {
     assert.equal(broken.status, 1, 'broken reference-style link should fail');
     assert.match(broken.stderr, /README\.md: \.\/docs\/missing\.md/);
 
+    writeFileSync(join(fixtureRoot, 'README.md'), '[Setup](./docs/setup.md)\n');
     writeFileSync(join(fixtureRoot, 'development', 'BACKLOG.md'), ['```json', '{ "path": "/Users/mamdouh/Projects/internal-repo" }', '```', ''].join('\n'));
     const privateMacPath = runChecker(fixtureRoot);
     assert.equal(privateMacPath.status, 1, 'repository owner macOS home paths should fail documentation checks');
