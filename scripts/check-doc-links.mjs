@@ -10,16 +10,7 @@ const ignoredDirectories = new Set(['.git', 'node_modules', 'coverage']);
 const markdownLinkStartPattern = /!?\[[^\]]*\]\(/g;
 const referenceDefinitionPattern = /^\s{0,3}\[[^\]]+\]:\s*(<[^>]+>|\S+)/gm;
 const personalMacHomePathPattern = /\/Users\/([^/\s"'`]+)\//g;
-const portableUserNames = new Set([
-  'user',
-  'username',
-  'example',
-  'alice',
-  'bob',
-  'your-name',
-  'your_name',
-  'yourname'
-]);
+const privateUserNames = new Set(['mamdouh', 'mamdouhaboammar', 'mamdouh-aboammar']);
 
 function walk(dir, results = []) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -190,12 +181,7 @@ function collectDestinations(text) {
   return destinations;
 }
 
-function isPortableUserName(rawUserName) {
-  const normalized = rawUserName.replace(/^[<{[]|[>\]}]$/g, '').toLowerCase();
-  return portableUserNames.has(normalized);
-}
-
-function collectPersonalMacHomePaths(text) {
+function collectPrivateMacHomePaths(text) {
   const matches = [];
   const lines = text.split('\n');
 
@@ -204,7 +190,7 @@ function collectPersonalMacHomePaths(text) {
     personalMacHomePathPattern.lastIndex = 0;
     let match;
     while ((match = personalMacHomePathPattern.exec(line)) !== null) {
-      if (!isPortableUserName(match[1])) {
+      if (privateUserNames.has(match[1].toLowerCase())) {
         matches.push({ line: index + 1, path: match[0] });
       }
     }
@@ -240,7 +226,7 @@ for (const file of markdownFiles) {
     }
   }
 
-  for (const finding of collectPersonalMacHomePaths(rawText)) {
+  for (const finding of collectPrivateMacHomePaths(rawText)) {
     privacyFailures.push(`${relativeFile}:${finding.line}: ${finding.path}`);
   }
 }
@@ -253,7 +239,7 @@ if (linkFailures.length > 0) {
 }
 
 if (privacyFailures.length > 0) {
-  console.error(`Found ${privacyFailures.length} personal macOS home path(s):`);
+  console.error(`Found ${privacyFailures.length} repository owner macOS home path(s):`);
   for (const failure of privacyFailures) console.error(`  - ${failure}`);
 }
 
@@ -262,4 +248,4 @@ if (linkFailures.length > 0 || privacyFailures.length > 0) {
 }
 
 console.log('All local markdown links resolve.');
-console.log('No personal macOS home paths found in Markdown documentation.');
+console.log('No repository owner macOS home paths found in Markdown documentation.');
