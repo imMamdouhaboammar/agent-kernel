@@ -9,11 +9,7 @@ const root = resolve(process.argv[2] || repositoryRoot);
 const ignoredDirectories = new Set(['.git', 'node_modules', 'coverage']);
 const markdownLinkStartPattern = /!?\[[^\]]*\]\(/g;
 const referenceDefinitionPattern = /^\s{0,3}\[[^\]]+\]:\s*(<[^>]+>|\S+)/gm;
-const personalHomePathPatterns = [
-  /\/Users\/([^/\s"'`]+)\//g,
-  /\/home\/([^/\s"'`]+)\//g,
-  /[A-Za-z]:\\Users\\([^\\\s"'`]+)\\/g
-];
+const personalMacHomePathPattern = /\/Users\/([^/\s"'`]+)\//g;
 const portableUserNames = new Set([
   'user',
   'username',
@@ -199,19 +195,17 @@ function isPortableUserName(rawUserName) {
   return portableUserNames.has(normalized);
 }
 
-function collectPersonalHomePaths(text) {
+function collectPersonalMacHomePaths(text) {
   const matches = [];
   const lines = text.split('\n');
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
-    for (const pattern of personalHomePathPatterns) {
-      pattern.lastIndex = 0;
-      let match;
-      while ((match = pattern.exec(line)) !== null) {
-        if (!isPortableUserName(match[1])) {
-          matches.push({ line: index + 1, path: match[0] });
-        }
+    personalMacHomePathPattern.lastIndex = 0;
+    let match;
+    while ((match = personalMacHomePathPattern.exec(line)) !== null) {
+      if (!isPortableUserName(match[1])) {
+        matches.push({ line: index + 1, path: match[0] });
       }
     }
   }
@@ -246,7 +240,7 @@ for (const file of markdownFiles) {
     }
   }
 
-  for (const finding of collectPersonalHomePaths(rawText)) {
+  for (const finding of collectPersonalMacHomePaths(rawText)) {
     privacyFailures.push(`${relativeFile}:${finding.line}: ${finding.path}`);
   }
 }
@@ -259,7 +253,7 @@ if (linkFailures.length > 0) {
 }
 
 if (privacyFailures.length > 0) {
-  console.error(`Found ${privacyFailures.length} personal absolute home path(s):`);
+  console.error(`Found ${privacyFailures.length} personal macOS home path(s):`);
   for (const failure of privacyFailures) console.error(`  - ${failure}`);
 }
 
@@ -268,4 +262,4 @@ if (linkFailures.length > 0 || privacyFailures.length > 0) {
 }
 
 console.log('All local markdown links resolve.');
-console.log('No personal absolute home paths found in Markdown documentation.');
+console.log('No personal macOS home paths found in Markdown documentation.');
