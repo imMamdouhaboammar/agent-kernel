@@ -66,23 +66,31 @@ export async function run() {
 
     writeFileSync(join(fixtureRoot, 'README.md'), '[Setup](./docs/setup.md)\n');
     const backlogPath = join(fixtureRoot, 'development', 'BACKLOG.md');
+    const portableExample = 'Use `$HOME/Projects/example`, `~/Projects/example`, or `/Users/<user>/Projects/example`.\n';
 
     writeFileSync(backlogPath, ['```json', '{ "path": "/Users/mamdouh/Projects/internal-repo" }', '```', ''].join('\n'));
     const privateMacPath = runChecker(fixtureRoot);
     assert.equal(privateMacPath.status, 1, 'repository owner macOS home paths should fail documentation checks');
-    assert.match(privateMacPath.stderr, /development\/BACKLOG\.md:2: \/Users\/mamdouh\//);
+    assert.match(privateMacPath.stderr, /development\/BACKLOG\.md:2: \/Users\/mamdouh/);
+
+    writeFileSync(backlogPath, portableExample);
+    writeFileSync(join(fixtureRoot, 'README.md'), 'Owner home: /Users/mamdouh\n');
+    const terminalOwnerPath = runChecker(fixtureRoot);
+    assert.equal(terminalOwnerPath.status, 1, 'terminal owner paths should fail in any Markdown file');
+    assert.match(terminalOwnerPath.stderr, /README\.md:1: \/Users\/mamdouh/);
+    writeFileSync(join(fixtureRoot, 'README.md'), '[Setup](./docs/setup.md)\n');
 
     writeFileSync(backlogPath, ['```json', '{ "path": "/home/mamdouh/Projects/internal-repo" }', '```', ''].join('\n'));
     const privateLinuxPath = runChecker(fixtureRoot);
     assert.equal(privateLinuxPath.status, 1, 'repository owner Linux home paths should fail documentation checks');
-    assert.match(privateLinuxPath.stderr, /development\/BACKLOG\.md:2: \/home\/mamdouh\//);
+    assert.match(privateLinuxPath.stderr, /development\/BACKLOG\.md:2: \/home\/mamdouh/);
 
     writeFileSync(backlogPath, ['```json', '{ "path": "C:/Users/mamdouh/Projects/internal-repo" }', '```', ''].join('\n'));
     const privateWindowsPath = runChecker(fixtureRoot);
     assert.equal(privateWindowsPath.status, 1, 'repository owner Windows home paths should fail documentation checks');
-    assert.match(privateWindowsPath.stderr, /development\/BACKLOG\.md:2: C:\/Users\/mamdouh\//);
+    assert.match(privateWindowsPath.stderr, /development\/BACKLOG\.md:2: C:\/Users\/mamdouh/);
 
-    writeFileSync(backlogPath, ['Use `$HOME/Projects/example`, `~/Projects/example`, or `/Users/<user>/Projects/example`.', ''].join('\n'));
+    writeFileSync(backlogPath, portableExample);
     const portablePaths = runChecker(fixtureRoot);
     assert.equal(portablePaths.status, 0, `portable path placeholders should pass\n${portablePaths.stderr}`);
   } finally {
