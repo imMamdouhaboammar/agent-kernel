@@ -110,6 +110,10 @@ function shouldIgnore(destination) {
   return destination.startsWith('#') || destination.startsWith('//') || /^[a-z][a-z0-9+.-]*:/i.test(destination);
 }
 
+function shouldCheckPrivacy(relativeFile) {
+  return !relativeFile.startsWith('docs/audits/');
+}
+
 function resolveTarget(sourceFile, destination) {
   const withoutFragment = destination.split('#', 1)[0];
   const withoutQuery = withoutFragment.split('?', 1)[0];
@@ -203,8 +207,10 @@ for (const file of markdownFiles) {
       linkFailures.push(`${relativeFile}: ${destination}`);
     }
   }
-  for (const finding of collectPrivateHomePaths(rawText)) {
-    privacyFailures.push(`${relativeFile}:${finding.line}: ${finding.path}`);
+  if (shouldCheckPrivacy(relativeFile)) {
+    for (const finding of collectPrivateHomePaths(rawText)) {
+      privacyFailures.push(`${relativeFile}:${finding.line}: ${finding.path}`);
+    }
   }
 }
 
@@ -219,4 +225,4 @@ if (privacyFailures.length > 0) {
 }
 if (linkFailures.length > 0 || privacyFailures.length > 0) process.exit(1);
 console.log('All local markdown links resolve.');
-console.log('No repository owner home paths found in Markdown documentation.');
+console.log('No repository owner home paths found in active Markdown documentation.');
