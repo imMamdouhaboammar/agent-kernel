@@ -10,7 +10,7 @@ const distCliPath = path.resolve(here, '..', 'dist', 'cli.mjs');
 const failurePath = path.resolve(here, 'agent-kernel-failure.mjs');
 const sessionPath = path.resolve(here, 'agent-kernel-session.mjs');
 const fileContextPath = path.resolve(here, 'agent-kernel-file-context.mjs');
-const VERSION = '1.12.0';
+const VERSION = '1.13.0';
 
 function kernelHome() {
   return process.env.AGENT_KERNEL_HOME || path.join(os.homedir(), '.agent-kernel');

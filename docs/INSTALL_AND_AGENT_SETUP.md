@@ -30,7 +30,7 @@ agent-kernel init --sync
 agent-kernel doctor
 ```
 
-The stable package version documented by this repository is `1.12.0`.
+The stable package version documented by this repository is `1.13.0`.
 
 You can also inspect the CLI without a global install:
 
