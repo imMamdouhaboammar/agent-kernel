@@ -30,6 +30,7 @@ export async function run() {
   const fixtureRoot = mkdtempSync(join(tmpdir(), 'agent-kernel-doc-links-'));
   try {
     mkdirSync(join(fixtureRoot, 'docs'));
+    mkdirSync(join(fixtureRoot, 'development'));
     writeFileSync(join(fixtureRoot, 'docs', 'setup.md'), '# Setup\n');
     writeFileSync(join(fixtureRoot, 'README.md'), '[Setup guide][setup]\n\n[setup]: ./docs/setup.md "Setup"\n');
     const valid = runChecker(fixtureRoot);
@@ -67,12 +68,12 @@ export async function run() {
     assert.equal(broken.status, 1, 'broken reference-style link should fail');
     assert.match(broken.stderr, /README\.md: \.\/docs\/missing\.md/);
 
-    writeFileSync(join(fixtureRoot, 'README.md'), ['```json', '{ "path": "/Users/mamdouh/Projects/internal-repo" }', '```', ''].join('\n'));
+    writeFileSync(join(fixtureRoot, 'development', 'BACKLOG.md'), ['```json', '{ "path": "/Users/mamdouh/Projects/internal-repo" }', '```', ''].join('\n'));
     const privateMacPath = runChecker(fixtureRoot);
     assert.equal(privateMacPath.status, 1, 'repository owner macOS home paths should fail documentation checks');
-    assert.match(privateMacPath.stderr, /README\.md:2: \/Users\/mamdouh\//);
+    assert.match(privateMacPath.stderr, /development\/BACKLOG\.md:2: \/Users\/mamdouh\//);
 
-    writeFileSync(join(fixtureRoot, 'README.md'), ['Use `$HOME/Projects/example`, `~/Projects/example`, or `/Users/<user>/Projects/example`.', ''].join('\n'));
+    writeFileSync(join(fixtureRoot, 'development', 'BACKLOG.md'), ['Use `$HOME/Projects/example`, `~/Projects/example`, or `/Users/<user>/Projects/example`.', ''].join('\n'));
     const portablePaths = runChecker(fixtureRoot);
     assert.equal(portablePaths.status, 0, `portable path placeholders should pass\n${portablePaths.stderr}`);
   } finally {
