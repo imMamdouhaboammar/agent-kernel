@@ -140,6 +140,21 @@ export async function run() {
     const broken = runChecker(fixtureRoot);
     assert.equal(broken.status, 1, 'broken reference-style link should fail');
     assert.match(broken.stderr, /README\.md: \.\/docs\/missing\.md/);
+
+    writeFileSync(
+      join(fixtureRoot, 'README.md'),
+      ['```json', '{ "path": "/Users/private-user/Projects/internal-repo" }', '```', ''].join('\n')
+    );
+    const privateMacPath = runChecker(fixtureRoot);
+    assert.equal(privateMacPath.status, 1, 'personal macOS home paths should fail documentation checks');
+    assert.match(privateMacPath.stderr, /README\.md:2: \/Users\/private-user\//);
+
+    writeFileSync(
+      join(fixtureRoot, 'README.md'),
+      ['Use `$HOME/Projects/example`, `~/Projects/example`, or `/Users/<user>/Projects/example`.', ''].join('\n')
+    );
+    const portablePaths = runChecker(fixtureRoot);
+    assert.equal(portablePaths.status, 0, `portable path placeholders should pass\n${portablePaths.stderr}`);
   } finally {
     rmSync(fixtureRoot, { recursive: true, force: true });
   }
