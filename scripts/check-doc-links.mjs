@@ -9,6 +9,21 @@ const root = resolve(process.argv[2] || repositoryRoot);
 const ignoredDirectories = new Set(['.git', 'node_modules', 'coverage']);
 const markdownLinkStartPattern = /!?\[[^\]]*\]\(/g;
 const referenceDefinitionPattern = /^\s{0,3}\[[^\]]+\]:\s*(<[^>]+>|\S+)/gm;
+const personalHomePathPatterns = [
+  /\/Users\/([^/\s"'`]+)\//g,
+  /\/home\/([^/\s"'`]+)\//g,
+  /[A-Za-z]:\\Users\\([^\\\s"'`]+)\\/g
+];
+const portableUserNames = new Set([
+  'user',
+  'username',
+  'example',
+  'alice',
+  'bob',
+  'your-name',
+  'your_name',
+  'yourname'
+]);
 
 function walk(dir, results = []) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -179,37 +194,78 @@ function collectDestinations(text) {
   return destinations;
 }
 
-const failures = [];
+function isPortableUserName(rawUserName) {
+  const normalized = rawUserName.replace(/^[<{[]|[>\]}]$/g, '').toLowerCase();
+  return portableUserNames.has(normalized);
+}
+
+function collectPersonalHomePaths(text) {
+  const matches = [];
+  const lines = text.split('\n');
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    for (const pattern of personalHomePathPatterns) {
+      pattern.lastIndex = 0;
+      let match;
+      while ((match = pattern.exec(line)) !== null) {
+        if (!isPortableUserName(match[1])) {
+          matches.push({ line: index + 1, path: match[0] });
+        }
+      }
+    }
+  }
+
+  return matches;
+}
+
+const linkFailures = [];
+const privacyFailures = [];
 let checkedLinks = 0;
 const markdownFiles = walk(root);
 
 for (const file of markdownFiles) {
   const relativeFile = relative(root, file).replace(/\\/g, '/');
-  const text = stripHtmlComments(stripInlineCode(stripFencedCode(readFileSync(file, 'utf8'))));
-  for (const rawDestination of collectDestinations(text)) {
+  const rawText = readFileSync(file, 'utf8');
+  const linkText = stripHtmlComments(stripInlineCode(stripFencedCode(rawText)));
+
+  for (const rawDestination of collectDestinations(linkText)) {
     const destination = parseDestination(rawDestination);
     if (!destination || shouldIgnore(destination)) continue;
     const target = resolveTarget(file, destination);
     if (!target) continue;
     checkedLinks += 1;
     if (!existsSync(target)) {
-      failures.push(`${relativeFile}: ${destination}`);
+      linkFailures.push(`${relativeFile}: ${destination}`);
       continue;
     }
     try {
       lstatSync(target);
     } catch {
-      failures.push(`${relativeFile}: ${destination}`);
+      linkFailures.push(`${relativeFile}: ${destination}`);
     }
+  }
+
+  for (const finding of collectPersonalHomePaths(rawText)) {
+    privacyFailures.push(`${relativeFile}:${finding.line}: ${finding.path}`);
   }
 }
 
 console.log(`Checked ${checkedLinks} local links across ${markdownFiles.length} markdown files.`);
 
-if (failures.length > 0) {
-  console.error(`Found ${failures.length} broken local markdown link(s):`);
-  for (const failure of failures) console.error(`  - ${failure}`);
+if (linkFailures.length > 0) {
+  console.error(`Found ${linkFailures.length} broken local markdown link(s):`);
+  for (const failure of linkFailures) console.error(`  - ${failure}`);
+}
+
+if (privacyFailures.length > 0) {
+  console.error(`Found ${privacyFailures.length} personal absolute home path(s):`);
+  for (const failure of privacyFailures) console.error(`  - ${failure}`);
+}
+
+if (linkFailures.length > 0 || privacyFailures.length > 0) {
   process.exit(1);
 }
 
 console.log('All local markdown links resolve.');
+console.log('No personal absolute home paths found in Markdown documentation.');
