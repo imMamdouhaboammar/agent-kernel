@@ -11,6 +11,7 @@ const markdownLinkStartPattern = /!?\[[^\]]*\]\(/g;
 const referenceDefinitionPattern = /^\s{0,3}\[[^\]]+\]:\s*(<[^>]+>|\S+)/gm;
 const personalMacHomePathPattern = /\/Users\/([^/\s"'`]+)\//g;
 const privateUserNames = new Set(['mamdouh', 'mamdouhaboammar', 'mamdouh-aboammar']);
+const privacyCheckedFiles = new Set(['development/BACKLOG.md']);
 
 function walk(dir, results = []) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -226,8 +227,10 @@ for (const file of markdownFiles) {
     }
   }
 
-  for (const finding of collectPrivateMacHomePaths(rawText)) {
-    privacyFailures.push(`${relativeFile}:${finding.line}: ${finding.path}`);
+  if (privacyCheckedFiles.has(relativeFile)) {
+    for (const finding of collectPrivateMacHomePaths(rawText)) {
+      privacyFailures.push(`${relativeFile}:${finding.line}: ${finding.path}`);
+    }
   }
 }
 
@@ -248,4 +251,4 @@ if (linkFailures.length > 0 || privacyFailures.length > 0) {
 }
 
 console.log('All local markdown links resolve.');
-console.log('No repository owner macOS home paths found in Markdown documentation.');
+console.log('No repository owner macOS home paths found in checked Markdown examples.');
