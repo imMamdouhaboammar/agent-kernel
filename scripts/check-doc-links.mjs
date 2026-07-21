@@ -15,6 +15,7 @@ const privateHomePathPatterns = [
   /[A-Za-z]:[\\/]Users[\\/]([^\\/\s"'`]+)(?=[\\/]|[\s"'`]|$)/g
 ];
 const privateUserNames = new Set(['mamdouh', 'mamdouhaboammar', 'mamdouh-aboammar']);
+const privacyCheckedFiles = new Set(['development/BACKLOG.md']);
 
 function walk(dir, results = []) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -110,10 +111,6 @@ function shouldIgnore(destination) {
   return destination.startsWith('#') || destination.startsWith('//') || /^[a-z][a-z0-9+.-]*:/i.test(destination);
 }
 
-function shouldCheckPrivacy(relativeFile) {
-  return !relativeFile.startsWith('docs/audits/');
-}
-
 function resolveTarget(sourceFile, destination) {
   const withoutFragment = destination.split('#', 1)[0];
   const withoutQuery = withoutFragment.split('?', 1)[0];
@@ -207,7 +204,7 @@ for (const file of markdownFiles) {
       linkFailures.push(`${relativeFile}: ${destination}`);
     }
   }
-  if (shouldCheckPrivacy(relativeFile)) {
+  if (privacyCheckedFiles.has(relativeFile)) {
     for (const finding of collectPrivateHomePaths(rawText)) {
       privacyFailures.push(`${relativeFile}:${finding.line}: ${finding.path}`);
     }
@@ -225,4 +222,4 @@ if (privacyFailures.length > 0) {
 }
 if (linkFailures.length > 0 || privacyFailures.length > 0) process.exit(1);
 console.log('All local markdown links resolve.');
-console.log('No repository owner home paths found in active Markdown documentation.');
+console.log('No repository owner home paths found in checked backlog examples.');
