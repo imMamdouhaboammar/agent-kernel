@@ -14,6 +14,7 @@ const failurePatternsPath = path.join(here, 'agent-kernel-failure-patterns.mjs')
 const patternProposalPath = path.join(here, 'agent-kernel-pattern-proposal.mjs');
 const identityCommandPath = path.join(here, 'agent-kernel-identity-command.mjs');
 const registryPath = path.join(here, 'agent-kernel-registry.mjs');
+const brokerPath = path.join(here, 'agent-kernel-project-broker.mjs');
 const architecturePath = path.join(here, 'agent-kernel-architecture.mjs');
 const portabilityPath = path.join(here, 'agent-kernel-portability.mjs');
 const dashboardPath = path.join(here, 'agent-kernel-dashboard.mjs');
@@ -34,7 +35,18 @@ const searchIdentityOrProject = command === 'search' && args.some((arg) =>
   arg === '--projectId' || arg.startsWith('--projectId=')
 );
 const identityAware = command === 'propose' || command === 'session' || searchIdentityOrProject;
-const registryCommand = command === 'agent' || command === 'project';
+const brokerCommand = [
+  'projects',
+  'auth',
+  'env',
+  'provider',
+  'gates',
+  'approvals',
+  'audit'
+].includes(command) ||
+  (command === 'project' && ['init', 'register', 'inspect', 'verify'].includes(args[1])) ||
+  (command === 'context' && ['enter', 'current', 'verify', 'doctor', 'switch'].includes(args[1]));
+const registryCommand = command === 'agent' || (command === 'project' && !brokerCommand);
 
 function updateStatePaths() {
   const root = process.env.AGENT_KERNEL_HOME || path.join(os.homedir(), '.agent-kernel');
@@ -104,27 +116,36 @@ const target = command === 'dashboard'
     ? updatePath
     : command === 'architecture'
       ? architecturePath
-      : command === 'reindex' || (command === 'search' && !identityAware)
-        ? searchPath
-        : command === 'mcp'
-          ? mcpPath
-          : portabilityCommand
-            ? portabilityPath
-            : command === 'commit' || commitLinkHook
-              ? commitPath
-              : failurePatterns
-                ? failurePatternsPath
-                : patternProposal
-                  ? patternProposalPath
-                  : registryCommand
-                    ? registryPath
-                    : identityAware
-                      ? identityCommandPath
-                      : wrapperPath;
+      : brokerCommand
+        ? brokerPath
+        : command === 'reindex' || (command === 'search' && !identityAware)
+          ? searchPath
+          : command === 'mcp'
+            ? mcpPath
+            : portabilityCommand
+              ? portabilityPath
+              : command === 'commit' || commitLinkHook
+                ? commitPath
+                : failurePatterns
+                  ? failurePatternsPath
+                  : patternProposal
+                    ? patternProposalPath
+                    : registryCommand
+                      ? registryPath
+                      : identityAware
+                        ? identityCommandPath
+                        : wrapperPath;
+
+const shimsDir = path.join(os.homedir(), '.agent-kernel', 'runtime', 'shims');
+const customEnv = { ...process.env };
+if (fs.existsSync(shimsDir)) {
+  customEnv.PATH = `${shimsDir}:${process.env.PATH || ''}`;
+}
+
 const targetArgs = command === 'architecture' || command === 'update' || command === 'dashboard' ? args.slice(1) : args;
 const result = childProcess.spawnSync(process.execPath, [target, ...targetArgs], {
   cwd: process.cwd(),
-  env: process.env,
+  env: customEnv,
   stdio: 'inherit'
 });
 if (result.error) {

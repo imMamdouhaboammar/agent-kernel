@@ -336,7 +336,16 @@ function main() {
     runNode(sessionPath, args.slice(1));
   }
 
+  const brokerPath = path.resolve(here, 'agent-kernel-project-broker.mjs');
+  const brokerCommands = ['project', 'projects', 'auth', 'env', 'provider', 'gates', 'approvals', 'audit'];
+  if (brokerCommands.includes(command)) {
+    runNode(brokerPath, args);
+  }
+
   if (command === 'context') {
+    if (['enter', 'current', 'verify', 'doctor', 'switch'].includes(subcommand)) {
+      runNode(brokerPath, args);
+    }
     runNode(contextPath, args.slice(1));
   }
 
