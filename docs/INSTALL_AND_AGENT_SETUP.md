@@ -12,6 +12,8 @@ Agent Kernel has zero runtime npm dependencies.
 
 ## Install
 
+With npm:
+
 ```bash
 npm install -g @mamdouh-aboammar/agent-kernel
 agent-kernel --version
@@ -19,12 +21,25 @@ agent-kernel init --sync
 agent-kernel doctor
 ```
 
-The stable package version documented by this repository is `1.9.0`.
+With Bun:
+
+```bash
+bun install -g @mamdouh-aboammar/agent-kernel
+agent-kernel --version
+agent-kernel init --sync
+agent-kernel doctor
+```
+
+The stable package version documented by this repository is `1.12.0`.
 
 You can also inspect the CLI without a global install:
 
 ```bash
+# Using npx
 npx -y @mamdouh-aboammar/agent-kernel --version
+
+# Using Bunx
+bunx @mamdouh-aboammar/agent-kernel --version
 ```
 
 ## Native memory home

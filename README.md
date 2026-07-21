@@ -21,7 +21,7 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
 </p>
 
 <p>
-  <strong>Current stable release: <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'>v1.11.0</a></strong><br />
+  <strong>Current stable release: <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'>v1.12.0</a></strong><br />
   Trust-aware agent proposals and runtime capture, transaction-safe project linking, worktree-safe Git hooks, retention and portability, trusted CLI updates, Architecture Guardian, and local reporting.
 </p>
 
@@ -116,19 +116,32 @@ It is not:
 
 ## Install
 
+With npm:
+
 ```bash
 npm install -g @mamdouh-aboammar/agent-kernel
 agent-kernel --version
 agent-kernel doctor
 ```
 
+With Bun:
+
+```bash
+bun install -g @mamdouh-aboammar/agent-kernel
+agent-kernel --version
+```
+
 Run without a global install:
 
 ```bash
+# Using npx
 npx -y @mamdouh-aboammar/agent-kernel --version
+
+# Using Bunx
+bunx @mamdouh-aboammar/agent-kernel --version
 ```
 
-Requires Node.js `>=18.18.0`.
+Requires Node.js `>=18.18.0` or Bun `>=1.0.0`.
 
 Read [`docs/INSTALL_AND_AGENT_SETUP.md`](./docs/INSTALL_AND_AGENT_SETUP.md) for the complete setup path.
 

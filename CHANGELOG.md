@@ -3,6 +3,23 @@
 All notable changes to this project are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.12.0] - 2026-07-21
+
+This release ships the **Agent Kernel Project Context Broker** — a secure, local-first environments controller, identity lock, and credential manager for development workspaces.
+
+### Added
+
+- **Project Context Broker Command Suite**: Commands for initialization, credentials configuration, and workspace status validations.
+- **macOS Keychain Services API**: Full integration with the macOS system keychain using native security APIs.
+- **Multistage Policy Gates**: Gating mechanics for repository-matching, git branches drift, environment classification, and role capability permissions.
+- **Automatic PATH-injected Command Shims**: Secure interception shims loaded transparently in the runtime path.
+
+### Fixed
+
+- Improved router intercept logic to perfectly preserve existing registries and context command families.
+
+
+
 ## [1.11.0] - 2026-07-14
 
 This release ships the **static local memory dashboard** — a
