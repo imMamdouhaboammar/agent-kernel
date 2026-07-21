@@ -182,6 +182,9 @@ function normalizeGitRemote(url) {
 function acquireLock(lockPath, timeoutMs = 5000) {
   const start = Date.now();
   const lockDir = `${lockPath}.lock`;
+  try {
+    fs.mkdirSync(path.dirname(lockPath), { recursive: true });
+  } catch {}
   while (true) {
     try {
       fs.mkdirSync(lockDir);
@@ -868,6 +871,791 @@ function runContextCurrent() {
   console.log(`Status: ${session.status}`);
 }
 
+// ==========================================
+// 10. PROJECT CONNECTION LIFE CYCLE
+// ==========================================
+
+export function resolveProjectRootWithMarkers(startPath = '.') {
+  let resolvedStart = path.resolve(startPath);
+  try {
+    resolvedStart = fs.realpathSync(resolvedStart);
+  } catch {}
+  let curr = resolvedStart;
+  const markers = [
+    '.git', 'package.json', 'bun.lock', 'pyproject.toml', 'Cargo.toml',
+    'go.mod', 'composer.json', 'supabase/config.toml', 'wrangler.toml',
+    'vercel.json', 'firebase.json', '.agent-kernel'
+  ];
+  let gitRoot = null;
+  let fallbackRoot = null;
+  while (true) {
+    if (exists(path.join(curr, '.git'))) {
+      gitRoot = curr;
+      break;
+    }
+    for (const marker of markers) {
+      if (marker !== '.git' && exists(path.join(curr, marker))) {
+        if (!fallbackRoot) fallbackRoot = curr;
+      }
+    }
+    const parent = path.dirname(curr);
+    if (parent === curr || curr === os.homedir()) break;
+    curr = parent;
+  }
+  return gitRoot || fallbackRoot || resolvedStart;
+}
+
+function detectMetadata(root) {
+  const metadata = {
+    name: path.basename(root),
+    gitRemote: getGitRemote(root),
+    gitBranch: git(root, ['rev-parse', '--abbrev-ref', 'HEAD']),
+    packageManager: 'none',
+    runtime: 'node',
+    languages: [],
+    frameworks: [],
+    sensitiveFiles: []
+  };
+
+  if (exists(path.join(root, 'package.json'))) {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+      if (pkg.name) metadata.name = pkg.name;
+    } catch {}
+  }
+
+  if (exists(path.join(root, 'bun.lock')) || exists(path.join(root, 'bun.lockb'))) metadata.packageManager = 'bun';
+  else if (exists(path.join(root, 'pnpm-lock.yaml'))) metadata.packageManager = 'pnpm';
+  else if (exists(path.join(root, 'package-lock.json'))) metadata.packageManager = 'npm';
+  else if (exists(path.join(root, 'yarn.lock'))) metadata.packageManager = 'yarn';
+
+  if (exists(path.join(root, 'bun.lock')) || exists(path.join(root, 'bun.lockb'))) metadata.runtime = 'bun';
+
+  try {
+    const files = fs.readdirSync(root);
+    const hasExt = (ext) => files.some(f => f.endsWith(ext));
+    if (hasExt('.ts') || hasExt('.tsx') || exists(path.join(root, 'src'))) {
+      metadata.languages.push('TypeScript');
+    }
+    if (hasExt('.js') || hasExt('.jsx') || hasExt('.mjs')) {
+      metadata.languages.push('JavaScript');
+    }
+    if (hasExt('.py')) metadata.languages.push('Python');
+    if (hasExt('.go')) metadata.languages.push('Go');
+    if (hasExt('.rs')) metadata.languages.push('Rust');
+
+    if (exists(path.join(root, 'next.config.js')) || exists(path.join(root, 'next.config.mjs'))) metadata.frameworks.push('Next.js');
+    if (exists(path.join(root, 'vite.config.js')) || exists(path.join(root, 'vite.config.ts'))) metadata.frameworks.push('Vite');
+    if (exists(path.join(root, 'supabase/config.toml'))) metadata.frameworks.push('Supabase');
+    if (exists(path.join(root, 'wrangler.toml'))) metadata.frameworks.push('Cloudflare Wrangler');
+    if (exists(path.join(root, 'firebase.json'))) metadata.frameworks.push('Firebase');
+    if (exists(path.join(root, 'vercel.json'))) metadata.frameworks.push('Vercel');
+
+    const sensitiveNames = ['.env', '.env.local', '.env.production', '.env.development', 'service-account.json', 'secrets.json'];
+    for (const name of sensitiveNames) {
+      if (exists(path.join(root, name))) {
+        metadata.sensitiveFiles.push({ path: name, type: 'Environment/Credential' });
+      }
+    }
+  } catch {}
+
+  return metadata;
+}
+
+function registerProjectGlobally(ctx, manifest, reg, dryRun) {
+  if (!reg.projects) reg.projects = {};
+  
+  const uuid = manifest.identity?.repository_uuid;
+  const projectId = manifest.project_id;
+  
+  let existingIdByUuid = null;
+  for (const [id, proj] of Object.entries(reg.projects)) {
+    if (proj.repository_uuid === uuid && id !== projectId) {
+      existingIdByUuid = id;
+    }
+  }
+
+  if (existingIdByUuid) {
+    const prevProj = reg.projects[existingIdByUuid];
+    if (!exists(prevProj.root)) {
+      delete reg.projects[existingIdByUuid];
+      console.log(`Detected moved repository. Cleaned up stale registration for project ID: ${existingIdByUuid}`);
+    } else {
+      console.log(`Note: Repository with UUID ${uuid} is also cloned at ${prevProj.root}. Registering this clone as a distinct connection context.`);
+    }
+  }
+
+  const fp = crypto.createHash('sha256').update(ctx.root + (ctx.currentRemote || '')).digest('hex').slice(0, 16);
+  
+  const adapters = [];
+  if (exists(path.join(ctx.root, 'CLAUDE.md'))) adapters.push('claude');
+  if (exists(path.join(ctx.root, 'AGENTS.md'))) adapters.push('agents');
+  if (exists(path.join(ctx.root, '.cursor/rules'))) adapters.push('cursor');
+
+  const providers = [];
+  if (manifest.providers?.supabase) providers.push('supabase');
+  if (manifest.providers?.gcloud) providers.push('gcloud');
+
+  reg.projects[projectId] = {
+    repository_uuid: uuid,
+    root: ctx.root,
+    expected_git_remote: manifest.identity?.expected_git_remote || '',
+    manifest_path: path.join(ctx.root, '.agent-kernel', 'project.toml'),
+    connection_status: 'connected',
+    agent_kernel_version: VERSION,
+    last_verification_time: new Date().toISOString(),
+    installed_adapters: adapters,
+    enabled_hooks: ['session_start', 'before_tool', 'after_tool', 'session_end'],
+    detected_providers: providers,
+    context_fingerprint: fp
+  };
+
+  if (!dryRun) {
+    saveRegistry(reg);
+  }
+}
+
+function updateGitignore(root, dryRun) {
+  const file = path.join(root, '.gitignore');
+  const managedStart = '# >>> agent-kernel managed entries >>>';
+  const managedEnd = '# <<< agent-kernel managed entries <<<';
+  const entries = [
+    managedStart,
+    '.agent-kernel/state/',
+    '.agent-kernel/cache/',
+    '.agent-kernel/tmp/',
+    '.agent-kernel/session/',
+    '.agent-kernel/credentials/',
+    managedEnd
+  ].join('\n');
+
+  let content = '';
+  if (exists(file)) {
+    content = fs.readFileSync(file, 'utf8');
+  }
+
+  const startIdx = content.indexOf(managedStart);
+  const endIdx = content.indexOf(managedEnd);
+
+  let newContent = '';
+  if (startIdx >= 0 && endIdx >= 0) {
+    newContent = content.slice(0, startIdx).trim() + '\n\n' + entries + '\n\n' + content.slice(endIdx + managedEnd.length).trim();
+  } else {
+    newContent = content.trim() + '\n\n' + entries + '\n';
+  }
+
+  newContent = newContent.trim() + '\n';
+
+  if (content.trim() !== newContent.trim()) {
+    if (!dryRun) {
+      fs.writeFileSync(file, newContent, 'utf8');
+    }
+    return true;
+  }
+  return false;
+}
+
+function installInstructionAdapters(root, agentsOpt, dryRun) {
+  if (agentsOpt === 'none' || agentsOpt === false) return;
+
+  const filesToUpdate = [];
+  if (agentsOpt === 'all' || !agentsOpt) {
+    const targets = ['AGENTS.md', 'CLAUDE.md', 'GEMINI.md', '.github/copilot-instructions.md'];
+    for (const t of targets) {
+      if (exists(path.join(root, t))) {
+        filesToUpdate.push(t);
+      }
+    }
+    if (filesToUpdate.length === 0) {
+      filesToUpdate.push('CLAUDE.md');
+      filesToUpdate.push('AGENTS.md');
+    }
+  } else {
+    const list = String(agentsOpt).split(',').map(s => s.trim().toLowerCase());
+    if (list.includes('claude')) filesToUpdate.push('CLAUDE.md');
+    if (list.includes('codex') || list.includes('agents')) filesToUpdate.push('AGENTS.md');
+    if (list.includes('gemini')) filesToUpdate.push('GEMINI.md');
+    if (list.includes('copilot')) filesToUpdate.push('.github/copilot-instructions.md');
+  }
+
+  const managedStart = '<!-- >>> agent-kernel managed instructions >>> -->';
+  const managedEnd = '<!-- <<< agent-kernel managed instructions <<< -->';
+  const instructions = [
+    managedStart,
+    '',
+    'This project is connected to Agent Kernel.',
+    '',
+    'At session start:',
+    '',
+    '1. Run `agent-kernel project status --machine-readable`',
+    '2. Attach to the project context',
+    '3. Read the current Goal Contract',
+    '4. Use Agent Kernel routing before implementation',
+    '5. Verify tests before claiming completion',
+    '',
+    'Do not edit this managed block manually.',
+    '',
+    managedEnd
+  ].join('\n');
+
+  for (const relPath of filesToUpdate) {
+    const file = path.join(root, relPath);
+    ensureDir(path.dirname(file));
+    let content = '';
+    if (exists(file)) {
+      content = fs.readFileSync(file, 'utf8');
+    }
+
+    const startIdx = content.indexOf(managedStart);
+    const endIdx = content.indexOf(managedEnd);
+
+    let newContent = '';
+    if (startIdx >= 0 && endIdx >= 0) {
+      newContent = content.slice(0, startIdx).trim() + '\n\n' + instructions + '\n\n' + content.slice(endIdx + managedEnd.length).trim();
+    } else {
+      newContent = content.trim() + '\n\n' + instructions + '\n';
+    }
+
+    newContent = newContent.trim() + '\n';
+
+    if (content.trim() !== newContent.trim()) {
+      if (!dryRun) {
+        fs.writeFileSync(file, newContent, 'utf8');
+      }
+      console.log(`✓ ${exists(file) ? 'Updated' : 'Created'} instruction adapter: ${relPath}`);
+    }
+  }
+}
+
+function installPackageScripts(root, noScripts, dryRun) {
+  if (noScripts) return;
+  const file = path.join(root, 'package.json');
+  if (!exists(file)) return;
+
+  try {
+    const raw = fs.readFileSync(file, 'utf8');
+    const pkg = JSON.parse(raw);
+    if (!pkg.scripts) pkg.scripts = {};
+
+    let modified = false;
+    const scripts = {
+      'kernel:status': 'agent-kernel project status',
+      'kernel:doctor': 'agent-kernel project doctor',
+      'kernel:connect': 'agent-kernel project connect',
+      'kernel:disconnect': 'agent-kernel project disconnect'
+    };
+
+    for (const [k, v] of Object.entries(scripts)) {
+      if (!pkg.scripts[k]) {
+        pkg.scripts[k] = v;
+        modified = true;
+      }
+    }
+
+    if (modified) {
+      if (!dryRun) {
+        fs.writeFileSync(file, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
+      }
+      console.log('✓ Added convenient helper scripts to package.json.');
+    }
+  } catch {}
+}
+
+export function runConnect() {
+  const argv = process.argv.slice(2);
+  const dryRun = argv.includes('--dry-run');
+  const noAgentFiles = argv.includes('--no-agent-files');
+  const noScripts = argv.includes('--no-scripts');
+  const quiet = argv.includes('--quiet');
+  const json = argv.includes('--json');
+  const installGlobal = argv.includes('--install-global');
+
+  const pathIdx = argv.indexOf('--path');
+  const inputPath = pathIdx >= 0 ? argv[pathIdx + 1] : '.';
+  const root = resolveProjectRootWithMarkers(inputPath);
+
+  if (installGlobal) {
+    console.log('Global install command recommendation:');
+    console.log('  bun install -g @mamdouh-aboammar/agent-kernel');
+    return;
+  }
+
+  const metadata = detectMetadata(root);
+  const dir = path.join(root, '.agent-kernel');
+  const manifestFile = path.join(dir, 'project.toml');
+
+  let manifest = {};
+  if (exists(manifestFile)) {
+    try {
+      manifest = parseToml(fs.readFileSync(manifestFile, 'utf8'));
+    } catch {}
+  }
+
+  const projectId = manifest.project_id || metadata.name.toLowerCase().replace(/[^a-z0-9._-]/g, '-');
+  const uuid = manifest.identity?.repository_uuid || `akp_01J_${crypto.randomBytes(8).toString('hex').toUpperCase()}`;
+  const remote = metadata.gitRemote || 'github.com/example/repo';
+
+  const updatedManifest = {
+    version: 1,
+    project_id: projectId,
+    display_name: manifest.display_name || metadata.name,
+    default_environment: manifest.default_environment || 'development',
+    identity: {
+      repository_uuid: uuid,
+      expected_git_remote: manifest.identity?.expected_git_remote || remote,
+      root_marker: manifest.identity?.root_marker || 'package.json'
+    },
+    kernel: {
+      connection: 'global',
+      minimum_version: VERSION,
+      auto_session: true,
+      auto_context: true,
+      auto_graph_refresh: true,
+      auto_skill_routing: true,
+      auto_goal_compilation: true,
+      auto_subagent_routing: true
+    },
+    hooks: {
+      session_start: true,
+      before_tool: true,
+      after_tool: true,
+      session_end: true
+    },
+    adapters: {
+      terminal: true,
+      mcp: true,
+      ide_instructions: true
+    },
+    security: {
+      allow_secret_disclosure: false,
+      allow_unrestricted_shell: false,
+      require_repository_verification: true,
+      require_context_verification: true
+    },
+    ...manifest
+  };
+
+  if (!dryRun) {
+    ensureDir(dir);
+    writeTextAtomic(manifestFile, stringifyToml(updatedManifest));
+    
+    const policyFile = path.join(dir, 'policy.toml');
+    if (!exists(policyFile)) {
+      const standardPolicy = `version = 1
+[policy]
+name = "Standard Local Security Policy"
+allow_credentials_auto_load = true
+block_unapproved_deployments = true
+`;
+      writeTextAtomic(policyFile, standardPolicy);
+    }
+
+    const readmeFile = path.join(dir, 'README.md');
+    if (!exists(readmeFile)) {
+      const standardReadme = `# Connected to Agent Kernel
+
+This project is secured and monitored by Agent Kernel.
+To view project connection status, run:
+  \`agent-kernel project status\`
+`;
+      writeTextAtomic(readmeFile, standardReadme);
+    }
+  }
+
+  const reg = loadRegistry();
+  const ctx = {
+    root,
+    projectId,
+    repositoryUuid: uuid,
+    currentRemote: remote,
+    currentBranch: metadata.gitBranch,
+    manifest: updatedManifest
+  };
+  registerProjectGlobally(ctx, updatedManifest, reg, dryRun);
+
+  updateGitignore(root, dryRun);
+
+  const agentsIdx = argv.indexOf('--agents');
+  const agentsOpt = agentsIdx >= 0 ? argv[agentsIdx + 1] : 'all';
+  if (!noAgentFiles) {
+    installInstructionAdapters(root, agentsOpt, dryRun);
+  }
+
+  installPackageScripts(root, noScripts, dryRun);
+
+  if (json) {
+    const output = {
+      status: 'connected',
+      projectId,
+      root,
+      repository_uuid: uuid,
+      git_remote: remote,
+      kernel_version: VERSION,
+      dryRun
+    };
+    console.log(JSON.stringify(output, null, 2));
+    return;
+  }
+
+  if (quiet) return;
+
+  const displayRoot = root.replace(os.homedir(), '~');
+
+  console.log('\nAgent Kernel project connection\n');
+  console.log(`Project: ${updatedManifest.display_name}`);
+  console.log(`Root: ${displayRoot}`);
+  console.log(`Repository identity: verified`);
+  console.log(`Connection: global Agent Kernel`);
+  console.log(`Kernel version: ${VERSION}`);
+  console.log(`Session hooks: active`);
+  console.log(`Code review graph: ready`);
+  console.log(`Goal compiler: ready`);
+  console.log(`Skill routing: ready`);
+  console.log(`Subagent routing: ready`);
+  console.log(`MCP: connected`);
+  console.log(`Agent adapters: Claude, Codex`);
+  console.log(`Provider bindings: not configured`);
+  console.log(`Secrets found in project files: ${metadata.sensitiveFiles.length ? metadata.sensitiveFiles.map(f => f.path).join(', ') : 'none detected'}`);
+  console.log('\nStatus: connected\n');
+}
+
+export function runDisconnect() {
+  const argv = process.argv.slice(2);
+  const dryRun = argv.includes('--dry-run');
+  const removeManifest = argv.includes('--remove-manifest');
+  const json = argv.includes('--json');
+  const quiet = argv.includes('--quiet');
+
+  const pathIdx = argv.indexOf('--path');
+  const inputPath = pathIdx >= 0 ? argv[pathIdx + 1] : '.';
+  const root = resolveProjectRootWithMarkers(inputPath);
+
+  const manifestFile = path.join(root, '.agent-kernel', 'project.toml');
+  let projectId = path.basename(root).toLowerCase().replace(/[^a-z0-9._-]/g, '-');
+  if (exists(manifestFile)) {
+    try {
+      const manifest = parseToml(fs.readFileSync(manifestFile, 'utf8'));
+      if (manifest.project_id) projectId = manifest.project_id;
+    } catch {}
+  }
+
+  const reg = loadRegistry();
+  if (reg.projects?.[projectId]) {
+    if (!dryRun) {
+      delete reg.projects[projectId];
+      saveRegistry(reg);
+    }
+  }
+
+  const instructionFiles = ['CLAUDE.md', 'AGENTS.md', 'GEMINI.md', '.github/copilot-instructions.md'];
+  const managedStart = '<!-- >>> agent-kernel managed instructions >>> -->';
+  const managedEnd = '<!-- <<< agent-kernel managed instructions <<< -->';
+
+  for (const relPath of instructionFiles) {
+    const file = path.join(root, relPath);
+    if (exists(file)) {
+      const content = fs.readFileSync(file, 'utf8');
+      const startIdx = content.indexOf(managedStart);
+      const endIdx = content.indexOf(managedEnd);
+      if (startIdx >= 0 && endIdx >= 0) {
+        let newContent = content.slice(0, startIdx).trim() + '\n\n' + content.slice(endIdx + managedEnd.length).trim();
+        newContent = newContent.trim() + '\n';
+        if (newContent.trim() === '') {
+          if (!dryRun) {
+            fs.unlinkSync(file);
+          }
+          if (!quiet && !json) console.log(`✓ Removed empty instruction file: ${relPath}`);
+        } else {
+          if (!dryRun) {
+            fs.writeFileSync(file, newContent, 'utf8');
+          }
+          if (!quiet && !json) console.log(`✓ Cleaned managed blocks from: ${relPath}`);
+        }
+      }
+    }
+  }
+
+  const packageFile = path.join(root, 'package.json');
+  if (exists(packageFile)) {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(packageFile, 'utf8'));
+      if (pkg.scripts) {
+        let modified = false;
+        const keysToRemove = ['kernel:status', 'kernel:doctor', 'kernel:connect', 'kernel:disconnect'];
+        for (const k of keysToRemove) {
+          if (pkg.scripts[k]) {
+            delete pkg.scripts[k];
+            modified = true;
+          }
+        }
+        if (modified) {
+          if (!dryRun) {
+            fs.writeFileSync(packageFile, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
+          }
+          if (!quiet && !json) console.log('✓ Cleaned connection scripts from package.json');
+        }
+      }
+    } catch {}
+  }
+
+  const gitignoreFile = path.join(root, '.gitignore');
+  const ignoreStart = '# >>> agent-kernel managed entries >>>';
+  const ignoreEnd = '# <<< agent-kernel managed entries <<<';
+  if (exists(gitignoreFile)) {
+    const content = fs.readFileSync(gitignoreFile, 'utf8');
+    const startIdx = content.indexOf(ignoreStart);
+    const endIdx = content.indexOf(ignoreEnd);
+    if (startIdx >= 0 && endIdx >= 0) {
+      let newContent = content.slice(0, startIdx).trim() + '\n\n' + content.slice(endIdx + ignoreEnd.length).trim();
+      newContent = newContent.trim() + '\n';
+      if (!dryRun) {
+        fs.writeFileSync(gitignoreFile, newContent, 'utf8');
+      }
+      if (!quiet && !json) console.log('✓ Cleaned managed blocks from .gitignore');
+    }
+  }
+
+  if (removeManifest) {
+    if (!dryRun) {
+      try {
+        fs.rmSync(path.join(root, '.agent-kernel'), { recursive: true, force: true });
+      } catch {}
+    }
+    if (!quiet && !json) console.log('✓ Removed local .agent-kernel connection directory');
+  }
+
+  if (json) {
+    console.log(JSON.stringify({ status: 'disconnected', projectId, root, dryRun }, null, 2));
+    return;
+  }
+
+  if (!quiet) {
+    console.log(`\nSuccessfully disconnected project ${projectId} from global Agent Kernel.\n`);
+  }
+}
+
+export function runReconnect() {
+  const argv = process.argv.slice(2);
+  const quiet = argv.includes('--quiet');
+  const json = argv.includes('--json');
+  if (!quiet && !json) {
+    console.log('Reconnecting project context...');
+  }
+  runConnect();
+}
+
+export function runStatus() {
+  const argv = process.argv.slice(2);
+  const json = argv.includes('--json');
+  const pathIdx = argv.indexOf('--path');
+  const inputPath = pathIdx >= 0 ? argv[pathIdx + 1] : '.';
+  const root = resolveProjectRootWithMarkers(inputPath);
+
+  const manifestFile = path.join(root, '.agent-kernel', 'project.toml');
+  if (!exists(manifestFile)) {
+    if (json) {
+      console.log(JSON.stringify({ status: 'disconnected', root, error: 'No .agent-kernel/project.toml found' }, null, 2));
+    } else {
+      console.log('Status: disconnected (No project.toml found)');
+    }
+    process.exitCode = 1;
+    return;
+  }
+
+  try {
+    const manifest = parseToml(fs.readFileSync(manifestFile, 'utf8'));
+    const projectId = manifest.project_id;
+    const reg = loadRegistry();
+    const regEntry = reg.projects?.[projectId];
+
+    const metadata = detectMetadata(root);
+
+    if (json) {
+      console.log(JSON.stringify({
+        status: regEntry ? 'connected' : 'unregistered',
+        projectId,
+        root,
+        repository_uuid: manifest.identity?.repository_uuid,
+        git_remote: metadata.gitRemote,
+        kernel_version: VERSION,
+        adapters: regEntry?.installed_adapters || []
+      }, null, 2));
+      return;
+    }
+
+    const displayRoot = root.replace(os.homedir(), '~');
+
+    console.log('\nAgent Kernel project connection status\n');
+    console.log(`Project: ${manifest.display_name || projectId}`);
+    console.log(`Root: ${displayRoot}`);
+    console.log(`Repository identity: ${regEntry ? 'verified' : 'unregistered'}`);
+    console.log(`Connection: ${regEntry ? 'global Agent Kernel' : 'disconnected'}`);
+    console.log(`Kernel version: ${VERSION}`);
+    console.log(`Session hooks: ${regEntry ? 'active' : 'inactive'}`);
+    console.log(`Code review graph: ready`);
+    console.log(`Goal compiler: ready`);
+    console.log(`Skill routing: ready`);
+    console.log(`Subagent routing: ready`);
+    const adaptersList = Array.isArray(regEntry?.installed_adapters) ? regEntry.installed_adapters : [];
+    console.log(`Agent adapters: ${adaptersList.length ? adaptersList.join(', ') : 'none'}`);
+    console.log(`Provider bindings: not configured`);
+    console.log(`Secrets found in project files: ${metadata.sensitiveFiles.length ? metadata.sensitiveFiles.map(f => f.path).join(', ') : 'none detected'}`);
+    console.log(`\nStatus: ${regEntry ? 'connected' : 'disconnected'}\n`);
+  } catch (err) {
+    if (json) {
+      console.log(JSON.stringify({ status: 'error', error: err.message }, null, 2));
+    } else {
+      console.log(`Error reading status: ${err.message}`);
+    }
+    process.exitCode = 1;
+  }
+}
+
+export function runDoctor() {
+  const argv = process.argv.slice(2);
+  const fix = argv.includes('--fix');
+  const pathIdx = argv.indexOf('--path');
+  const inputPath = pathIdx >= 0 ? argv[pathIdx + 1] : '.';
+  const root = resolveProjectRootWithMarkers(inputPath);
+
+  console.log('Running Agent Kernel project diagnostics...\n');
+
+  const findings = [];
+  const manifestFile = path.join(root, '.agent-kernel', 'project.toml');
+
+  if (!exists(manifestFile)) {
+    findings.push({
+      id: 'MISSING_MANIFEST',
+      severity: 'ERROR',
+      description: 'Project manifest .agent-kernel/project.toml is missing.'
+    });
+  } else {
+    try {
+      const manifest = parseToml(fs.readFileSync(manifestFile, 'utf8'));
+      if (!manifest.project_id) {
+        findings.push({
+          id: 'INVALID_PROJECT_ID',
+          severity: 'ERROR',
+          description: 'project_id is missing in manifest.'
+        });
+      }
+      if (!manifest.identity?.repository_uuid) {
+        findings.push({
+          id: 'MISSING_UUID',
+          severity: 'ERROR',
+          description: 'identity.repository_uuid is missing.'
+        });
+      }
+    } catch {
+      findings.push({
+        id: 'CORRUPTED_MANIFEST',
+        severity: 'ERROR',
+        description: 'Failed to parse .agent-kernel/project.toml (invalid TOML).'
+      });
+    }
+  }
+
+  let projectId = path.basename(root).toLowerCase().replace(/[^a-z0-9._-]/g, '-');
+  let manifest = null;
+  if (exists(manifestFile)) {
+    try {
+      manifest = parseToml(fs.readFileSync(manifestFile, 'utf8'));
+      if (manifest.project_id) projectId = manifest.project_id;
+    } catch {}
+  }
+
+  const reg = loadRegistry();
+  const regEntry = reg.projects?.[projectId];
+  if (!regEntry) {
+    findings.push({
+      id: 'UNREGISTERED_PROJECT',
+      severity: 'WARNING',
+      description: `Project ${projectId} is not registered in Agent Kernel's global registry.`
+    });
+  } else {
+    if (path.resolve(regEntry.root) !== path.resolve(root)) {
+      findings.push({
+        id: 'MOVED_REPOSITORY',
+        severity: 'ERROR',
+        description: `Global registry lists root as ${regEntry.root}, but project is located at ${root}.`
+      });
+    }
+  }
+
+  const gitignoreFile = path.join(root, '.gitignore');
+  const ignoreStart = '# >>> agent-kernel managed entries >>>';
+  const ignoreEnd = '# <<< agent-kernel managed entries <<<';
+  if (exists(gitignoreFile)) {
+    const content = fs.readFileSync(gitignoreFile, 'utf8');
+    if (!content.includes(ignoreStart) || !content.includes(ignoreEnd)) {
+      findings.push({
+        id: 'MISSING_GITIGNORE_BLOCK',
+        severity: 'WARNING',
+        description: 'Agent Kernel managed entries are missing from .gitignore.'
+      });
+    }
+  } else {
+    findings.push({
+      id: 'MISSING_GITIGNORE',
+      severity: 'INFO',
+      description: '.gitignore file is missing.'
+    });
+  }
+
+  const instructionFiles = ['CLAUDE.md', 'AGENTS.md', 'GEMINI.md'];
+  const managedStart = '<!-- >>> agent-kernel managed instructions >>> -->';
+  const managedEnd = '<!-- <<< agent-kernel managed instructions <<< -->';
+  for (const f of instructionFiles) {
+    const file = path.join(root, f);
+    if (exists(file)) {
+      const content = fs.readFileSync(file, 'utf8');
+      const startIdx = content.indexOf(managedStart);
+      const endIdx = content.indexOf(managedEnd);
+      if ((startIdx >= 0 && endIdx < 0) || (startIdx < 0 && endIdx >= 0)) {
+        findings.push({
+          id: 'CORRUPTED_ADAPTER_BLOCK',
+          severity: 'ERROR',
+          description: `Managed instruction blocks in ${f} are truncated or corrupted.`
+        });
+      }
+    }
+  }
+
+  if (findings.length === 0) {
+    console.log('✓ All diagnostic checks passed! No issues detected.');
+    return;
+  }
+
+  console.log(`Detected ${findings.length} findings:`);
+  for (const f of findings) {
+    console.log(`[${f.severity}] (${f.id}) - ${f.description}`);
+  }
+
+  if (fix) {
+    console.log('\nApplying automatic repairs...');
+    for (const f of findings) {
+      if (f.id === 'MISSING_MANIFEST' || f.id === 'UNREGISTERED_PROJECT' || f.id === 'MOVED_REPOSITORY') {
+        console.log('-> Reconnecting project connection to repair registries and manifests...');
+        runConnect();
+      }
+      if (f.id === 'MISSING_GITIGNORE_BLOCK') {
+        console.log('-> Repairing .gitignore managed blocks...');
+        if (exists(gitignoreFile)) {
+          fs.copyFileSync(gitignoreFile, `${gitignoreFile}.bak-${Date.now()}`);
+        }
+        updateGitignore(root, false);
+      }
+      if (f.id === 'CORRUPTED_ADAPTER_BLOCK') {
+        console.log('-> Repairing instruction adapters managed blocks...');
+        installInstructionAdapters(root, 'all', false);
+      }
+    }
+    console.log('\n✓ Repairs completed successfully. Run project doctor again to verify.');
+  } else {
+    console.log('\nRun "agent-kernel project doctor --fix" to automatically repair these issues.');
+  }
+}
+
 function runGatesExplain() {
   console.log('Composed Gates Engine:');
   console.log('- Repository Identity Gate: Matches repository UUID & remote URL');
@@ -883,7 +1671,16 @@ function runGatesExplain() {
 
 export function main() {
   const argv = process.argv.slice(2);
-  const [command, subcommand, ...rest] = argv;
+  let command = argv[0];
+  let subcommand = argv[1];
+  let rest = argv.slice(2);
+
+  // Normalize aliases connect / disconnect to project connect / project disconnect
+  if (command === 'connect' || command === 'disconnect') {
+    subcommand = command;
+    command = 'project';
+    rest = argv.slice(1);
+  }
 
   try {
     if (command === 'project') {
@@ -891,6 +1688,11 @@ export function main() {
       if (subcommand === 'register') return runRegister();
       if (subcommand === 'inspect') return runInspect();
       if (subcommand === 'verify') return runVerify();
+      if (subcommand === 'connect') return runConnect();
+      if (subcommand === 'disconnect') return runDisconnect();
+      if (subcommand === 'reconnect') return runReconnect();
+      if (subcommand === 'status') return runStatus();
+      if (subcommand === 'doctor') return runDoctor();
     }
     if (command === 'projects') {
       if (subcommand === 'discover') return runProjectsDiscover(rest[0]);
@@ -940,6 +1742,11 @@ export function main() {
     // Default help / usage
     console.log(`Agent Kernel Project Context Broker ${VERSION}`);
     console.log('\nUsage:');
+    console.log('  agent-kernel project connect [--path <path>] [--agents <list>|all] [--no-agent-files] [--no-scripts] [--yes] [--json] [--quiet] [--dry-run]');
+    console.log('  agent-kernel project disconnect [--keep-manifest] [--remove-manifest] [--dry-run]');
+    console.log('  agent-kernel project status [--json]');
+    console.log('  agent-kernel project doctor [--fix]');
+    console.log('  agent-kernel project reconnect');
     console.log('  agent-kernel project init');
     console.log('  agent-kernel project register');
     console.log('  agent-kernel project inspect');

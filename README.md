@@ -188,6 +188,27 @@ For an existing repository, prefer the safe installers first:
 - [`docs/SAFE_LINKING.md`](./docs/SAFE_LINKING.md)
 - [`docs/SAFE_GIT_HOOKS.md`](./docs/SAFE_GIT_HOOKS.md)
 
+### Connect a project to Agent Kernel
+
+Connect any repository directory securely and idempotently to the global Agent Kernel runtime:
+
+```bash
+cd ~/Projects/YourProject
+
+# Connect project to global kernel
+agent-kernel project connect
+# or direct CLI alias:
+agent-kernel connect
+
+# Check connection status & run diagnostics
+agent-kernel project status
+agent-kernel project doctor [--fix]
+
+# Reconnect or Disconnect
+agent-kernel project reconnect
+agent-kernel project disconnect [--keep-manifest|--remove-manifest]
+```
+
 ---
 
 ## Trusted CLI updates
