@@ -3,6 +3,25 @@
 All notable changes to this project are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.13.0] - 2026-07-21
+
+This release ships the **Agent Kernel Project Connection Command Suite** (`connect`, `disconnect`, `reconnect`, `status`, `doctor`) with native Bun first-class support.
+
+### Added
+
+- **First-Class Project Connection Suite**:
+  - `agent-kernel project connect`: Connects any repository securely and idempotently to the global Agent Kernel runtime.
+  - `agent-kernel project disconnect`: Gracefully removes global project registration and managed instruction adapters.
+  - `agent-kernel project status`: Displays real-time connection state, provider bindings, and diagnostic readiness.
+  - `agent-kernel project doctor`: Runs 15+ integrity diagnostics on project configuration, managed blocks, and global registration with `--fix` support.
+  - `agent-kernel project reconnect`: Repairs missing adapters, stale registrations, or broken `.gitignore` blocks.
+  - Direct CLI shortcuts: `agent-kernel connect` and `agent-kernel disconnect`.
+- **First-Class Bun Support**: Full support for Bun for scripts, execution (`bunx`), lockfiles (`bun.lock`), and test runners.
+- **Marker-Based Root Resolution**: Intelligently resolves project roots searching for `.git`, `package.json`, `bun.lock`, `pyproject.toml`, `Cargo.toml`, etc.
+- **Managed Instruction Adapters**: Injects delimited instructions inside `CLAUDE.md` and `AGENTS.md` without overwriting user content.
+- **Process-Safe File Locking**: Prevents race conditions during concurrent global registry writes using atomic mutex directory locking.
+- **Comprehensive Documentation**: Added [`docs/PROJECT_CONNECTION.md`](./docs/PROJECT_CONNECTION.md).
+
 ## [1.12.0] - 2026-07-21
 
 This release ships the **Agent Kernel Project Context Broker** — a secure, local-first environments controller, identity lock, and credential manager for development workspaces.

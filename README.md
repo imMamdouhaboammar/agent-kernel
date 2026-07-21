@@ -21,7 +21,7 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
 </p>
 
 <p>
-  <strong>Current stable release: <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'>v1.12.0</a></strong><br />
+  <strong>Current stable release: <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'>v1.13.0</a></strong><br />
   Trust-aware agent proposals and runtime capture, transaction-safe project linking, worktree-safe Git hooks, retention and portability, trusted CLI updates, Architecture Guardian, and local reporting.
 </p>
 
@@ -187,6 +187,27 @@ For an existing repository, prefer the safe installers first:
 
 - [`docs/SAFE_LINKING.md`](./docs/SAFE_LINKING.md)
 - [`docs/SAFE_GIT_HOOKS.md`](./docs/SAFE_GIT_HOOKS.md)
+
+### Connect a project to Agent Kernel
+
+Connect any repository directory securely and idempotently to the global Agent Kernel runtime:
+
+```bash
+cd ~/Projects/YourProject
+
+# Connect project to global kernel
+agent-kernel project connect
+# or direct CLI alias:
+agent-kernel connect
+
+# Check connection status & run diagnostics
+agent-kernel project status
+agent-kernel project doctor [--fix]
+
+# Reconnect or Disconnect
+agent-kernel project reconnect
+agent-kernel project disconnect [--keep-manifest|--remove-manifest]
+```
 
 ---
 

@@ -49,6 +49,7 @@ import { run as runPackageFiles } from './package-files.mjs';
 import { run as runDocLinks } from './doc-links.mjs';
 import { run as runCliStatusJson } from './cli-status-json.mjs';
 import { run as runProjectContextBroker } from './project-context-broker.test.mjs';
+import { run as runProjectConnect } from './project-connect.test.mjs';
 
 const tests = [
   ['version', runVersion],
@@ -91,7 +92,8 @@ const tests = [
   ['package-files', runPackageFiles],
   ['doc-links', runDocLinks],
   ['cli-status-json', runCliStatusJson],
-  ['project-context-broker', runProjectContextBroker]
+  ['project-context-broker', runProjectContextBroker],
+  ['project-connect', runProjectConnect]
 ];
 
 let passed = 0;

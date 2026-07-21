@@ -42,9 +42,11 @@ const brokerCommand = [
   'provider',
   'gates',
   'approvals',
-  'audit'
+  'audit',
+  'connect',
+  'disconnect'
 ].includes(command) ||
-  (command === 'project' && ['init', 'register', 'inspect', 'verify'].includes(args[1])) ||
+  (command === 'project' && ['init', 'register', 'inspect', 'verify', 'connect', 'disconnect', 'status', 'doctor', 'reconnect'].includes(args[1])) ||
   (command === 'context' && ['enter', 'current', 'verify', 'doctor', 'switch'].includes(args[1]));
 const registryCommand = command === 'agent' || (command === 'project' && !brokerCommand);
 

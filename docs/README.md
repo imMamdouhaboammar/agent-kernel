@@ -10,7 +10,8 @@ Use it to understand the current runtime, connect agent surfaces, update memory 
 
 | Situation | Read first | Then read |
 |---|---|---|
-| I want to install and use Agent Kernel | `INSTALL_AND_AGENT_SETUP.md` | `OPERATING_MODEL.md`, `SAFE_LINKING.md`, `SAFE_GIT_HOOKS.md` |
+| I want to install and use Agent Kernel | `INSTALL_AND_AGENT_SETUP.md` | `OPERATING_MODEL.md`, `PROJECT_CONNECTION.md`, `SAFE_LINKING.md` |
+| I want to connect any software project to Agent Kernel | `PROJECT_CONNECTION.md` | `INSTALL_AND_AGENT_SETUP.md`, `SAFE_LINKING.md` |
 | I want to inspect pending, approved, rejected, memory, episode, failure, and runtime state in a browser | `STATIC_MEMORY_DASHBOARD.md` | `RETENTION_AND_PORTABILITY.md`, `MEMORY_PROTOCOL.md` |
 | I want trusted agents to check or apply Agent Kernel updates | `UPDATES.md` | `AGENT_WRITE_MODES.md`, `ARCHITECTURE_NOW.md` |
 | I want to understand how the system works | `OPERATING_MODEL.md` | `ARCHITECTURE_NOW.md` |
