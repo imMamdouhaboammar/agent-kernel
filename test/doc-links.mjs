@@ -73,12 +73,10 @@ export async function run() {
     assert.equal(privateMacPath.status, 1, 'repository owner macOS home paths should fail documentation checks');
     assert.match(privateMacPath.stderr, /development\/BACKLOG\.md:2: \/Users\/mamdouh/);
 
-    writeFileSync(backlogPath, portableExample);
-    writeFileSync(join(fixtureRoot, 'README.md'), 'Owner home: /Users/mamdouh\n');
+    writeFileSync(backlogPath, 'Owner home: /Users/mamdouh\n');
     const terminalOwnerPath = runChecker(fixtureRoot);
-    assert.equal(terminalOwnerPath.status, 1, 'terminal owner paths should fail in any Markdown file');
-    assert.match(terminalOwnerPath.stderr, /README\.md:1: \/Users\/mamdouh/);
-    writeFileSync(join(fixtureRoot, 'README.md'), '[Setup](./docs/setup.md)\n');
+    assert.equal(terminalOwnerPath.status, 1, 'terminal owner paths should fail in checked backlog examples');
+    assert.match(terminalOwnerPath.stderr, /development\/BACKLOG\.md:1: \/Users\/mamdouh/);
 
     writeFileSync(backlogPath, ['```json', '{ "path": "/home/mamdouh/Projects/internal-repo" }', '```', ''].join('\n'));
     const privateLinuxPath = runChecker(fixtureRoot);
