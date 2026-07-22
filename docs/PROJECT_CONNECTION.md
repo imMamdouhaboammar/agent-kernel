@@ -35,6 +35,7 @@ Agent Kernel acts as a local-first governance kernel. When managing multiple pro
 | `agent-kernel project doctor` | - | Runs 15+ integrity diagnostics on manifest and adapters |
 | `agent-kernel project reconnect` | - | Repairs stale registries, missing adapters, or gitignore entries |
 | `agent-kernel project disconnect` | `agent-kernel disconnect` | Safely removes global registration & managed blocks |
+| `agent-kernel approvals request/list/approve/deny/revoke` | - | Controls one-time production provider authorization |
 
 ---
 
@@ -98,6 +99,44 @@ agent-kernel project doctor [options]
 Options:
   --fix   Automatically repair missing footers, corrupted adapters, and stale registry entries
 ```
+
+---
+
+## Production Provider Approvals
+
+Sensitive provider commands in an environment declared with `risk = "production"` require a short-lived approval scoped to the current project ID, environment, provider, and normalized operation. Approvals cannot authorize another project, environment, provider, account, project reference, region, or operation.
+
+```bash
+# Create a pending request
+agent-kernel approvals request \
+  --provider supabase \
+  --operation db-push \
+  --reason "Migration reviewed in change window"
+
+# Review pending and historical records
+agent-kernel approvals list
+agent-kernel approvals list --status pending --json
+
+# Resolve the request
+agent-kernel approvals approve <approval-id> --ttl-minutes 15
+agent-kernel approvals deny <approval-id> --reason "Change window closed"
+agent-kernel approvals revoke <approval-id> --reason "Deployment cancelled"
+```
+
+Supported approval operations are `supabase:db-push`, `supabase:migration`, `gcloud:run`, and `gcloud:deploy`. Approval TTL must be an integer from 1 to 60 minutes. An approved record is consumed atomically by the first matching production command and cannot be replayed. Repeating `request` while a matching pending or unexpired approved record exists returns the active record instead of stacking another authorization.
+
+The state machine is:
+
+```text
+pending -> approved -> consumed
+       \-> denied
+approved -> revoked
+approved -> expired (derived after expiresAt)
+```
+
+Approval state is stored at `~/.agent-kernel/connections/approvals.json` with owner-only permissions. Mutations are lock-protected and atomic. A malformed state file causes commands to fail closed without overwriting the file. Request reasons are redacted before persistence, and request, approval, denial, revocation, and consumption actions are recorded in the provider audit log.
+
+Read-only Supabase operations are explicitly allowlisted (`db pull`, `db dump`, `db lint`, and `migration list`). Unknown Supabase commands are classified as sensitive rather than read-only. Sensitive operations also require the mapped capability and environment risk metadata to be explicitly enabled in `project.toml`.
 
 ---
 

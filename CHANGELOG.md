@@ -5,6 +5,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Added a project-scoped production provider approval lifecycle: `approvals request`, `list`, `approve`, `deny`, and `revoke`, with JSON output and bounded 1-60 minute TTLs.
+- Added one-time approval consumption for production Supabase database writes/migrations and GCloud operations.
+
 ### Fixed
 
 - Enforced manifest-bound Supabase and GCloud targets even when callers pass conflicting split-form or `--flag=value` overrides.
@@ -12,11 +17,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Made provider executable discovery use platform-aware PATH separators, skip non-executable decoys, and removed the external `sleep` dependency from lock retries.
 - Removed the provider command separator before invoking the underlying CLI and restored linked-worktree branch drift enforcement.
 - Kept the dashboard Retention section hidden for projects with no runtime state or raw session logs.
+- Classified Supabase database writes, migrations, and GCloud deployments explicitly; unknown Supabase commands now fail closed as sensitive operations instead of defaulting to read-only.
+- Required mapped capabilities and sensitive environment risk metadata to be explicitly configured instead of allowing missing values.
 
 ### Security
 
 - Serialized provider audit appends with stale-lock recovery, enforced owner-only audit permissions, and redacted recognized secret values before persistence.
 - Blocked GCloud caller overrides for configuration, account, service-account impersonation, billing project, project, and region.
+- Made production approvals project/environment/provider/operation scoped, owner-only, auditable, secret-redacted, single-use, resistant to malformed-state overwrite, and non-stackable while an active request exists.
 
 ## [1.13.0] - 2026-07-21
 

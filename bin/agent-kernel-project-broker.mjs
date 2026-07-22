@@ -428,24 +428,27 @@ export function evaluateGates(ctx, providerName, operation, requestedTier = 'pub
     'gcloud:run': 'cloud_deploy'
   };
   const requiredCap = capabilityMap[`${providerName}:${operation}`];
-  if (requiredCap && manifest.capabilities?.[requiredCap] === false) {
-    throw new Error(`Gate Failure: Capability ${requiredCap} is explicitly blocked in project manifest.`);
+  if (requiredCap && manifest.capabilities?.[requiredCap] !== true) {
+    throw new Error(`Gate Failure: Capability ${requiredCap} must be explicitly enabled in project manifest.`);
   }
 
-  // 4. Environment Risk & Approval Gates
+  // 4. Context Drift Gate
+  verifyContextDrift(ctx);
+
+  // 5. Environment Risk & Approval Gate
   const activeEnv = manifest.default_environment || 'development';
   const envConfig = manifest.environments?.[activeEnv];
-  if (envConfig) {
-    if (envConfig.risk === 'production' && requestedTier !== 'public') {
-      // Production sensitive execution needs explicit approval
-      if (!isOperationApproved(ctx.projectId, activeEnv, providerName, operation)) {
-        throw new Error(`Gate Failure: Production execution of ${providerName}:${operation} requires explicit approval. Run: agent-kernel approvals request`);
-      }
+  if (requestedTier !== 'public') {
+    if (!envConfig) {
+      throw new Error(`Gate Failure: Environment ${activeEnv} is not configured in project manifest.`);
+    }
+    if (!['development', 'staging', 'production'].includes(envConfig.risk)) {
+      throw new Error(`Gate Failure: Environment ${activeEnv} must declare risk as development, staging, or production.`);
+    }
+    if (envConfig.risk === 'production' && !consumeOperationApproval(ctx.projectId, activeEnv, providerName, operation)) {
+      throw new Error(`Gate Failure: Production execution of ${providerName}:${operation} requires explicit approval. Run: agent-kernel approvals request --provider ${providerName} --operation ${operation}`);
     }
   }
-
-  // 5. Context Drift Gate
-  verifyContextDrift(ctx);
 
   return true;
 }
@@ -462,20 +465,46 @@ function verifyContextDrift(ctx) {
 // 7. APPROVAL INBOX RECORDS
 // ==========================================
 
-function getApprovals() {
-  const file = approvalsPath();
+const APPROVAL_OPERATIONS = Object.freeze({
+  supabase: new Set(['db-pull', 'db-push', 'migration']),
+  gcloud: new Set(['run', 'deploy'])
+});
+
+function readApprovalsFile(file = approvalsPath()) {
   if (!exists(file)) return [];
-  try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return []; }
+  let parsed;
+  try {
+    parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    throw new Error(`Approval state is malformed: ${file}. Refusing to overwrite it.`);
+  }
+  if (!Array.isArray(parsed)) {
+    throw new Error(`Invalid approval state: ${file} must contain a JSON array.`);
+  }
+  return parsed;
 }
 
-function saveApprovals(list) {
-  writeJsonAtomic(approvalsPath(), list);
+function getApprovals() {
+  return readApprovalsFile();
+}
+
+function mutateApprovals(mutator) {
+  const file = approvalsPath();
+  ensureDir(path.dirname(file));
+  const release = acquireLock(file);
+  try {
+    const list = readApprovalsFile(file);
+    const result = mutator(list);
+    writeJsonAtomic(file, list);
+    return result;
+  } finally {
+    release();
+  }
 }
 
 export function isOperationApproved(projectId, environment, provider, operation) {
-  const list = getApprovals();
   const now = new Date().toISOString();
-  const matched = list.find((item) =>
+  return getApprovals().some((item) =>
     item.projectId === projectId &&
     item.environment === environment &&
     item.provider === provider &&
@@ -483,7 +512,37 @@ export function isOperationApproved(projectId, environment, provider, operation)
     item.status === 'approved' &&
     item.expiresAt > now
   );
-  return !!matched;
+}
+
+function consumeOperationApproval(projectId, environment, provider, operation) {
+  const now = new Date().toISOString();
+  const consumed = mutateApprovals((list) => {
+    const matched = list.find((item) =>
+      item.projectId === projectId &&
+      item.environment === environment &&
+      item.provider === provider &&
+      item.operation === operation &&
+      item.status === 'approved' &&
+      item.expiresAt > now
+    );
+    if (!matched) return null;
+    matched.status = 'consumed';
+    matched.consumedAt = now;
+    matched.updatedAt = now;
+    return { ...matched };
+  });
+  if (consumed) {
+    auditLog({
+      session: projectId,
+      project: projectId,
+      provider,
+      operation: 'approval.consume',
+      target: consumed.id,
+      environment,
+      result: 'success'
+    });
+  }
+  return consumed;
 }
 
 // ==========================================
@@ -508,6 +567,30 @@ function normalizeProviderArgs(args, enforcedFlags = []) {
   return clean;
 }
 
+function classifySupabaseOperation(args) {
+  const tokens = args.map((arg) => String(arg));
+  const migrationIndex = tokens.indexOf('migration');
+  if (migrationIndex >= 0) {
+    const action = tokens[migrationIndex + 1];
+    if (['up', 'repair'].includes(action)) return 'migration';
+    if (action === 'list') return 'db-pull';
+    return 'db-push';
+  }
+  const dbIndex = tokens.indexOf('db');
+  if (dbIndex >= 0) {
+    const action = tokens[dbIndex + 1];
+    if (['pull', 'dump', 'lint'].includes(action)) return 'db-pull';
+    if (['push', 'reset'].includes(action)) return 'db-push';
+    return 'db-push';
+  }
+  if (tokens.includes('deploy')) return 'db-push';
+  return 'db-push';
+}
+
+function classifyGcloudOperation(args) {
+  return args.map((arg) => String(arg)).includes('deploy') ? 'deploy' : 'run';
+}
+
 export function execSupabase(ctx, args) {
   const profileName = ctx.manifest?.providers?.supabase?.profile;
   const projectRef = ctx.manifest?.providers?.supabase?.project_ref;
@@ -518,8 +601,8 @@ export function execSupabase(ctx, args) {
   const commandArgs = normalizeProviderArgs(args, ['--project-ref']);
 
   // Evaluate gates
-  const isWrite = commandArgs.includes('push') || commandArgs.includes('deploy');
-  evaluateGates(ctx, 'supabase', isWrite ? 'db-push' : 'db-pull');
+  const operation = classifySupabaseOperation(commandArgs);
+  evaluateGates(ctx, 'supabase', operation, operation === 'db-pull' ? 'public' : 'sensitive');
 
   // Retrieve token from Keychain
   const token = keychainGet(profileName, 'supabase');
@@ -589,7 +672,8 @@ export function execGcloud(ctx, args) {
   ensureDir(configDir);
 
   // Evaluate gates
-  evaluateGates(ctx, 'gcloud', 'run');
+  const operation = classifyGcloudOperation(commandArgs);
+  evaluateGates(ctx, 'gcloud', operation, 'sensitive');
 
   const env = {
     ...process.env,
@@ -1727,6 +1811,166 @@ export function runDoctor() {
   }
 }
 
+function approvalFlagValue(args, flag) {
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === flag) return args[i + 1] ?? null;
+    if (String(args[i]).startsWith(`${flag}=`)) return String(args[i]).slice(flag.length + 1);
+  }
+  return null;
+}
+
+function approvalJsonRequested(args) {
+  return args.some((arg) => arg === '--json' || String(arg).startsWith('--json='));
+}
+
+function approvalContext() {
+  const ctx = resolveContext();
+  if (ctx.error) throw new Error(ctx.error);
+  const environment = ctx.manifest.default_environment || 'development';
+  const envConfig = ctx.manifest.environments?.[environment];
+  if (envConfig?.risk !== 'production') {
+    throw new Error(`Approvals are only available for production-risk environments. Current environment: ${environment}`);
+  }
+  return { ctx, environment };
+}
+
+function validateApprovalOperation(ctx, provider, operation) {
+  if (!ctx.manifest.providers?.[provider]) {
+    throw new Error(`Provider ${provider} is not configured in this project.`);
+  }
+  if (!APPROVAL_OPERATIONS[provider]?.has(operation)) {
+    throw new Error(`Unsupported approval operation: ${provider}:${operation}`);
+  }
+}
+
+function printApproval(value, json) {
+  if (json) {
+    console.log(JSON.stringify(value, null, 2));
+    return;
+  }
+  console.log(`${value.id}: ${value.status} ${value.provider}:${value.operation} (${value.environment})`);
+  if (value.expiresAt) console.log(`Expires: ${value.expiresAt}`);
+}
+
+function auditApproval(ctx, environment, record, operation) {
+  auditLog({
+    session: ctx.projectId,
+    project: ctx.projectId,
+    provider: record.provider,
+    operation,
+    target: record.id,
+    environment,
+    result: 'success'
+  });
+}
+
+function runApprovalsRequest(args) {
+  const { ctx, environment } = approvalContext();
+  const provider = approvalFlagValue(args, '--provider');
+  const operation = approvalFlagValue(args, '--operation');
+  const reason = redact(approvalFlagValue(args, '--reason') || 'No reason provided');
+  if (!provider || !operation) {
+    throw new Error('Usage: agent-kernel approvals request --provider <provider> --operation <operation> [--reason <text>] [--json]');
+  }
+  validateApprovalOperation(ctx, provider, operation);
+  evaluateGates(ctx, provider, operation, 'public');
+  const now = new Date().toISOString();
+  const record = mutateApprovals((list) => {
+    const active = list.find((item) =>
+      item.projectId === ctx.projectId &&
+      item.environment === environment &&
+      item.provider === provider &&
+      item.operation === operation &&
+      (item.status === 'pending' || (item.status === 'approved' && item.expiresAt > now))
+    );
+    if (active) return { ...active };
+    const created = {
+      id: `approval_${crypto.randomBytes(8).toString('hex')}`,
+      projectId: ctx.projectId,
+      environment,
+      provider,
+      operation,
+      reason,
+      status: 'pending',
+      requestedAt: now,
+      createdAt: now,
+      updatedAt: now
+    };
+    list.push(created);
+    return { ...created };
+  });
+  auditApproval(ctx, environment, record, 'approval.request');
+  printApproval(record, approvalJsonRequested(args));
+}
+
+function scopedApprovalMutation(args, nextStatus) {
+  const { ctx, environment } = approvalContext();
+  const id = args[0];
+  if (!id || id.startsWith('--')) throw new Error(`Approval ID is required for ${nextStatus}.`);
+  const reason = redact(approvalFlagValue(args, '--reason') || '');
+  const now = new Date();
+  const json = approvalJsonRequested(args);
+  const updated = mutateApprovals((list) => {
+    const record = list.find((item) =>
+      item.id === id && item.projectId === ctx.projectId && item.environment === environment
+    );
+    if (!record) throw new Error(`Approval not found in current project scope: ${id}`);
+    if (nextStatus === 'approved') {
+      if (record.status !== 'pending') throw new Error(`Approval ${id} cannot be approved from status ${record.status}.`);
+      const ttlRaw = approvalFlagValue(args, '--ttl-minutes') || '15';
+      const ttlMinutes = Number(ttlRaw);
+      if (!Number.isInteger(ttlMinutes) || ttlMinutes < 1 || ttlMinutes > 60) {
+        throw new Error('--ttl-minutes must be an integer between 1 and 60.');
+      }
+      record.status = 'approved';
+      record.approvedAt = now.toISOString();
+      record.expiresAt = new Date(now.getTime() + ttlMinutes * 60 * 1000).toISOString();
+    } else if (nextStatus === 'denied') {
+      if (record.status !== 'pending') throw new Error(`Approval ${id} cannot be denied from status ${record.status}.`);
+      record.status = 'denied';
+      record.deniedAt = now.toISOString();
+    } else if (nextStatus === 'revoked') {
+      if (record.status !== 'approved') throw new Error(`Approval ${id} cannot be revoked from status ${record.status}.`);
+      record.status = 'revoked';
+      record.revokedAt = now.toISOString();
+    }
+    if (reason) record.resolutionReason = reason;
+    record.updatedAt = now.toISOString();
+    return { ...record };
+  });
+  auditApproval(ctx, environment, updated, `approval.${nextStatus === 'approved' ? 'approve' : nextStatus === 'denied' ? 'deny' : 'revoke'}`);
+  printApproval(updated, json);
+}
+
+function runApprovalsList(args) {
+  const { ctx, environment } = approvalContext();
+  const statusFilter = approvalFlagValue(args, '--status');
+  const now = new Date().toISOString();
+  const approvals = getApprovals()
+    .filter((item) => item.projectId === ctx.projectId && item.environment === environment)
+    .map((item) => item.status === 'approved' && item.expiresAt <= now ? { ...item, status: 'expired' } : item)
+    .filter((item) => !statusFilter || item.status === statusFilter)
+    .sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)));
+  if (approvalJsonRequested(args)) {
+    console.log(JSON.stringify({ projectId: ctx.projectId, environment, approvals }, null, 2));
+    return;
+  }
+  if (!approvals.length) {
+    console.log('No approvals found for the current project environment.');
+    return;
+  }
+  for (const item of approvals) printApproval(item, false);
+}
+
+function runApprovals(subcommand, args) {
+  if (subcommand === 'request') return runApprovalsRequest(args);
+  if (subcommand === 'list') return runApprovalsList(args);
+  if (subcommand === 'approve') return scopedApprovalMutation(args, 'approved');
+  if (subcommand === 'deny') return scopedApprovalMutation(args, 'denied');
+  if (subcommand === 'revoke') return scopedApprovalMutation(args, 'revoked');
+  throw new Error('Usage: agent-kernel approvals <request|list|approve|deny|revoke>');
+}
+
 function runGatesExplain() {
   console.log('Composed Gates Engine:');
   console.log('- Repository Identity Gate: Matches repository UUID & remote URL');
@@ -1809,6 +2053,9 @@ export function main() {
     if (command === 'gates') {
       if (subcommand === 'explain') return runGatesExplain();
     }
+    if (command === 'approvals') {
+      return runApprovals(subcommand, rest);
+    }
 
     // Default help / usage
     console.log(`Agent Kernel Project Context Broker ${VERSION}`);
@@ -1824,6 +2071,11 @@ export function main() {
     console.log('  agent-kernel project verify');
     console.log('  agent-kernel auth add <provider> --profile <name>');
     console.log('  agent-kernel auth list');
+    console.log('  agent-kernel approvals request --provider <provider> --operation <operation> [--reason <text>] [--json]');
+    console.log('  agent-kernel approvals list [--status <status>] [--json]');
+    console.log('  agent-kernel approvals approve <id> [--ttl-minutes <1-60>] [--json]');
+    console.log('  agent-kernel approvals deny <id> [--reason <text>] [--json]');
+    console.log('  agent-kernel approvals revoke <id> [--reason <text>] [--json]');
     console.log('  agent-kernel provider supabase exec -- <command>');
     console.log('  agent-kernel provider gcloud exec -- <command>');
   } catch (err) {

@@ -218,6 +218,17 @@ agent-kernel provider gcloud exec -- run deploy my-service
 
 The broker removes caller-supplied identity and target overrides, then applies the Supabase project reference and GCloud profile, project, and region declared by the project manifest. Provider audit records are lock-protected, owner-readable only, and redact recognized secret values.
 
+Production-risk writes require an explicit, short-lived, one-time approval bound to the current project, environment, provider, and operation:
+
+```bash
+agent-kernel approvals request --provider supabase --operation db-push --reason "Reviewed migration"
+agent-kernel approvals list
+agent-kernel approvals approve <approval-id> --ttl-minutes 15
+agent-kernel provider supabase exec -- db push
+```
+
+Use `deny` for pending requests and `revoke` for approved requests. Supabase read-only commands such as `db pull`, `db dump`, `db lint`, and `migration list` do not consume production approval; unclassified commands are treated as sensitive.
+
 ---
 
 ## Trusted CLI updates

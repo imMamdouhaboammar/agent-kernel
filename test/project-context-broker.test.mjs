@@ -11,6 +11,7 @@ import {
   loadProjectManifest,
   resolveContext,
   evaluateGates,
+  isOperationApproved,
   execSupabase,
   execGcloud,
   installCommandShims,
@@ -65,6 +66,9 @@ export async function run() {
   [identity]
   repository_uuid = "akp_temp_999"
   expected_git_remote = "github.com/example/temp-project"
+
+  [environments.development]
+  risk = "development"
 
   [providers.supabase]
   profile = "test-profile"
@@ -130,6 +134,30 @@ export async function run() {
   assert.throws(() => {
     evaluateGates(badCtx, 'supabase', 'db-pull');
   }, /expected remote mismatch/);
+
+  const missingCapabilityCtx = {
+    ...mockCtx,
+    manifest: {
+      ...manifest,
+      capabilities: { ...manifest.capabilities }
+    }
+  };
+  delete missingCapabilityCtx.manifest.capabilities.database_read;
+  assert.throws(() => {
+    evaluateGates(missingCapabilityCtx, 'supabase', 'db-pull');
+  }, /Capability database_read must be explicitly enabled/);
+
+  const missingEnvironmentCtx = {
+    ...mockCtx,
+    manifest: {
+      ...manifest,
+      default_environment: 'production',
+      environments: {}
+    }
+  };
+  assert.throws(() => {
+    evaluateGates(missingEnvironmentCtx, 'gcloud', 'deploy', 'sensitive');
+  }, /Environment production is not configured/);
 
   console.log('✓ Policy gates engine and validation pass.');
 
@@ -266,11 +294,230 @@ export async function run() {
   assert.match(missingShimTarget.stderr, /Unable to execute|ENOENT|not found/i);
   console.log('✓ Command shims install in isolation and fail closed.');
 
+  // 9. Production approvals must be explicit, scoped, expiring, and single-use.
+  const approvalProject = path.join(os.tmpdir(), `ak-approval-project-${Date.now()}`);
+  const approvalHome = path.join(os.tmpdir(), `ak-approval-home-${Date.now()}`);
+  fs.mkdirSync(path.join(approvalProject, '.agent-kernel'), { recursive: true });
+  fs.writeFileSync(path.join(approvalProject, '.agent-kernel', 'project.toml'), `
+version = 1
+project_id = "approval-project"
+display_name = "Approval Project"
+default_environment = "production"
+
+[identity]
+repository_uuid = "akp_approval_001"
+
+[environments.production]
+risk = "production"
+
+[providers.supabase]
+profile = "approval-supabase"
+project_ref = "approval-ref"
+
+[providers.gcloud]
+profile = "approval-gcloud"
+project_id = "approval-gcloud-project"
+region = "europe-west1"
+
+[capabilities]
+database_read = true
+database_write = true
+migration_apply = true
+cloud_deploy = true
+`, 'utf8');
+
+  const approvalBin = path.join(approvalHome, 'bin');
+  const approvalArgsFile = path.join(approvalHome, 'provider-args.jsonl');
+  fs.mkdirSync(approvalBin, { recursive: true });
+  const writeApprovalExecutable = (name, body) => {
+    const file = path.join(approvalBin, name);
+    fs.writeFileSync(file, `#!/usr/bin/env node\n${body}\n`, 'utf8');
+    fs.chmodSync(file, 0o755);
+  };
+  writeApprovalExecutable('security', "if (process.argv.includes('find-generic-password')) process.stdout.write('approval-token');");
+  writeApprovalExecutable('supabase', "import fs from 'node:fs'; fs.appendFileSync(process.env.AK_APPROVAL_ARGS_FILE, JSON.stringify({ tool: 'supabase', args: process.argv.slice(2) }) + '\\n');");
+  writeApprovalExecutable('gcloud', "import fs from 'node:fs'; fs.appendFileSync(process.env.AK_APPROVAL_ARGS_FILE, JSON.stringify({ tool: 'gcloud', args: process.argv.slice(2) }) + '\\n');");
+  const approvalEnv = {
+    ...process.env,
+    AGENT_KERNEL_HOME: approvalHome,
+    AK_APPROVAL_ARGS_FILE: approvalArgsFile,
+    PATH: `${approvalBin}${path.delimiter}${process.env.PATH || ''}`
+  };
+  const runApproval = (...args) => childProcess.spawnSync(process.execPath, [brokerPath, ...args], {
+    cwd: approvalProject,
+    env: approvalEnv,
+    encoding: 'utf8'
+  });
+
+  const productionContext = resolveContext(approvalProject);
+  const beforeApprovalHome = process.env.AGENT_KERNEL_HOME;
+  process.env.AGENT_KERNEL_HOME = approvalHome;
+  try {
+    assert.throws(() => {
+      evaluateGates(productionContext, 'supabase', 'db-push', 'sensitive');
+    }, /requires explicit approval/);
+  } finally {
+    if (beforeApprovalHome === undefined) delete process.env.AGENT_KERNEL_HOME;
+    else process.env.AGENT_KERNEL_HOME = beforeApprovalHome;
+  }
+
+  const approvalSecret = 'ghp_' + 'approvalreason12345678901234567890';
+  const requestResult = runApproval(
+    'approvals', 'request', '--provider', 'supabase', '--operation', 'db-push',
+    '--reason', `Apply reviewed production migration ${approvalSecret}`, '--json'
+  );
+  assert.strictEqual(requestResult.status, 0, requestResult.stderr || requestResult.stdout);
+  const requestedApproval = JSON.parse(requestResult.stdout);
+  assert.strictEqual(requestedApproval.status, 'pending');
+  assert.strictEqual(requestedApproval.projectId, 'approval-project');
+  assert.strictEqual(requestedApproval.environment, 'production');
+  assert.strictEqual(requestedApproval.provider, 'supabase');
+  assert.strictEqual(requestedApproval.operation, 'db-push');
+  assert.match(requestedApproval.id, /^approval_[a-f0-9]{16}$/);
+
+  const approveResult = runApproval(
+    'approvals', 'approve', requestedApproval.id, '--ttl-minutes', '5', '--json'
+  );
+  assert.strictEqual(approveResult.status, 0, approveResult.stderr || approveResult.stdout);
+  const approvedApproval = JSON.parse(approveResult.stdout);
+  assert.strictEqual(approvedApproval.status, 'approved');
+  assert.ok(Date.parse(approvedApproval.expiresAt) > Date.now());
+
+  process.env.AGENT_KERNEL_HOME = approvalHome;
+  try {
+    assert.strictEqual(isOperationApproved('approval-project', 'production', 'supabase', 'db-push'), true);
+    assert.strictEqual(evaluateGates(productionContext, 'supabase', 'db-push', 'sensitive'), true);
+    assert.strictEqual(isOperationApproved('approval-project', 'production', 'supabase', 'db-push'), false, 'Approval must be consumed after one sensitive gate pass');
+    assert.throws(() => {
+      evaluateGates(productionContext, 'supabase', 'db-push', 'sensitive');
+    }, /requires explicit approval/);
+  } finally {
+    if (beforeApprovalHome === undefined) delete process.env.AGENT_KERNEL_HOME;
+    else process.env.AGENT_KERNEL_HOME = beforeApprovalHome;
+  }
+
+  const consumedList = runApproval('approvals', 'list', '--json');
+  assert.strictEqual(consumedList.status, 0, consumedList.stderr || consumedList.stdout);
+  const listedApprovals = JSON.parse(consumedList.stdout);
+  assert.strictEqual(listedApprovals.approvals.length, 1);
+  assert.strictEqual(listedApprovals.approvals[0].status, 'consumed');
+
+  const deniedRequest = JSON.parse(runApproval(
+    'approvals', 'request', '--provider', 'gcloud', '--operation', 'run', '--json'
+  ).stdout);
+  const denyResult = runApproval('approvals', 'deny', deniedRequest.id, '--reason', 'Change window closed', '--json');
+  assert.strictEqual(denyResult.status, 0, denyResult.stderr || denyResult.stdout);
+  assert.strictEqual(JSON.parse(denyResult.stdout).status, 'denied');
+
+  const revokedRequest = JSON.parse(runApproval(
+    'approvals', 'request', '--provider', 'gcloud', '--operation', 'run', '--json'
+  ).stdout);
+  const revokedApproved = runApproval('approvals', 'approve', revokedRequest.id, '--ttl-minutes', '10', '--json');
+  assert.strictEqual(revokedApproved.status, 0, revokedApproved.stderr || revokedApproved.stdout);
+  const revokeResult = runApproval('approvals', 'revoke', revokedRequest.id, '--reason', 'Deployment cancelled', '--json');
+  assert.strictEqual(revokeResult.status, 0, revokeResult.stderr || revokeResult.stdout);
+  assert.strictEqual(JSON.parse(revokeResult.stdout).status, 'revoked');
+
+  const dbPushRequest = JSON.parse(runApproval(
+    'approvals', 'request', '--provider', 'supabase', '--operation', 'db-push', '--json'
+  ).stdout);
+  assert.strictEqual(runApproval('approvals', 'approve', dbPushRequest.id, '--json').status, 0);
+  const duplicateActiveRequest = JSON.parse(runApproval(
+    'approvals', 'request', '--provider', 'supabase', '--operation', 'db-push', '--json'
+  ).stdout);
+  assert.strictEqual(duplicateActiveRequest.id, dbPushRequest.id, 'Active approvals must not be stacked for the same operation');
+  assert.strictEqual(duplicateActiveRequest.status, 'approved');
+
+  const dbPushExecution = runApproval('provider', 'supabase', 'exec', '--', 'db', 'push');
+  assert.strictEqual(dbPushExecution.status, 0, dbPushExecution.stderr || dbPushExecution.stdout);
+  const dbPushReplay = runApproval('provider', 'supabase', 'exec', '--', 'db', 'push');
+  assert.notStrictEqual(dbPushReplay.status, 0, 'A consumed database-write approval must not be reusable');
+  assert.match(dbPushReplay.stderr, /requires explicit approval/);
+
+  const migrationRequest = JSON.parse(runApproval(
+    'approvals', 'request', '--provider', 'supabase', '--operation', 'migration', '--json'
+  ).stdout);
+  assert.strictEqual(runApproval('approvals', 'approve', migrationRequest.id, '--json').status, 0);
+  const migrationExecution = runApproval('provider', 'supabase', 'exec', '--', 'migration', 'up');
+  assert.strictEqual(migrationExecution.status, 0, migrationExecution.stderr || migrationExecution.stdout);
+  const migrationReplay = runApproval('provider', 'supabase', 'exec', '--', 'migration', 'up');
+  assert.notStrictEqual(migrationReplay.status, 0, 'A consumed migration approval must not be reusable');
+  assert.match(migrationReplay.stderr, /requires explicit approval/);
+
+  const deployRequest = JSON.parse(runApproval(
+    'approvals', 'request', '--provider', 'gcloud', '--operation', 'deploy', '--json'
+  ).stdout);
+  assert.strictEqual(runApproval('approvals', 'approve', deployRequest.id, '--json').status, 0);
+  const deployExecution = runApproval('provider', 'gcloud', 'exec', '--', 'run', 'deploy', 'approval-service');
+  assert.strictEqual(deployExecution.status, 0, deployExecution.stderr || deployExecution.stdout);
+  const deployReplay = runApproval('provider', 'gcloud', 'exec', '--', 'run', 'deploy', 'approval-service');
+  assert.notStrictEqual(deployReplay.status, 0, 'A consumed cloud-deploy approval must not be reusable');
+  assert.match(deployReplay.stderr, /requires explicit approval/);
+
+  const readOnlyExecution = runApproval('provider', 'supabase', 'exec', '--', 'db', 'pull');
+  assert.strictEqual(readOnlyExecution.status, 0, readOnlyExecution.stderr || readOnlyExecution.stdout);
+
+  const ambiguousExecution = runApproval('provider', 'supabase', 'exec', '--', 'status');
+  assert.notStrictEqual(ambiguousExecution.status, 0, 'Unclassified Supabase commands must fail closed in production');
+  assert.match(ambiguousExecution.stderr, /requires explicit approval.*db-push/);
+  const ambiguousRequest = JSON.parse(runApproval(
+    'approvals', 'request', '--provider', 'supabase', '--operation', 'db-push', '--json'
+  ).stdout);
+  assert.strictEqual(runApproval('approvals', 'approve', ambiguousRequest.id, '--json').status, 0);
+  const approvedAmbiguousExecution = runApproval('provider', 'supabase', 'exec', '--', 'status');
+  assert.strictEqual(approvedAmbiguousExecution.status, 0, approvedAmbiguousExecution.stderr || approvedAmbiguousExecution.stdout);
+
+  const providerInvocations = fs.readFileSync(approvalArgsFile, 'utf8').trim().split(/\r?\n/).map((line) => JSON.parse(line));
+  assert.deepStrictEqual(providerInvocations.map((entry) => entry.tool), ['supabase', 'supabase', 'gcloud', 'supabase', 'supabase']);
+  assert.deepStrictEqual(providerInvocations[0].args, ['db', 'push', '--project-ref', 'approval-ref']);
+  assert.deepStrictEqual(providerInvocations[1].args, ['migration', 'up', '--project-ref', 'approval-ref']);
+  assert.deepStrictEqual(providerInvocations[2].args, [
+    'run', 'deploy', 'approval-service', '--project', 'approval-gcloud-project', '--region', 'europe-west1'
+  ]);
+  assert.deepStrictEqual(providerInvocations[3].args, ['db', 'pull', '--project-ref', 'approval-ref']);
+  assert.deepStrictEqual(providerInvocations[4].args, ['status', '--project-ref', 'approval-ref']);
+
+  const invalidOperation = runApproval(
+    'approvals', 'request', '--provider', 'supabase', '--operation', 'destroy-everything', '--json'
+  );
+  assert.notStrictEqual(invalidOperation.status, 0);
+  assert.match(invalidOperation.stderr, /Unsupported approval operation/);
+
+  const ttlRequest = JSON.parse(runApproval(
+    'approvals', 'request', '--provider', 'gcloud', '--operation', 'run', '--json'
+  ).stdout);
+  const invalidTtl = runApproval('approvals', 'approve', ttlRequest.id, '--ttl-minutes', '61', '--json');
+  assert.notStrictEqual(invalidTtl.status, 0);
+  assert.match(invalidTtl.stderr, /integer between 1 and 60/);
+  assert.strictEqual(runApproval('approvals', 'deny', ttlRequest.id, '--json').status, 0);
+
+  const approvalFile = path.join(approvalHome, 'connections', 'approvals.json');
+  assert.strictEqual(fs.statSync(approvalFile).mode & 0o777, 0o600, 'Approval state must be owner-only');
+  const approvalStateText = fs.readFileSync(approvalFile, 'utf8');
+  assert.ok(!approvalStateText.includes(approvalSecret) && approvalStateText.includes('[REDACTED_SECRET]'), 'Approval reasons must redact token-shaped values');
+  const approvalAudit = fs.readFileSync(path.join(approvalHome, 'logs', 'project-audit.jsonl'), 'utf8');
+  for (const action of ['approval.request', 'approval.approve', 'approval.consume', 'approval.deny', 'approval.revoke']) {
+    assert.ok(approvalAudit.includes(action), `Approval audit must include ${action}`);
+  }
+  assert.ok(!approvalAudit.includes(approvalSecret), 'Approval audit must never contain request secrets');
+
+  const malformedApprovalState = '{ malformed approval state\n';
+  fs.writeFileSync(approvalFile, malformedApprovalState, 'utf8');
+  const malformedRequest = runApproval(
+    'approvals', 'request', '--provider', 'supabase', '--operation', 'db-push', '--json'
+  );
+  assert.notStrictEqual(malformedRequest.status, 0, 'Malformed approval state must fail closed');
+  assert.match(malformedRequest.stderr, /approval state.*malformed|invalid approval state/i);
+  assert.strictEqual(fs.readFileSync(approvalFile, 'utf8'), malformedApprovalState, 'Malformed approval state must be preserved for recovery');
+  console.log('✓ Production approval lifecycle is scoped, audited, expiring, and single-use.');
+
   // Cleanup temp folder
   try {
     fs.rmSync(`${tempDir}-linked`, { recursive: true, force: true });
     fs.rmSync(providerHome, { recursive: true, force: true });
     fs.rmSync(shimHome, { recursive: true, force: true });
+    fs.rmSync(approvalProject, { recursive: true, force: true });
+    fs.rmSync(approvalHome, { recursive: true, force: true });
     fs.rmSync(tempDir, { recursive: true, force: true });
   } catch {}
 
