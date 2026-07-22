@@ -501,6 +501,49 @@ cloud_deploy = true
   }
   assert.ok(!approvalAudit.includes(approvalSecret), 'Approval audit must never contain request secrets');
 
+  fs.appendFileSync(path.join(approvalHome, 'logs', 'project-audit.jsonl'), JSON.stringify({
+    timestamp: new Date().toISOString(),
+    project: 'foreign-project',
+    operation: 'foreign.event',
+    result: 'success'
+  }) + '\n');
+  const auditList = runApproval('audit', 'list', '--limit', '3', '--json');
+  assert.strictEqual(auditList.status, 0, auditList.stderr || auditList.stdout);
+  const auditPayload = JSON.parse(auditList.stdout);
+  assert.strictEqual(auditPayload.projectId, 'approval-project');
+  assert.strictEqual(auditPayload.events.length, 3);
+  assert.ok(auditPayload.events.every((event) => event.project === 'approval-project'));
+  assert.ok(!auditPayload.events.some((event) => event.operation === 'foreign.event'));
+  const invalidAuditLimit = runApproval('audit', 'list', '--limit', '0', '--json');
+  assert.notStrictEqual(invalidAuditLimit.status, 0);
+  assert.match(invalidAuditLimit.stderr, /limit must be an integer between 1 and 500/i);
+  const unknownAudit = runApproval('audit', 'unknown');
+  assert.notStrictEqual(unknownAudit.status, 0, 'Unknown audit subcommands must fail');
+
+  const wrongContextProject = runApproval('context', 'enter', 'foreign-project', 'production', '--json');
+  assert.notStrictEqual(wrongContextProject.status, 0);
+  assert.match(wrongContextProject.stderr, /does not match the current project/);
+  const unknownContextEnvironment = runApproval('context', 'enter', 'approval-project', 'missing', '--json');
+  assert.notStrictEqual(unknownContextEnvironment.status, 0);
+  assert.match(unknownContextEnvironment.stderr, /Environment missing is not configured/);
+  const switchedContext = runApproval('context', 'switch', 'approval-project', 'production', '--json');
+  assert.strictEqual(switchedContext.status, 0, switchedContext.stderr || switchedContext.stdout);
+  const switchedPayload = JSON.parse(switchedContext.stdout);
+  assert.strictEqual(switchedPayload.projectId, 'approval-project');
+  assert.strictEqual(switchedPayload.environment, 'production');
+  assert.strictEqual(switchedPayload.status, 'active');
+  const currentContext = runApproval('context', 'current', '--json');
+  assert.strictEqual(currentContext.status, 0, currentContext.stderr || currentContext.stdout);
+  assert.deepStrictEqual(JSON.parse(currentContext.stdout), switchedPayload);
+  assert.strictEqual(fs.statSync(path.join(approvalHome, 'connections', 'active-session.json')).mode & 0o777, 0o600);
+  const unknownContextCommand = runApproval('context', 'unknown');
+  assert.notStrictEqual(unknownContextCommand.status, 0, 'Unknown context subcommands must fail');
+  assert.match(unknownContextCommand.stderr, /Unknown or unsupported command: context unknown/);
+  const unknownProviderCommand = runApproval('provider', 'supabase', 'unknown');
+  assert.notStrictEqual(unknownProviderCommand.status, 0, 'Unknown provider subcommands must fail');
+  assert.match(unknownProviderCommand.stderr, /Unknown or unsupported command: provider supabase/);
+  console.log('✓ Project audit inspection and validated context switching pass.');
+
   const malformedApprovalState = '{ malformed approval state\n';
   fs.writeFileSync(approvalFile, malformedApprovalState, 'utf8');
   const malformedRequest = runApproval(

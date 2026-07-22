@@ -229,6 +229,16 @@ agent-kernel provider supabase exec -- db push
 
 Use `deny` for pending requests and `revoke` for approved requests. Supabase read-only commands such as `db pull`, `db dump`, `db lint`, and `migration list` do not consume production approval; unclassified commands are treated as sensitive.
 
+Inspect only the current project's provider audit trail and create a validated active context session:
+
+```bash
+agent-kernel audit list --limit 50
+agent-kernel context switch <project-id> production --json
+agent-kernel context current --json
+```
+
+Context switching rejects project IDs that do not match the current manifest and environments that are not declared. Unknown routed broker subcommands return a nonzero error instead of a successful help screen.
+
 ---
 
 ## Trusted CLI updates

@@ -36,6 +36,8 @@ Agent Kernel acts as a local-first governance kernel. When managing multiple pro
 | `agent-kernel project reconnect` | - | Repairs stale registries, missing adapters, or gitignore entries |
 | `agent-kernel project disconnect` | `agent-kernel disconnect` | Safely removes global registration & managed blocks |
 | `agent-kernel approvals request/list/approve/deny/revoke` | - | Controls one-time production provider authorization |
+| `agent-kernel audit list/tail` | - | Reads provider and approval audit events for the current project only |
+| `agent-kernel context enter/switch/current` | - | Creates and inspects a validated active project environment session |
 
 ---
 
@@ -99,6 +101,27 @@ agent-kernel project doctor [options]
 Options:
   --fix   Automatically repair missing footers, corrupted adapters, and stale registry entries
 ```
+
+---
+
+## Validated Context and Audit Inspection
+
+`context enter` and `context switch` write an owner-only active session only after verifying that the requested project ID matches the current project manifest and that the environment is declared in that manifest. The stored session includes the project ID, environment, risk, repository UUID, root, timestamp, and active status.
+
+```bash
+agent-kernel context enter my-project production
+agent-kernel context switch my-project staging --json
+agent-kernel context current --json
+```
+
+`audit list` and `audit tail` read `~/.agent-kernel/logs/project-audit.jsonl`, filter events to the current manifest project, and return at most 1-500 records. Malformed unrelated log lines are counted and skipped rather than returned as project evidence.
+
+```bash
+agent-kernel audit list --limit 50
+agent-kernel audit tail --limit 10 --json
+```
+
+Unknown or unsupported subcommands in routed broker families fail with a nonzero exit. Help exits successfully only when invoked without a command or with `help`, `-h`, or `--help`.
 
 ---
 

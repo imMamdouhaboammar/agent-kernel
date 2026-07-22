@@ -9,6 +9,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Added a project-scoped production provider approval lifecycle: `approvals request`, `list`, `approve`, `deny`, and `revoke`, with JSON output and bounded 1-60 minute TTLs.
 - Added one-time approval consumption for production Supabase database writes/migrations and GCloud operations.
+- Added project-scoped provider audit inspection through `audit list`/`audit tail` and validated `context enter`/`context switch` JSON workflows.
 
 ### Fixed
 
@@ -19,6 +20,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Kept the dashboard Retention section hidden for projects with no runtime state or raw session logs.
 - Classified Supabase database writes, migrations, and GCloud deployments explicitly; unknown Supabase commands now fail closed as sensitive operations instead of defaulting to read-only.
 - Required mapped capabilities and sensitive environment risk metadata to be explicitly configured instead of allowing missing values.
+- Made routed broker command families fail nonzero for unknown or unsupported subcommands instead of printing help with a false success.
+- Bound active context sessions to the current manifest project and declared environment before writing owner-only session state.
 
 ### Security
 

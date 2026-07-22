@@ -16,7 +16,7 @@ The npm executable is exposed through `bin/agent-kernel-router.mjs`. It delegate
 |---|---|---|
 | Core CLI | `src/cli.mjs` / `dist/cli.mjs` | Memory, proposals, compile/sync/link, episodes, guard, MCP, and status |
 | Focused helper commands | `bin/*.mjs` | Safe linking, runtime sessions, Failure Lessons, registries, retention and portability, static dashboard, trusted updates, Architecture Guardian, and hooks |
-| Project Context Broker | `bin/agent-kernel-project-broker.mjs` | Project connection lifecycle, manifest-bound provider routing, credential isolation, explicit capabilities, one-time production approvals, policy gates, and provider audit records |
+| Project Context Broker | `bin/agent-kernel-project-broker.mjs` | Project connection lifecycle, validated active context, project-scoped audit inspection, manifest-bound provider routing, credential isolation, explicit capabilities, one-time production approvals, and policy gates |
 | Dashboard modules | `bin/dashboard/*.mjs` | Dashboard safety primitives, adaptive local-state normalization, and static HTML rendering |
 | Architecture engine | `bin/architecture-guardian/*.mjs` | Dependency discovery, policy checks, contracts, baselines, exceptions, reuse search, and reporting |
 
@@ -109,7 +109,7 @@ A separate offline guidance helper reads config and cached update state after su
 | Retention and portability | `retention status/prune`, `session compact`, `export`, `import`, `view`, `report` | managed local JSON/JSONL state and explicit export files |
 | Static inspection | `dashboard` | read-only projections of known local stores and project architecture state |
 | Trusted updates | `update status/check/enable/disable/channel/trust/revoke/apply` | `config.json#updates`, update cache, and update audit |
-| Project connection and providers | `project connect/disconnect/reconnect/status/doctor`, `approvals request/list/approve/deny/revoke`, `provider supabase exec`, `provider gcloud exec` | project `.agent-kernel/project.toml`, global connection registry, scoped approval state, Keychain or isolated GCloud profile state, and provider audit log |
+| Project connection and providers | `project connect/disconnect/reconnect/status/doctor`, `context enter/switch/current`, `audit list/tail`, `approvals request/list/approve/deny/revoke`, `provider supabase exec`, `provider gcloud exec` | project `.agent-kernel/project.toml`, global connection registry, active session, scoped approval state, Keychain or isolated GCloud profile state, and provider audit log |
 | Architecture conformance | `architecture init/discover/baseline/diff/check/reuse/contract/exception/policy/doctor` | project `.agent-kernel/architecture/*` |
 | Agent output | `compile`, `sync`, `link` | generated agent files |
 | Enforcement | `guard`, enforcement and hook installers, Architecture Guardian hook | deny patterns, architecture policy, contracts, and hook configs |
@@ -176,7 +176,7 @@ Do not add production code there unless the work also wires it into `src/cli.mjs
 
 Dashboard tests use isolated Agent Kernel homes, fake browser executables, temporary projects, and synthetic stores. They cover routing, default and custom output, human and JSON opening, adaptive sections, malformed records, redaction, HTML injection, CSP, network-free output, safe and unsafe proposal IDs, browser failure, project isolation, symlink and non-regular targets, symbolic parents, source immutability, and audit records without opening a real browser or changing real memory.
 
-Updater tests use fake npm and CLI executables. Project Context Broker tests use temporary Git repositories and linked worktrees plus fake Supabase, GCloud, and Keychain executables to verify target enforcement, explicit capabilities, production approval state transitions, single-use consumption, malformed-state preservation, executable resolution, fail-closed process exits, and shim isolation without contacting external services. Portability tests use isolated homes and export/import fixtures. Architecture Guardian runs both focused smoke and data-driven scenarios.
+Updater tests use fake npm and CLI executables. Project Context Broker tests use temporary Git repositories and linked worktrees plus fake Supabase, GCloud, and Keychain executables to verify target enforcement, explicit capabilities, validated context switching, project-scoped audit reads, unknown-command failures, production approval state transitions, single-use consumption, malformed-state preservation, executable resolution, fail-closed process exits, and shim isolation without contacting external services. Portability tests use isolated homes and export/import fixtures. Architecture Guardian runs both focused smoke and data-driven scenarios.
 
 A new feature should add or update a focused test module and wire it through `test/smoke.mjs`.
 

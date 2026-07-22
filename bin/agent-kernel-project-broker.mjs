@@ -999,31 +999,70 @@ function runProjectsDiscover(scanPath = '.') {
   console.log('Detected signals:', signals.join(', ') || 'None');
 }
 
-function runContextEnter(projectId, environment) {
+function runContextEnter(projectId, environment, args = []) {
   if (!projectId || !environment) {
-    throw new Error('Usage: agent-kernel context enter <project-id> <environment>');
+    throw new Error('Usage: agent-kernel context enter <project-id> <environment> [--json]');
   }
   const ctx = resolveContext();
+  if (ctx.error) throw new Error(ctx.error);
+  if (projectId !== ctx.projectId) {
+    throw new Error(`Project ${projectId} does not match the current project ${ctx.projectId}.`);
+  }
+  const envConfig = ctx.manifest.environments?.[environment];
+  if (!envConfig) {
+    throw new Error(`Environment ${environment} is not configured in project manifest.`);
+  }
   const session = {
     projectId,
     environment,
+    risk: envConfig.risk || null,
+    repositoryUuid: ctx.repositoryUuid || null,
+    root: ctx.root,
     enteredAt: new Date().toISOString(),
     status: 'active'
   };
   writeJsonAtomic(activeSessionPath(), session);
+  auditLog({
+    session: projectId,
+    project: projectId,
+    provider: 'context',
+    operation: 'context.enter',
+    target: projectId,
+    environment,
+    result: 'success'
+  });
+  if (jsonRequested(args)) {
+    console.log(JSON.stringify(session, null, 2));
+    return session;
+  }
   console.log(`✓ Entered project context: ${projectId} [${environment}]`);
+  return session;
 }
 
-function runContextCurrent() {
+function runContextCurrent(args = []) {
   const file = activeSessionPath();
   if (!exists(file)) {
+    if (jsonRequested(args)) {
+      console.log(JSON.stringify({ status: 'inactive' }, null, 2));
+      return null;
+    }
     console.log('No active project context session found. Run context enter.');
-    return;
+    return null;
   }
-  const session = JSON.parse(fs.readFileSync(file, 'utf8'));
+  let session;
+  try {
+    session = JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    throw new Error(`Active context state is malformed: ${file}`);
+  }
+  if (jsonRequested(args)) {
+    console.log(JSON.stringify(session, null, 2));
+    return session;
+  }
   console.log(`Active Project: ${session.projectId}`);
   console.log(`Environment: ${session.environment}`);
   console.log(`Status: ${session.status}`);
+  return session;
 }
 
 // ==========================================
@@ -1811,7 +1850,7 @@ export function runDoctor() {
   }
 }
 
-function approvalFlagValue(args, flag) {
+function flagValue(args, flag) {
   for (let i = 0; i < args.length; i++) {
     if (args[i] === flag) return args[i + 1] ?? null;
     if (String(args[i]).startsWith(`${flag}=`)) return String(args[i]).slice(flag.length + 1);
@@ -1819,7 +1858,7 @@ function approvalFlagValue(args, flag) {
   return null;
 }
 
-function approvalJsonRequested(args) {
+function jsonRequested(args) {
   return args.some((arg) => arg === '--json' || String(arg).startsWith('--json='));
 }
 
@@ -1866,9 +1905,9 @@ function auditApproval(ctx, environment, record, operation) {
 
 function runApprovalsRequest(args) {
   const { ctx, environment } = approvalContext();
-  const provider = approvalFlagValue(args, '--provider');
-  const operation = approvalFlagValue(args, '--operation');
-  const reason = redact(approvalFlagValue(args, '--reason') || 'No reason provided');
+  const provider = flagValue(args, '--provider');
+  const operation = flagValue(args, '--operation');
+  const reason = redact(flagValue(args, '--reason') || 'No reason provided');
   if (!provider || !operation) {
     throw new Error('Usage: agent-kernel approvals request --provider <provider> --operation <operation> [--reason <text>] [--json]');
   }
@@ -1900,16 +1939,16 @@ function runApprovalsRequest(args) {
     return { ...created };
   });
   auditApproval(ctx, environment, record, 'approval.request');
-  printApproval(record, approvalJsonRequested(args));
+  printApproval(record, jsonRequested(args));
 }
 
 function scopedApprovalMutation(args, nextStatus) {
   const { ctx, environment } = approvalContext();
   const id = args[0];
   if (!id || id.startsWith('--')) throw new Error(`Approval ID is required for ${nextStatus}.`);
-  const reason = redact(approvalFlagValue(args, '--reason') || '');
+  const reason = redact(flagValue(args, '--reason') || '');
   const now = new Date();
-  const json = approvalJsonRequested(args);
+  const json = jsonRequested(args);
   const updated = mutateApprovals((list) => {
     const record = list.find((item) =>
       item.id === id && item.projectId === ctx.projectId && item.environment === environment
@@ -1917,7 +1956,7 @@ function scopedApprovalMutation(args, nextStatus) {
     if (!record) throw new Error(`Approval not found in current project scope: ${id}`);
     if (nextStatus === 'approved') {
       if (record.status !== 'pending') throw new Error(`Approval ${id} cannot be approved from status ${record.status}.`);
-      const ttlRaw = approvalFlagValue(args, '--ttl-minutes') || '15';
+      const ttlRaw = flagValue(args, '--ttl-minutes') || '15';
       const ttlMinutes = Number(ttlRaw);
       if (!Number.isInteger(ttlMinutes) || ttlMinutes < 1 || ttlMinutes > 60) {
         throw new Error('--ttl-minutes must be an integer between 1 and 60.');
@@ -1944,14 +1983,14 @@ function scopedApprovalMutation(args, nextStatus) {
 
 function runApprovalsList(args) {
   const { ctx, environment } = approvalContext();
-  const statusFilter = approvalFlagValue(args, '--status');
+  const statusFilter = flagValue(args, '--status');
   const now = new Date().toISOString();
   const approvals = getApprovals()
     .filter((item) => item.projectId === ctx.projectId && item.environment === environment)
     .map((item) => item.status === 'approved' && item.expiresAt <= now ? { ...item, status: 'expired' } : item)
     .filter((item) => !statusFilter || item.status === statusFilter)
     .sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)));
-  if (approvalJsonRequested(args)) {
+  if (jsonRequested(args)) {
     console.log(JSON.stringify({ projectId: ctx.projectId, environment, approvals }, null, 2));
     return;
   }
@@ -1969,6 +2008,52 @@ function runApprovals(subcommand, args) {
   if (subcommand === 'deny') return scopedApprovalMutation(args, 'denied');
   if (subcommand === 'revoke') return scopedApprovalMutation(args, 'revoked');
   throw new Error('Usage: agent-kernel approvals <request|list|approve|deny|revoke>');
+}
+
+function runAudit(subcommand, args) {
+  if (!['list', 'tail'].includes(subcommand)) {
+    throw new Error('Usage: agent-kernel audit <list|tail> [--limit <1-500>] [--json]');
+  }
+  const ctx = resolveContext();
+  if (ctx.error) throw new Error(ctx.error);
+  const limitRaw = flagValue(args, '--limit') || '50';
+  const limit = Number(limitRaw);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 500) {
+    throw new Error('--limit must be an integer between 1 and 500.');
+  }
+  const file = auditPath();
+  let skippedMalformed = 0;
+  const events = [];
+  if (exists(file)) {
+    for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
+      if (!line.trim()) continue;
+      try {
+        const event = JSON.parse(line);
+        if (event?.project === ctx.projectId) events.push(event);
+      } catch {
+        skippedMalformed++;
+      }
+    }
+  }
+  const selected = events.slice(-limit);
+  const payload = {
+    projectId: ctx.projectId,
+    events: selected,
+    skippedMalformed
+  };
+  if (jsonRequested(args)) {
+    console.log(JSON.stringify(payload, null, 2));
+    return payload;
+  }
+  if (!selected.length) {
+    console.log(`No audit events found for project ${ctx.projectId}.`);
+    return payload;
+  }
+  for (const event of selected) {
+    console.log(`${event.timestamp || '-'} ${event.operation || '-'} ${event.result || '-'} ${event.target || '-'}`);
+  }
+  if (skippedMalformed) console.log(`Skipped malformed audit records: ${skippedMalformed}`);
+  return payload;
 }
 
 function runGatesExplain() {
@@ -2018,8 +2103,8 @@ export function main() {
       }
     }
     if (command === 'context') {
-      if (subcommand === 'enter') return runContextEnter(rest[0], rest[1]);
-      if (subcommand === 'current') return runContextCurrent();
+      if (subcommand === 'enter' || subcommand === 'switch') return runContextEnter(rest[0], rest[1], rest.slice(2));
+      if (subcommand === 'current') return runContextCurrent(rest);
       if (subcommand === 'verify') return runVerify();
       if (subcommand === 'doctor') {
         console.log('✓ Keychain access working.');
@@ -2056,8 +2141,15 @@ export function main() {
     if (command === 'approvals') {
       return runApprovals(subcommand, rest);
     }
+    if (command === 'audit') {
+      return runAudit(subcommand, rest);
+    }
 
     // Default help / usage
+    if (command && !['help', '--help', '-h'].includes(command)) {
+      const attempted = [command, subcommand].filter(Boolean).join(' ');
+      throw new Error(`Unknown or unsupported command: ${attempted}`);
+    }
     console.log(`Agent Kernel Project Context Broker ${VERSION}`);
     console.log('\nUsage:');
     console.log('  agent-kernel project connect [--path <path>] [--agents <list>|all] [--no-agent-files] [--no-scripts] [--yes] [--json] [--quiet] [--dry-run]');
@@ -2069,6 +2161,10 @@ export function main() {
     console.log('  agent-kernel project register');
     console.log('  agent-kernel project inspect');
     console.log('  agent-kernel project verify');
+    console.log('  agent-kernel context enter <project-id> <environment> [--json]');
+    console.log('  agent-kernel context switch <project-id> <environment> [--json]');
+    console.log('  agent-kernel context current [--json]');
+    console.log('  agent-kernel audit list [--limit <1-500>] [--json]');
     console.log('  agent-kernel auth add <provider> --profile <name>');
     console.log('  agent-kernel auth list');
     console.log('  agent-kernel approvals request --provider <provider> --operation <operation> [--reason <text>] [--json]');
