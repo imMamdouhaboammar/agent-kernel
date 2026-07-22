@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { prependPathEntry } from './agent-kernel-env.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const wrapperPath = path.join(here, 'agent-kernel.mjs');
@@ -141,7 +142,7 @@ const target = command === 'dashboard'
 const shimsDir = path.join(os.homedir(), '.agent-kernel', 'runtime', 'shims');
 const customEnv = { ...process.env };
 if (fs.existsSync(shimsDir)) {
-  customEnv.PATH = `${shimsDir}:${process.env.PATH || ''}`;
+  customEnv.PATH = prependPathEntry(shimsDir, process.env.PATH || '');
 }
 
 const targetArgs = command === 'architecture' || command === 'update' || command === 'dashboard' ? args.slice(1) : args;
