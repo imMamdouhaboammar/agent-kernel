@@ -3,6 +3,7 @@ import childProcess from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   parseToml,
   stringifyToml,
@@ -17,6 +18,8 @@ import {
   keychainGet,
   keychainDelete
 } from '../bin/agent-kernel-project-broker.mjs';
+
+const brokerPath = fileURLToPath(new URL('../bin/agent-kernel-project-broker.mjs', import.meta.url));
 
 export const name = 'project-context-broker';
 
@@ -154,7 +157,11 @@ export async function run() {
   // 6. Provider adapters must remove caller overrides and preserve audit integrity.
   const providerHome = path.join(os.tmpdir(), `ak-provider-home-${Date.now()}`);
   const fakeBin = path.join(providerHome, 'bin');
+  const decoyBin = path.join(providerHome, 'non-executable-bin');
   fs.mkdirSync(fakeBin, { recursive: true });
+  fs.mkdirSync(decoyBin, { recursive: true });
+  fs.writeFileSync(path.join(decoyBin, 'supabase'), 'not executable', { mode: 0o644 });
+  fs.writeFileSync(path.join(decoyBin, 'gcloud'), 'not executable', { mode: 0o644 });
   const writeExecutable = (name, body) => {
     const file = path.join(fakeBin, name);
     fs.writeFileSync(file, `#!/usr/bin/env node\n${body}\n`, 'utf8');
@@ -175,7 +182,7 @@ export async function run() {
   const previousPath = process.env.PATH;
   const previousArgsFile = process.env.AK_TEST_ARGS_FILE;
   process.env.AGENT_KERNEL_HOME = providerHome;
-  process.env.PATH = `${fakeBin}${path.delimiter}${previousPath || ''}`;
+  process.env.PATH = `${decoyBin}${path.delimiter}${fakeBin}${path.delimiter}${previousPath || ''}`;
   try {
     const providerContext = resolveContext(linkedWorktree);
     const supabaseArgsFile = path.join(providerHome, 'supabase-args.json');
@@ -221,19 +228,49 @@ export async function run() {
     if (previousArgsFile === undefined) delete process.env.AK_TEST_ARGS_FILE;
     else process.env.AK_TEST_ARGS_FILE = previousArgsFile;
   }
-  console.log('✓ Provider argument isolation and audit hardening pass.');
+  console.log('✓ Provider argument isolation, executable resolution, and audit hardening pass.');
 
-  // 7. Command Shims Installation
-  installCommandShims();
-  const shimsPath = path.join(os.homedir(), '.agent-kernel', 'runtime', 'shims');
-  assert.ok(fs.existsSync(path.join(shimsPath, 'supabase')));
+  // 7. Missing child commands must never report success.
+  const emptyBin = path.join(providerHome, 'empty-bin');
+  fs.mkdirSync(emptyBin, { recursive: true });
+  const missingEnvCommand = childProcess.spawnSync(process.execPath, [
+    brokerPath, 'env', 'exec', '--', 'agent-kernel-command-that-does-not-exist'
+  ], {
+    cwd: linkedWorktree,
+    env: { ...process.env, AGENT_KERNEL_HOME: providerHome, PATH: emptyBin },
+    encoding: 'utf8'
+  });
+  assert.notStrictEqual(missingEnvCommand.status, 0, 'env exec must fail when the requested executable is missing');
+  assert.match(missingEnvCommand.stderr, /Unable to execute|ENOENT|not found/i);
+  console.log('✓ Missing env exec commands fail closed.');
+
+  // 8. Command shims must be isolated and fail closed when the real CLI is unavailable.
+  const shimHome = path.join(os.tmpdir(), `ak-shim-home-${Date.now()}`);
+  const beforeShimHome = process.env.AGENT_KERNEL_HOME;
+  process.env.AGENT_KERNEL_HOME = shimHome;
+  try {
+    installCommandShims();
+  } finally {
+    if (beforeShimHome === undefined) delete process.env.AGENT_KERNEL_HOME;
+    else process.env.AGENT_KERNEL_HOME = beforeShimHome;
+  }
+  const shimsPath = path.join(shimHome, 'runtime', 'shims');
+  const supabaseShim = path.join(shimsPath, 'supabase');
+  assert.ok(fs.existsSync(supabaseShim));
   assert.ok(fs.existsSync(path.join(shimsPath, 'gcloud')));
-  console.log('✓ Command shims installation passes.');
+  const missingShimTarget = childProcess.spawnSync(process.execPath, [supabaseShim, '--version'], {
+    env: { ...process.env, AGENT_KERNEL_BYPASS_SHIMS: '1', PATH: emptyBin },
+    encoding: 'utf8'
+  });
+  assert.notStrictEqual(missingShimTarget.status, 0, 'shim bypass must fail when the real provider CLI is missing');
+  assert.match(missingShimTarget.stderr, /Unable to execute|ENOENT|not found/i);
+  console.log('✓ Command shims install in isolation and fail closed.');
 
   // Cleanup temp folder
   try {
     fs.rmSync(`${tempDir}-linked`, { recursive: true, force: true });
     fs.rmSync(providerHome, { recursive: true, force: true });
+    fs.rmSync(shimHome, { recursive: true, force: true });
     fs.rmSync(tempDir, { recursive: true, force: true });
   } catch {}
 

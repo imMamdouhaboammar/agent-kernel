@@ -8,6 +8,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 
 - Enforced manifest-bound Supabase and GCloud targets even when callers pass conflicting split-form or `--flag=value` overrides.
+- Made provider shims and `env exec` fail closed when a child executable cannot start, instead of returning a false success.
+- Made provider executable discovery use platform-aware PATH separators, skip non-executable decoys, and removed the external `sleep` dependency from lock retries.
 - Removed the provider command separator before invoking the underlying CLI and restored linked-worktree branch drift enforcement.
 - Kept the dashboard Retention section hidden for projects with no runtime state or raw session logs.
 

@@ -125,6 +125,8 @@ Sanitized provider audit events use the same lock discipline and are written wit
 
 Provider execution strips the documented `--` separator before invoking the real CLI. Supabase always receives the manifest-bound `project_ref`. GCloud removes caller overrides for project, region, configuration, account, impersonation, and billing project, then applies the connected profile and manifest-bound target.
 
+Provider executable discovery uses the operating system PATH delimiter, ignores non-executable path entries, and reports a nonzero exit when the underlying CLI cannot start. Generated command shims follow the same fail-closed behavior. Lock retries use an in-process synchronous wait rather than relying on an external `sleep` command.
+
 ### 4. Secret & Credential Boundary Preservation
 Sensitive project files (`.env`, `service-account.json`, `id_rsa`, `*.pem`, `supabase/config.toml`, `.gcp/credentials.json`) are scanned by path classification only. Secret values are **never printed, logged, or recorded** in global registries.
 

@@ -205,7 +205,7 @@ function acquireLock(lockPath, timeoutMs = 5000) {
           continue;
         }
       } catch {}
-      childProcess.spawnSync('sleep', ['0.1']);
+      sleepSync(100);
     }
   }
 }
@@ -217,6 +217,29 @@ function processExists(pid) {
   } catch {
     return false;
   }
+}
+
+function sleepSync(milliseconds) {
+  const waitBuffer = new Int32Array(new SharedArrayBuffer(4));
+  Atomics.wait(waitBuffer, 0, 0, milliseconds);
+}
+
+function isExecutableFile(filePath) {
+  try {
+    const stat = fs.statSync(filePath);
+    if (!stat.isFile()) return false;
+    if (process.platform !== 'win32') fs.accessSync(filePath, fs.constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function childExitCode(result, executable) {
+  if (Number.isInteger(result?.status)) return result.status;
+  const reason = result?.error?.message || (result?.signal ? `terminated by ${result.signal}` : 'unknown process failure');
+  console.error(`Unable to execute ${executable}: ${reason}`);
+  return 1;
 }
 
 // ==========================================
@@ -530,6 +553,7 @@ export function execSupabase(ctx, args) {
     stdio: 'inherit'
   });
 
+  const exitCode = childExitCode(result, realExe);
   auditLog({
     session: ctx.projectId,
     project: ctx.projectId,
@@ -537,12 +561,10 @@ export function execSupabase(ctx, args) {
     operation: auditOperation,
     target: projectRef,
     environment: ctx.manifest?.default_environment || 'development',
-    result: result.status === 0 ? 'success' : 'failure'
+    result: exitCode === 0 ? 'success' : 'failure'
   });
 
-  if (result.status !== 0) {
-    process.exit(result.status ?? 1);
-  }
+  if (exitCode !== 0) process.exit(exitCode);
 }
 
 export function execGcloud(ctx, args) {
@@ -597,6 +619,7 @@ export function execGcloud(ctx, args) {
     stdio: 'inherit'
   });
 
+  const exitCode = childExitCode(result, realExe);
   auditLog({
     session: ctx.projectId,
     project: ctx.projectId,
@@ -604,20 +627,18 @@ export function execGcloud(ctx, args) {
     operation: auditOperation,
     target: projectID,
     environment: ctx.manifest?.default_environment || 'development',
-    result: result.status === 0 ? 'success' : 'failure'
+    result: exitCode === 0 ? 'success' : 'failure'
   });
 
-  if (result.status !== 0) {
-    process.exit(result.status ?? 1);
-  }
+  if (exitCode !== 0) process.exit(exitCode);
 }
 
 function resolveRealExecutable(name) {
   const systemPath = process.env.PATH || '';
-  const paths = systemPath.split(':').filter((p) => !p.includes('.agent-kernel/runtime/shims'));
+  const paths = systemPath.split(path.delimiter).filter((entry) => entry && !entry.includes('.agent-kernel/runtime/shims'));
   for (const dir of paths) {
     const full = path.join(dir, name);
-    if (exists(full)) return full;
+    if (isExecutableFile(full)) return full;
   }
   return name;
 }
@@ -635,23 +656,44 @@ export function installCommandShims() {
     const shimFile = path.join(shimsDir, tool);
     const content = `#!/usr/bin/env node
 import childProcess from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+
+function isExecutableFile(filePath) {
+  try {
+    const stat = fs.statSync(filePath);
+    if (!stat.isFile()) return false;
+    if (process.platform !== 'win32') fs.accessSync(filePath, fs.constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function exitCode(result, executable) {
+  if (Number.isInteger(result?.status)) return result.status;
+  const reason = result?.error?.message || (result?.signal ? \`terminated by \${result.signal}\` : 'unknown process failure');
+  console.error(\`Unable to execute \${executable}: \${reason}\`);
+  return 1;
+}
+
 if (process.env.AGENT_KERNEL_BYPASS_SHIMS === '1') {
   const systemPath = process.env.PATH || '';
-  const paths = systemPath.split(':').filter((p) => !p.includes('.agent-kernel/runtime/shims'));
+  const paths = systemPath.split(path.delimiter).filter((entry) => entry && !entry.includes('.agent-kernel/runtime/shims'));
   let realExe = '${tool}';
   for (const dir of paths) {
-    const full = dir + '/' + '${tool}';
-    try {
-      childProcess.execFileSync('test', ['-x', full]);
+    const full = path.join(dir, '${tool}');
+    if (isExecutableFile(full)) {
       realExe = full;
       break;
-    } catch {}
+    }
   }
   const result = childProcess.spawnSync(realExe, process.argv.slice(2), { stdio: 'inherit', env: process.env });
-  process.exit(result.status ?? 0);
+  process.exit(exitCode(result, realExe));
 } else {
-  const result = childProcess.spawnSync('agent-kernel', ['provider', '${tool}', 'exec', '--', ...process.argv.slice(2)], { stdio: 'inherit', env: process.env });
-  process.exit(result.status ?? 0);
+  const executable = 'agent-kernel';
+  const result = childProcess.spawnSync(executable, ['provider', '${tool}', 'exec', '--', ...process.argv.slice(2)], { stdio: 'inherit', env: process.env });
+  process.exit(exitCode(result, executable));
 }
 `;
     fs.writeFileSync(shimFile, content, { mode: 0o755 });
@@ -842,6 +884,7 @@ function runEnvExec(args) {
   }
 
   const ctx = resolveContext();
+  if (ctx.error) throw new Error(ctx.error);
   const env = { ...process.env };
 
   if (ctx.manifest?.providers?.supabase?.project_ref) {
@@ -851,11 +894,11 @@ function runEnvExec(args) {
   const cmd = commandArgs[0];
   const rest = commandArgs.slice(1);
   const child = childProcess.spawnSync(cmd, rest, {
-    cwd: ctx.root || process.cwd(),
+    cwd: ctx.root,
     env,
     stdio: 'inherit'
   });
-  process.exit(child.status ?? 0);
+  process.exit(childExitCode(child, cmd));
 }
 
 function runProjectsDiscover(scanPath = '.') {

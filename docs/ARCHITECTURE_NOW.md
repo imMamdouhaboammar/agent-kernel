@@ -175,7 +175,7 @@ Do not add production code there unless the work also wires it into `src/cli.mjs
 
 Dashboard tests use isolated Agent Kernel homes, fake browser executables, temporary projects, and synthetic stores. They cover routing, default and custom output, human and JSON opening, adaptive sections, malformed records, redaction, HTML injection, CSP, network-free output, safe and unsafe proposal IDs, browser failure, project isolation, symlink and non-regular targets, symbolic parents, source immutability, and audit records without opening a real browser or changing real memory.
 
-Updater tests use fake npm and CLI executables. Project Context Broker tests use temporary Git repositories and linked worktrees plus fake Supabase, GCloud, and Keychain executables to verify target enforcement without contacting external services. Portability tests use isolated homes and export/import fixtures. Architecture Guardian runs both focused smoke and data-driven scenarios.
+Updater tests use fake npm and CLI executables. Project Context Broker tests use temporary Git repositories and linked worktrees plus fake Supabase, GCloud, and Keychain executables to verify target enforcement, executable resolution, fail-closed process exits, and shim isolation without contacting external services. Portability tests use isolated homes and export/import fixtures. Architecture Guardian runs both focused smoke and data-driven scenarios.
 
 A new feature should add or update a focused test module and wire it through `test/smoke.mjs`.
 
