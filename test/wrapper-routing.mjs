@@ -4,6 +4,7 @@
 //   1. `agent-kernel link` routes to safe-link behavior.
 //   2. `agent-kernel git-hook install` routes to safe git-hook behavior.
 //   3. Non-routed commands delegate to the main dist CLI.
+//   4. Runtime shim PATH composition uses the platform-native delimiter.
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -11,6 +12,7 @@ import { join } from 'node:path';
 import { assertContains, makeEnv, repo, runCli } from './_lib/helpers.mjs';
 
 const wrapper = join(repo.root, 'bin', 'agent-kernel.mjs');
+const router = join(repo.root, 'bin', 'agent-kernel-router.mjs');
 
 function runWrapper(env, cwd, ...args) {
   return execFileSync(process.execPath, [wrapper, ...args], {
@@ -24,6 +26,9 @@ function runWrapper(env, cwd, ...args) {
 export async function run() {
   const { env, homeDir } = makeEnv();
   runCli(env, 'init', '--sync');
+
+  const routerSource = readFileSync(router, 'utf8');
+  assertContains(routerSource, 'path.delimiter', 'router should compose PATH with the platform-native delimiter');
 
   const versionOut = runWrapper(env, repo.root, '--version');
   const cliVersion = runCli(env, '--version').trim();
