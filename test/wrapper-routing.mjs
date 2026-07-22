@@ -4,15 +4,16 @@
 //   1. `agent-kernel link` routes to safe-link behavior.
 //   2. `agent-kernel git-hook install` routes to safe git-hook behavior.
 //   3. Non-routed commands delegate to the main dist CLI.
-//   4. Runtime shim PATH composition uses the platform-native delimiter.
+//   4. Runtime shim PATH composition uses the requested delimiter.
 
+import assert from 'node:assert';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { prependPathEntry } from '../bin/agent-kernel-env.mjs';
 import { assertContains, makeEnv, repo, runCli } from './_lib/helpers.mjs';
 
 const wrapper = join(repo.root, 'bin', 'agent-kernel.mjs');
-const router = join(repo.root, 'bin', 'agent-kernel-router.mjs');
 
 function runWrapper(env, cwd, ...args) {
   return execFileSync(process.execPath, [wrapper, ...args], {
@@ -27,8 +28,21 @@ export async function run() {
   const { env, homeDir } = makeEnv();
   runCli(env, 'init', '--sync');
 
-  const routerSource = readFileSync(router, 'utf8');
-  assertContains(routerSource, 'path.delimiter', 'router should compose PATH with the platform-native delimiter');
+  assert.strictEqual(
+    prependPathEntry('C:\\agent-kernel\\shims', 'C:\\Windows\\System32', ';'),
+    'C:\\agent-kernel\\shims;C:\\Windows\\System32',
+    'router PATH helper should use the Windows delimiter when requested'
+  );
+  assert.strictEqual(
+    prependPathEntry('/opt/agent-kernel/shims', '/usr/bin:/bin', ':'),
+    '/opt/agent-kernel/shims:/usr/bin:/bin',
+    'router PATH helper should use the POSIX delimiter when requested'
+  );
+  assert.strictEqual(
+    prependPathEntry('/opt/agent-kernel/shims', '', ':'),
+    '/opt/agent-kernel/shims',
+    'router PATH helper should not add a trailing delimiter to an empty PATH'
+  );
 
   const versionOut = runWrapper(env, repo.root, '--version');
   const cliVersion = runCli(env, '--version').trim();
