@@ -141,7 +141,7 @@ const target = command === 'dashboard'
 const shimsDir = path.join(os.homedir(), '.agent-kernel', 'runtime', 'shims');
 const customEnv = { ...process.env };
 if (fs.existsSync(shimsDir)) {
-  customEnv.PATH = `${shimsDir}:${process.env.PATH || ''}`;
+  customEnv.PATH = `${shimsDir}${path.delimiter}${process.env.PATH || ''}`;
 }
 
 const targetArgs = command === 'architecture' || command === 'update' || command === 'dashboard' ? args.slice(1) : args;
