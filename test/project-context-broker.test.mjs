@@ -1,4 +1,5 @@
 import assert from 'node:assert';
+import childProcess from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -9,6 +10,8 @@ import {
   loadProjectManifest,
   resolveContext,
   evaluateGates,
+  execSupabase,
+  execGcloud,
   installCommandShims,
   keychainAdd,
   keychainGet,
@@ -67,11 +70,13 @@ export async function run() {
   [providers.gcloud]
   profile = "test-gcloud-profile"
   project_id = "gcloud-test"
+  region = "us-central1"
 
   [capabilities]
   database_read = true
   database_write = true
   migration_apply = true
+  cloud_deploy = true
   `;
   fs.writeFileSync(path.join(tempDir, '.agent-kernel', 'project.toml'), testManifest, 'utf8');
 
@@ -125,7 +130,100 @@ export async function run() {
 
   console.log('✓ Policy gates engine and validation pass.');
 
-  // 5. Command Shims Installation
+  // 5. Linked Git worktrees must enforce branch drift gates.
+  const gitRun = (cwd, ...args) => childProcess.execFileSync('git', args, {
+    cwd,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe']
+  }).trim();
+  gitRun(tempDir, 'init');
+  gitRun(tempDir, 'config', 'user.name', 'Agent Kernel Test');
+  gitRun(tempDir, 'config', 'user.email', 'agent-kernel-test@example.invalid');
+  gitRun(tempDir, 'add', '.');
+  gitRun(tempDir, 'commit', '-m', 'test: initialize broker fixture');
+  const linkedWorktree = `${tempDir}-linked`;
+  gitRun(tempDir, 'worktree', 'add', '-b', 'broker-linked', linkedWorktree, 'HEAD');
+  assert.ok(fs.statSync(path.join(linkedWorktree, '.git')).isFile(), 'Linked worktree .git marker must be a file');
+  const staleWorktreeContext = resolveContext(linkedWorktree);
+  gitRun(linkedWorktree, 'checkout', '-b', 'broker-drifted');
+  assert.throws(() => {
+    evaluateGates(staleWorktreeContext, 'supabase', 'db-pull');
+  }, /Git branch has drifted/);
+  console.log('✓ Linked worktree branch drift enforcement passes.');
+
+  // 6. Provider adapters must remove caller overrides and preserve audit integrity.
+  const providerHome = path.join(os.tmpdir(), `ak-provider-home-${Date.now()}`);
+  const fakeBin = path.join(providerHome, 'bin');
+  fs.mkdirSync(fakeBin, { recursive: true });
+  const writeExecutable = (name, body) => {
+    const file = path.join(fakeBin, name);
+    fs.writeFileSync(file, `#!/usr/bin/env node\n${body}\n`, 'utf8');
+    fs.chmodSync(file, 0o755);
+  };
+  writeExecutable('security', "if (process.argv.includes('find-generic-password')) process.stdout.write('test-token');");
+  writeExecutable('supabase', "import fs from 'node:fs'; fs.writeFileSync(process.env.AK_TEST_ARGS_FILE, JSON.stringify(process.argv.slice(2))); ");
+  writeExecutable('gcloud', "import fs from 'node:fs'; fs.writeFileSync(process.env.AK_TEST_ARGS_FILE, JSON.stringify(process.argv.slice(2))); ");
+
+  const auditFile = path.join(providerHome, 'logs', 'project-audit.jsonl');
+  fs.mkdirSync(path.dirname(auditFile), { recursive: true });
+  fs.writeFileSync(auditFile, '', { mode: 0o644 });
+  fs.chmodSync(auditFile, 0o644);
+  fs.mkdirSync(`${auditFile}.lock`, { recursive: true });
+  fs.writeFileSync(path.join(`${auditFile}.lock`, 'pid'), '99999999', 'utf8');
+
+  const previousKernelHome = process.env.AGENT_KERNEL_HOME;
+  const previousPath = process.env.PATH;
+  const previousArgsFile = process.env.AK_TEST_ARGS_FILE;
+  process.env.AGENT_KERNEL_HOME = providerHome;
+  process.env.PATH = `${fakeBin}${path.delimiter}${previousPath || ''}`;
+  try {
+    const providerContext = resolveContext(linkedWorktree);
+    const supabaseArgsFile = path.join(providerHome, 'supabase-args.json');
+    process.env.AK_TEST_ARGS_FILE = supabaseArgsFile;
+    const fakeSecret = 'ghp_' + 'providerfixture1234567890123456';
+    execSupabase(providerContext, [
+      '--', 'db', 'pull', '--project-ref', 'wrong-ref', '--project-ref=wrong-ref-2',
+      '--debug-token', fakeSecret
+    ]);
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(supabaseArgsFile, 'utf8')), [
+      'db', 'pull', '--debug-token', fakeSecret, '--project-ref', 'testref'
+    ]);
+
+    const gcloudArgsFile = path.join(providerHome, 'gcloud-args.json');
+    process.env.AK_TEST_ARGS_FILE = gcloudArgsFile;
+    execGcloud(providerContext, [
+      '--', 'run', 'deploy', 'service-name',
+      '--project', 'wrong-project', '--project=wrong-project-2',
+      '--region', 'wrong-region', '--region=wrong-region-2',
+      '--configuration', 'wrong-config', '--configuration=wrong-config-2',
+      '--account', 'wrong@example.com', '--account=wrong-2@example.com',
+      '--impersonate-service-account', 'wrong-service@example.com',
+      '--billing-project=wrong-billing'
+    ]);
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(gcloudArgsFile, 'utf8')), [
+      'run', 'deploy', 'service-name',
+      '--project', 'gcloud-test', '--region', 'us-central1'
+    ]);
+
+    const auditText = fs.readFileSync(auditFile, 'utf8');
+    const auditEntries = auditText.trim().split('\n').map((line) => JSON.parse(line));
+    assert.strictEqual(auditEntries.length, 4, 'Each provider execution must record pending and final audit entries');
+    assert.ok(!auditText.includes('wrong-ref') && !auditText.includes('wrong-project') && !auditText.includes('wrong-region'), 'Audit log must omit rejected provider overrides');
+    assert.ok(!auditText.includes('wrong-config') && !auditText.includes('wrong@example.com') && !auditText.includes('wrong-service') && !auditText.includes('wrong-billing'), 'Audit log must omit rejected GCloud identity overrides');
+    assert.ok(!auditText.includes(fakeSecret) && auditText.includes('[REDACTED_SECRET]'), 'Audit log must redact token-shaped values');
+    assert.strictEqual(fs.statSync(auditFile).mode & 0o777, 0o600, 'Provider audit log must be owner-only');
+    assert.ok(!fs.existsSync(`${auditFile}.lock`), 'Stale audit lock must be recovered and released');
+  } finally {
+    if (previousKernelHome === undefined) delete process.env.AGENT_KERNEL_HOME;
+    else process.env.AGENT_KERNEL_HOME = previousKernelHome;
+    if (previousPath === undefined) delete process.env.PATH;
+    else process.env.PATH = previousPath;
+    if (previousArgsFile === undefined) delete process.env.AK_TEST_ARGS_FILE;
+    else process.env.AK_TEST_ARGS_FILE = previousArgsFile;
+  }
+  console.log('✓ Provider argument isolation and audit hardening pass.');
+
+  // 7. Command Shims Installation
   installCommandShims();
   const shimsPath = path.join(os.homedir(), '.agent-kernel', 'runtime', 'shims');
   assert.ok(fs.existsSync(path.join(shimsPath, 'supabase')));
@@ -134,6 +232,8 @@ export async function run() {
 
   // Cleanup temp folder
   try {
+    fs.rmSync(`${tempDir}-linked`, { recursive: true, force: true });
+    fs.rmSync(providerHome, { recursive: true, force: true });
     fs.rmSync(tempDir, { recursive: true, force: true });
   } catch {}
 

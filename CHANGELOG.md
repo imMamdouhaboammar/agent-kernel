@@ -3,6 +3,19 @@
 All notable changes to this project are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Fixed
+
+- Enforced manifest-bound Supabase and GCloud targets even when callers pass conflicting split-form or `--flag=value` overrides.
+- Removed the provider command separator before invoking the underlying CLI and restored linked-worktree branch drift enforcement.
+- Kept the dashboard Retention section hidden for projects with no runtime state or raw session logs.
+
+### Security
+
+- Serialized provider audit appends with stale-lock recovery, enforced owner-only audit permissions, and redacted recognized secret values before persistence.
+- Blocked GCloud caller overrides for configuration, account, service-account impersonation, billing project, project, and region.
+
 ## [1.13.0] - 2026-07-21
 
 This release ships the **Agent Kernel Project Connection Command Suite** (`connect`, `disconnect`, `reconnect`, `status`, `doctor`) with native Bun first-class support.

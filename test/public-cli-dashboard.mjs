@@ -167,9 +167,13 @@ export async function run() {
 
   const minimal = makeEnv();
   runCli(minimal.env, 'init', '--sync');
-  const minimalResult = JSON.parse(runPublic(minimal.env, 'dashboard', '--no-open', '--json'));
+  const minimalProject = path.join(minimal.homeDir, 'empty-dashboard-project');
+  fs.mkdirSync(minimalProject, { recursive: true });
+  const minimalResult = JSON.parse(runPublic(minimal.env, 'dashboard', '--project', minimalProject, '--no-open', '--json'));
   const minimalHtml = fs.readFileSync(minimalResult.path, 'utf8');
-  if (minimalHtml.includes('Rejected proposals') || minimalHtml.includes('Architecture Guardian')) throw new Error('dashboard rendered empty adaptive sections');
+  for (const hidden of ['Rejected proposals', 'Architecture Guardian', 'Retention']) {
+    if (minimalHtml.includes(hidden)) throw new Error(`dashboard rendered empty adaptive section: ${hidden}`);
+  }
 
   assertUnchanged(before);
   const auditLines = fs.readFileSync(fixture.auditPath, 'utf8').split(/\r?\n/).filter(Boolean);

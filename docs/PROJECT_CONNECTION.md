@@ -121,6 +121,10 @@ Running `connect` repeatedly will never duplicate blocks or corrupt user-written
 ### 3. Process-Safe Atomic Registry Writes
 The global registry at `~/.agent-kernel/connections/registry.toml` is protected by mutex file-locking (`registry.toml.lock`) and atomic writes to prevent race conditions during concurrent execution.
 
+Sanitized provider audit events use the same lock discipline and are written with owner-only permissions. Recognized secret values are redacted before persistence. Repository drift checks also work from Git worktrees, where `.git` is a file rather than a directory.
+
+Provider execution strips the documented `--` separator before invoking the real CLI. Supabase always receives the manifest-bound `project_ref`. GCloud removes caller overrides for project, region, configuration, account, impersonation, and billing project, then applies the connected profile and manifest-bound target.
+
 ### 4. Secret & Credential Boundary Preservation
 Sensitive project files (`.env`, `service-account.json`, `id_rsa`, `*.pem`, `supabase/config.toml`, `.gcp/credentials.json`) are scanned by path classification only. Secret values are **never printed, logged, or recorded** in global registries.
 

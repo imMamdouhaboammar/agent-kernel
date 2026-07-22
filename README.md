@@ -209,6 +209,15 @@ agent-kernel project reconnect
 agent-kernel project disconnect [--keep-manifest|--remove-manifest]
 ```
 
+Run provider CLIs through the connected project context when account and target isolation matters:
+
+```bash
+agent-kernel provider supabase exec -- db pull
+agent-kernel provider gcloud exec -- run deploy my-service
+```
+
+The broker removes caller-supplied identity and target overrides, then applies the Supabase project reference and GCloud profile, project, and region declared by the project manifest. Provider audit records are lock-protected, owner-readable only, and redact recognized secret values.
+
 ---
 
 ## Trusted CLI updates

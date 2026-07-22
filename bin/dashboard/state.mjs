@@ -176,7 +176,7 @@ function updaterRecords(state) {
   }];
 }
 
-function retentionRecords() {
+function retentionRecords(hasRuntimeState = false) {
   const sessions = dashboardPaths().sessions;
   let rawLogs = 0;
   let rawBytes = 0;
@@ -187,6 +187,7 @@ function retentionRecords() {
       try { rawBytes += fs.statSync(path.join(sessions, name)).size; } catch {}
     }
   }
+  if (!rawLogs && !hasRuntimeState) return [];
   return [{ id: 'retention-status', type: 'retention', status: rawLogs ? 'observed' : 'clean', text: `${rawLogs} raw session log${rawLogs === 1 ? '' : 's'}`, details: { rawLogs, rawBytes } }];
 }
 
@@ -278,8 +279,8 @@ export function dashboardSnapshot(projectPath) {
   const commits = commitRecords(state);
   const architecture = architectureRecords(projectPath, state);
   const updater = updaterRecords(state);
-  const retention = retentionRecords();
   const audit = auditRecords(state);
+  const retention = retentionRecords(sessions.length > 0 || commits.length > 0 || audit.length > 0);
   const sections = [];
   addSection(sections, 'pending', 'Pending review', pending, 'pending');
   addSection(sections, 'approved', 'Approved proposals', approved, 'proposal');

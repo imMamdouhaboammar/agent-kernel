@@ -305,12 +305,15 @@ function saveRegistry(reg) {
 // Log audit events
 function auditLog(event) {
   const file = auditPath();
-  const entry = {
-    timestamp: new Date().toISOString(),
-    ...event
-  };
+  const entry = { timestamp: new Date().toISOString(), ...event };
   ensureDir(path.dirname(file));
-  fs.appendFileSync(file, JSON.stringify(entry) + '\n');
+  const release = acquireLock(file);
+  try {
+    fs.appendFileSync(file, JSON.stringify(entry) + '\n', { mode: 0o600 });
+    try { fs.chmodSync(file, 0o600); } catch {}
+  } finally {
+    release();
+  }
 }
 
 // ==========================================
@@ -425,7 +428,7 @@ export function evaluateGates(ctx, providerName, operation, requestedTier = 'pub
 }
 
 function verifyContextDrift(ctx) {
-  if (!fs.existsSync(path.join(ctx.root, '.git'))) return; // Skip if not a git repo
+  if (!git(ctx.root, ['rev-parse', '--is-inside-work-tree'])) return; // Skip if not a git repo or worktree
   const current = resolveContext(ctx.root);
   if (current.currentBranch !== ctx.currentBranch) {
     throw new Error(`Gate Failure: Git branch has drifted from ${ctx.currentBranch} to ${current.currentBranch}`);
@@ -464,6 +467,24 @@ export function isOperationApproved(projectId, environment, provider, operation)
 // 8. PROVIDER ADAPTERS
 // ==========================================
 
+function normalizeProviderArgs(args, enforcedFlags = []) {
+  const source = Array.isArray(args) ? [...args] : [];
+  while (source[0] === '--') source.shift();
+  const clean = [];
+  for (let i = 0; i < source.length; i++) {
+    const arg = String(source[i]);
+    const enforcedFlag = enforcedFlags.find((flag) => arg === flag || arg.startsWith(`${flag}=`));
+    if (!enforcedFlag) {
+      clean.push(source[i]);
+      continue;
+    }
+    if (arg === enforcedFlag && i + 1 < source.length && !String(source[i + 1]).startsWith('-')) {
+      i++;
+    }
+  }
+  return clean;
+}
+
 export function execSupabase(ctx, args) {
   const profileName = ctx.manifest?.providers?.supabase?.profile;
   const projectRef = ctx.manifest?.providers?.supabase?.project_ref;
@@ -471,8 +492,10 @@ export function execSupabase(ctx, args) {
     throw new Error('Supabase adapter is not fully configured in project.toml');
   }
 
+  const commandArgs = normalizeProviderArgs(args, ['--project-ref']);
+
   // Evaluate gates
-  const isWrite = args.includes('push') || args.includes('deploy');
+  const isWrite = commandArgs.includes('push') || commandArgs.includes('deploy');
   evaluateGates(ctx, 'supabase', isWrite ? 'db-push' : 'db-pull');
 
   // Retrieve token from Keychain
@@ -487,14 +510,14 @@ export function execSupabase(ctx, args) {
     AGENT_KERNEL_BYPASS_SHIMS: '1'
   };
 
-  const cleanArgs = args.filter((a) => a !== '--project-ref'); // Strip potential mismatching ref
-  const fullArgs = [...cleanArgs, '--project-ref', projectRef];
+  const fullArgs = [...commandArgs, '--project-ref', projectRef];
+  const auditOperation = redact(commandArgs.join(' '));
 
   auditLog({
     session: ctx.projectId,
     project: ctx.projectId,
     provider: 'supabase',
-    operation: args.join(' '),
+    operation: auditOperation,
     target: projectRef,
     environment: ctx.manifest?.default_environment || 'development',
     result: 'pending'
@@ -511,7 +534,7 @@ export function execSupabase(ctx, args) {
     session: ctx.projectId,
     project: ctx.projectId,
     provider: 'supabase',
-    operation: args.join(' '),
+    operation: auditOperation,
     target: projectRef,
     environment: ctx.manifest?.default_environment || 'development',
     result: result.status === 0 ? 'success' : 'failure'
@@ -530,6 +553,15 @@ export function execGcloud(ctx, args) {
     throw new Error('Google Cloud adapter is not fully configured in project.toml');
   }
 
+  const commandArgs = normalizeProviderArgs(args, [
+    '--project',
+    '--region',
+    '--configuration',
+    '--account',
+    '--impersonate-service-account',
+    '--billing-project'
+  ]);
+
   // Isolated config dir
   const configDir = path.join(kernelHome(), 'gcloud', profileName);
   ensureDir(configDir);
@@ -545,19 +577,15 @@ export function execGcloud(ctx, args) {
   };
 
   const realExe = resolveRealExecutable('gcloud');
-  const fullArgs = [...args];
-  if (!args.includes('--project')) {
-    fullArgs.push('--project', projectID);
-  }
-  if (region && !args.includes('--region')) {
-    fullArgs.push('--region', region);
-  }
+  const fullArgs = [...commandArgs, '--project', projectID];
+  if (region) fullArgs.push('--region', region);
+  const auditOperation = redact(commandArgs.join(' '));
 
   auditLog({
     session: ctx.projectId,
     project: ctx.projectId,
     provider: 'gcloud',
-    operation: args.join(' '),
+    operation: auditOperation,
     target: projectID,
     environment: ctx.manifest?.default_environment || 'development',
     result: 'pending'
@@ -573,7 +601,7 @@ export function execGcloud(ctx, args) {
     session: ctx.projectId,
     project: ctx.projectId,
     provider: 'gcloud',
-    operation: args.join(' '),
+    operation: auditOperation,
     target: projectID,
     environment: ctx.manifest?.default_environment || 'development',
     result: result.status === 0 ? 'success' : 'failure'
