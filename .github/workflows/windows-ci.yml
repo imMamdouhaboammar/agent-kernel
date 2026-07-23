@@ -36,7 +36,26 @@ jobs:
         run: npm run build
 
       - name: Smoke test
-        run: npm test
+        id: smoke
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          npm test 2>&1 | Tee-Object -FilePath windows-smoke.log
+          exit $LASTEXITCODE
+
+      - name: Upload failed smoke log
+        if: steps.smoke.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-smoke-log
+          path: windows-smoke.log
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Enforce smoke result
+        if: steps.smoke.outcome == 'failure'
+        shell: pwsh
+        run: exit 1
 
       - name: Typecheck
         run: npm run typecheck
