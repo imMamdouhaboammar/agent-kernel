@@ -5,7 +5,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.14.0] - 2026-07-24
+
 ### Added
+
+- Added Project Connection CLI suite (`connect`, `disconnect`, `status`, `doctor`, `reconnect`).
+- Added IssueOps Validator workflow (`issue-validator.yml`) with `issue-ops/validator@v4.0.0`.
+- Added Codacy Security Scan workflow (`codacy.yml`) with SARIF output and automated GitHub Issue creation.
+- Added Kilo Code Bot workflow (`kilo-code-bot.yml`) for issue classification and fix proposals.
+- Added Lovable.dev AI Developer workflow (`lovable-dev.yml`) for OSS feature contributions.
+- Added CodeRabbit AI Final Review Gate workflow (`coderabbit.yml` & `.coderabbit.yaml`) for pre-merge gating.
+- Added Privacy & Dynamic Path Verification script (`check-privacy-and-paths.mjs`) to prevent machine footprint or secret leaks.
+
+### Fixed
+
+- Supported cross-platform Windows executable extension lookup (`.cmd`, `.exe`, `.bat`) in `project-context-broker`.
 
 - Added a project-scoped production provider approval lifecycle: `approvals request`, `list`, `approve`, `deny`, and `revoke`, with JSON output and bounded 1-60 minute TTLs.
 - Added one-time approval consumption for production Supabase database writes/migrations and GCloud operations.
