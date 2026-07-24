@@ -15,7 +15,19 @@ export async function run() {
   });
   assert.deepEqual(cmd, {
     command: 'C:\\Windows\\System32\\cmd.exe',
-    args: ['/d', '/c', 'npm.cmd', 'view', 'pkg', 'version']
+    args: ['/d', '/s', '/c', '""npm.cmd" "view" "pkg" "version""'],
+    windowsVerbatimArguments: true
+  });
+
+  const batch = normalizeUpdateCommand('C:\\Program Files\\UPDATE.BAT', ['argument with spaces'], {
+    platform: 'win32',
+    comspec: 'cmd.exe',
+    node: 'node.exe'
+  });
+  assert.deepEqual(batch, {
+    command: 'cmd.exe',
+    args: ['/d', '/s', '/c', '""C:\\Program Files\\UPDATE.BAT" "argument with spaces""'],
+    windowsVerbatimArguments: true
   });
 
   const script = normalizeUpdateCommand('C:\\temp\\fake-npm.mjs', ['view'], {
@@ -27,6 +39,13 @@ export async function run() {
     command: 'C:\\Program Files\\nodejs\\node.exe',
     args: ['C:\\temp\\fake-npm.mjs', 'view']
   });
+
+  const commonJs = normalizeUpdateCommand('C:\\temp\\fake-cli.CJS', ['version'], {
+    platform: 'win32',
+    comspec: 'cmd.exe',
+    node: 'node.exe'
+  });
+  assert.deepEqual(commonJs, { command: 'node.exe', args: ['C:\\temp\\fake-cli.CJS', 'version'] });
 
   const executable = normalizeUpdateCommand('npm', ['view'], {
     platform: 'linux',
@@ -42,7 +61,8 @@ export async function run() {
     const invocation = normalizeUpdateCommand(fixture, ['argument with spaces', 'plain']);
     const output = childProcess.execFileSync(invocation.command, invocation.args, {
       encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe']
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsVerbatimArguments: invocation.windowsVerbatimArguments
     }).trim();
     assert.equal(output, 'argument with spaces|plain');
   }
