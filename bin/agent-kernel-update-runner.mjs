@@ -5,6 +5,11 @@ import { fileURLToPath } from 'node:url';
 
 const originalExecFileSync = childProcess.execFileSync.bind(childProcess);
 
+function quoteCmdArgument(value) {
+  const escaped = String(value).replace(/%/g, '%%').replace(/"/g, '""');
+  return `"${escaped}"`;
+}
+
 export function normalizeUpdateCommand(command, args = [], options = {}) {
   const platform = options.platform || process.platform;
   const comspec = options.comspec || process.env.ComSpec || 'cmd.exe';
@@ -13,7 +18,12 @@ export function normalizeUpdateCommand(command, args = [], options = {}) {
   const commandArgs = Array.isArray(args) ? [...args] : [];
 
   if (platform === 'win32' && /\.(?:cmd|bat)$/i.test(executable)) {
-    return { command: comspec, args: ['/d', '/c', executable, ...commandArgs] };
+    const commandLine = [executable, ...commandArgs].map(quoteCmdArgument).join(' ');
+    return {
+      command: comspec,
+      args: ['/d', '/s', '/c', `"${commandLine}"`],
+      windowsVerbatimArguments: true
+    };
   }
 
   if (platform === 'win32' && /\.[cm]?js$/i.test(executable)) {
@@ -23,9 +33,14 @@ export function normalizeUpdateCommand(command, args = [], options = {}) {
   return { command: executable, args: commandArgs };
 }
 
-function executeUpdateCommand(command, args, options) {
+function executeUpdateCommand(command, args, options = {}) {
   const normalized = normalizeUpdateCommand(command, args);
-  return originalExecFileSync(normalized.command, normalized.args, options);
+  return originalExecFileSync(normalized.command, normalized.args, {
+    ...options,
+    ...(normalized.windowsVerbatimArguments === undefined
+      ? {}
+      : { windowsVerbatimArguments: normalized.windowsVerbatimArguments })
+  });
 }
 
 const invokedPath = process.argv[1] ? path.resolve(process.argv[1]) : '';
