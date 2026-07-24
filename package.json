@@ -43,11 +43,12 @@
     "dev": "node dist/cli.mjs",
     "test": "node scripts/check-version.mjs && node test/smoke.mjs",
     "typecheck": "tsc --noEmit",
-    "lint": "node scripts/lint.mjs && node scripts/lint-bins.mjs && node scripts/lint-modes.mjs && node scripts/check-version.mjs && node scripts/check-doc-links.mjs",
+    "lint": "node scripts/lint.mjs && node scripts/lint-bins.mjs && node scripts/lint-modes.mjs && node scripts/check-version.mjs && node scripts/check-doc-links.mjs && node scripts/check-privacy-and-paths.mjs",
     "docs:check": "node scripts/check-doc-links.mjs",
+    "check-privacy": "node scripts/check-privacy-and-paths.mjs",
     "size": "npm pack --dry-run --ignore-scripts",
-    "publish:dry": "npm publish --dry-run --access public --ignore-scripts",
-    "prepack": "node scripts/build.mjs",
+    "publish:dry": "node scripts/check-privacy-and-paths.mjs && npm publish --dry-run --access public --ignore-scripts",
+    "prepack": "node scripts/check-privacy-and-paths.mjs && node scripts/build.mjs",
     "check-version": "node scripts/check-version.mjs"
   },
   "keywords": [
