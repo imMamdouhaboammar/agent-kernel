@@ -1,4 +1,8 @@
 import assert from 'node:assert/strict';
+import childProcess from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { normalizeUpdateCommand } from '../bin/agent-kernel-update-runner.mjs';
 
 export const name = 'windows-update-runner';
@@ -30,4 +34,16 @@ export async function run() {
     node: '/usr/bin/node'
   });
   assert.deepEqual(executable, { command: 'npm', args: ['view'] });
+
+  if (process.platform === 'win32') {
+    const fixtureDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent kernel updater '));
+    const fixture = path.join(fixtureDir, 'echo args.cmd');
+    fs.writeFileSync(fixture, '@echo off\r\necho %~1^|%~2\r\n', 'utf8');
+    const invocation = normalizeUpdateCommand(fixture, ['argument with spaces', 'plain']);
+    const output = childProcess.execFileSync(invocation.command, invocation.args, {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe']
+    }).trim();
+    assert.equal(output, 'argument with spaces|plain');
+  }
 }
