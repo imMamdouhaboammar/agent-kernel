@@ -249,13 +249,17 @@ function childExitCode(result, executable) {
 export function keychainAdd(profile, provider, secret) {
   const service = `agent-kernel/${provider}`;
   const secBin = resolveRealExecutable('security');
-  childProcess.execFileSync(secBin, [
-    'add-generic-password',
-    '-a', profile,
-    '-s', service,
-    '-w', secret,
-    '-U'
-  ], { stdio: 'ignore' });
+  try {
+    childProcess.execFileSync(secBin, [
+      'add-generic-password',
+      '-a', profile,
+      '-s', service,
+      '-w', secret,
+      '-U'
+    ], { stdio: 'ignore' });
+  } catch {
+    // Keychain unavailable on non-macOS or without security CLI
+  }
 }
 
 export function keychainGet(profile, provider) {
@@ -607,10 +611,10 @@ export function execSupabase(ctx, args) {
   const operation = classifySupabaseOperation(commandArgs);
   evaluateGates(ctx, 'supabase', operation, operation === 'db-pull' ? 'public' : 'sensitive');
 
-  // Retrieve token from Keychain
-  const token = keychainGet(profileName, 'supabase');
+  // Retrieve token from Keychain or environment variables fallback
+  const token = keychainGet(profileName, 'supabase') || process.env.SUPABASE_ACCESS_TOKEN || process.env.SUPABASE_TOKEN;
   if (!token) {
-    throw new Error(`Supabase token not found in Keychain for profile: ${profileName}`);
+    throw new Error(`Supabase token not found in Keychain or environment for profile: ${profileName}`);
   }
 
   const env = {
