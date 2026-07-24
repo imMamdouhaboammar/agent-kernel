@@ -184,7 +184,7 @@ Installation uses an argument array equivalent to:
 npm install --global @mamdouh-aboammar/agent-kernel@<exact-version>
 ```
 
-On Windows, `.cmd` and `.bat` launchers are passed as separate arguments to `cmd.exe /d /c`. JavaScript test or configured helper paths are passed to the current Node executable. The updater does not build a shell command string and does not enable a general-purpose shell option.
+On Windows, the helper executes `npm.cmd` and `agent-kernel.cmd` directly. No shell-interpolated package command is used.
 
 If installation succeeds but verification fails, the updater attempts one rollback to the previously installed version. JSON output reports `rollbackAttempted` and `rollbackSucceeded`.
 
@@ -218,3 +218,114 @@ Inspect state:
 ```bash
 agent-kernel update status --json
 ```
+
+Check the registry:
+
+```bash
+agent-kernel update check --json
+```
+
+Apply as a trusted agent:
+
+```bash
+agent-kernel update apply --agent claude --json
+```
+
+Structured successes and failures are written to stdout. Failures still return a non-zero exit status. Stderr remains available for human-readable warnings and cached notices outside JSON mode.
+
+## Disable or adjust trust
+
+Add one identity:
+
+```bash
+agent-kernel update trust cursor
+```
+
+Remove one identity:
+
+```bash
+agent-kernel update revoke cursor
+```
+
+Disable agent-approved installation:
+
+```bash
+agent-kernel update disable
+```
+
+Disabling updates preserves the configured channel and allowlist, but `update apply` is denied until the mode is enabled again. Opportunistic lifecycle checks also stop while the mode is disabled.
+
+## Troubleshooting
+
+### `not-initialized`
+
+Initialize Agent Kernel before changing mode, channel, or trusted identities:
+
+```bash
+agent-kernel init
+```
+
+Read-only `update status` and explicit `update check` can still use defaults before initialization.
+
+### `invalid-config`
+
+The existing `config.json` is malformed or has an invalid updater section. The helper preserves the file and refuses governance changes until it is reviewed and repaired.
+
+### `confirmation-required`
+
+The command changes updater governance in a non-interactive environment. Run it in a terminal or add `--yes` after reviewing the exact operation.
+
+### `updates-disabled`
+
+Enable agent-approved mode first:
+
+```bash
+agent-kernel update enable --agents claude,codex
+```
+
+### `missing-agent`
+
+Provide `--agent <id>` or set `AGENT_KERNEL_AGENT_ID`.
+
+### `unauthorized-agent`
+
+Review the current allowlist:
+
+```bash
+agent-kernel update status
+```
+
+Then trust the identity through a user-confirmed command when appropriate.
+
+### `invalid-channel`
+
+Use a safe npm dist-tag or an exact semantic version. Ranges and package specifications are intentionally unsupported.
+
+### `registry-unavailable`
+
+The explicit npm lookup failed. A prior valid available-version cache is preserved when compatible. Retry later with:
+
+```bash
+agent-kernel update check --force
+```
+
+### `verification-failed`
+
+The installed CLI did not report the expected version or failed a post-install health command. Inspect the JSON result and the audit log to see whether rollback succeeded.
+
+### Malformed guidance marker
+
+A file containing `<!-- agent-kernel-update:start -->` without the matching end marker is left unchanged. Repair the marker manually after reviewing the surrounding user content, then rerun `agent-kernel compile` or `agent-kernel sync`.
+
+## Security boundary
+
+The updater is a global package-management boundary. Treat `update enable`, trust changes, channel changes, and `update apply` as reviewed operational actions.
+
+The implementation deliberately excludes:
+
+- background update services
+- silent package installation on normal CLI invocation
+- automatic allowlist expansion
+- arbitrary package updates
+- MCP-based approval
+- npm publishing or GitHub release creation
