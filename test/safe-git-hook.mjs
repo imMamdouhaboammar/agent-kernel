@@ -8,7 +8,7 @@
 //   5. Invalid arguments and project paths fail without filesystem changes.
 //   6. Linked Git worktrees resolve and update the repository's actual hooks path.
 //   7. Complete duplicate blocks collapse and corrupt markers require explicit repair.
-//   8. Existing permissions are preserved while ensuring user execute permission.
+//   8. Existing permissions are preserved while ensuring user execute permission on POSIX.
 //   9. Symbolic hook targets and hooks directories are rejected.
 //  10. Temporary files are cleaned up and custom hooks paths are respected.
 
@@ -183,12 +183,17 @@ export async function run() {
   chmodSync(hookPath, 0o600);
   const backupsBeforeMode = new Set(readdirSync(backupsDir));
   runSafeGitHook(env, project);
-  if (modeOf(hookPath) !== 0o700) {
-    throw new Error(`safe git-hook did not preserve permissions and add user execute: ${modeOf(hookPath).toString(8)}`);
-  }
   const newBackups = readdirSync(backupsDir).filter((name) => !backupsBeforeMode.has(name));
-  if (newBackups.length !== 1 || modeOf(join(backupsDir, newBackups[0])) !== 0o600) {
-    throw new Error('safe git-hook backup did not preserve the original hook mode');
+  if (newBackups.length !== 1) {
+    throw new Error('safe git-hook did not create exactly one mode-test backup');
+  }
+  if (process.platform !== 'win32') {
+    if (modeOf(hookPath) !== 0o700) {
+      throw new Error(`safe git-hook did not preserve permissions and add user execute: ${modeOf(hookPath).toString(8)}`);
+    }
+    if (modeOf(join(backupsDir, newBackups[0])) !== 0o600) {
+      throw new Error('safe git-hook backup did not preserve the original hook mode');
+    }
   }
   if (temporaryArtifacts(join(project, '.git', 'hooks')).length) {
     throw new Error('safe git-hook left temporary or rollback files after success');
