@@ -20,6 +20,8 @@ const architecturePath = path.join(here, 'agent-kernel-architecture.mjs');
 const portabilityPath = path.join(here, 'agent-kernel-portability.mjs');
 const dashboardPath = path.join(here, 'agent-kernel-dashboard.mjs');
 const updatePath = path.join(here, 'agent-kernel-update.mjs');
+const updateRunnerPath = path.join(here, 'agent-kernel-update-runner.mjs');
+const routedUpdatePath = process.platform === 'win32' ? updateRunnerPath : updatePath;
 const updateGuidancePath = path.join(here, 'agent-kernel-update-guidance.mjs');
 const args = process.argv.slice(2);
 const command = args[0];
@@ -83,7 +85,7 @@ function shouldRefreshUpdateCheck() {
 
 function refreshUpdateCheckIfDue() {
   if (!shouldRefreshUpdateCheck()) return;
-  childProcess.spawnSync(process.execPath, [updatePath, 'check', '--json'], {
+  childProcess.spawnSync(process.execPath, [routedUpdatePath, 'check', '--json'], {
     cwd: process.cwd(),
     env: process.env,
     stdio: 'ignore',
@@ -116,7 +118,7 @@ if (notice) process.stderr.write(notice);
 const target = command === 'dashboard'
   ? dashboardPath
   : command === 'update'
-    ? updatePath
+    ? routedUpdatePath
     : command === 'architecture'
       ? architecturePath
       : brokerCommand

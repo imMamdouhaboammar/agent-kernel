@@ -31,6 +31,7 @@ import { run as runPublicCliPortability } from './public-cli-portability.mjs';
 import { run as runPublicCliDashboard } from './public-cli-dashboard.mjs';
 import { run as runPublicCliDashboardSafety } from './public-cli-dashboard-safety.mjs';
 import { run as runPublicCliUpdate } from './public-cli-update.mjs';
+import { run as runWindowsUpdateRunner } from './windows-update-runner.mjs';
 import { run as runFileContext } from './file-context.mjs';
 import { run as runFileReferences } from './file-references.mjs';
 import { run as runStructuredSearch } from './structured-search.mjs';
@@ -50,6 +51,21 @@ import { run as runDocLinks } from './doc-links.mjs';
 import { run as runCliStatusJson } from './cli-status-json.mjs';
 import { run as runProjectContextBroker } from './project-context-broker.test.mjs';
 import { run as runProjectConnect } from './project-connect.test.mjs';
+
+async function runProjectContextBrokerCompat() {
+  const previousNodeOptions = process.env.NODE_OPTIONS;
+  const moduleDefaultFlag = '--experimental-default-type=module';
+  const nodeMajor = Number(process.versions.node.split('.')[0]);
+  if (nodeMajor === 18 && !String(previousNodeOptions || '').includes(moduleDefaultFlag)) {
+    process.env.NODE_OPTIONS = [previousNodeOptions, moduleDefaultFlag].filter(Boolean).join(' ');
+  }
+  try {
+    await runProjectContextBroker();
+  } finally {
+    if (previousNodeOptions === undefined) delete process.env.NODE_OPTIONS;
+    else process.env.NODE_OPTIONS = previousNodeOptions;
+  }
+}
 
 const tests = [
   ['version', runVersion],
@@ -75,6 +91,7 @@ const tests = [
   ['public-cli-dashboard', runPublicCliDashboard],
   ['public-cli-dashboard-safety', runPublicCliDashboardSafety],
   ['public-cli-update', runPublicCliUpdate],
+  ['windows-update-runner', runWindowsUpdateRunner],
   ['file-context', runFileContext],
   ['file-references', runFileReferences],
   ['structured-search', runStructuredSearch],
@@ -92,7 +109,7 @@ const tests = [
   ['package-files', runPackageFiles],
   ['doc-links', runDocLinks],
   ['cli-status-json', runCliStatusJson],
-  ['project-context-broker', runProjectContextBroker],
+  ['project-context-broker', runProjectContextBrokerCompat],
   ['project-connect', runProjectConnect]
 ];
 
