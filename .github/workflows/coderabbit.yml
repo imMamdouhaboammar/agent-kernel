@@ -36,6 +36,7 @@ jobs:
 
       - name: CodeRabbit AI Analysis & Quality Gate Verification
         id: coderabbit_gate
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -45,8 +46,36 @@ jobs:
           npm run typecheck
           npm test
 
+      - name: Create GitHub Issue on CodeRabbit Review Findings
+        if: steps.coderabbit_gate.outcome == 'failure' && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const prTitle = context.payload.pull_request.title;
+            const title = `[CodeRabbit AI] Action Required on PR #${prNumber}: ${prTitle}`;
+            
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'coderabbit-finding'
+            });
+            
+            const duplicate = existing.data.some(i => i.title === title);
+            if (!duplicate) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: `## 🐰 CodeRabbit AI Review Gate Finding\n\n- **Target PR**: #${prNumber} (${prTitle})\n- **Status**: Quality gate failed or review suggestions flagged.\n- **Action Required**: Resolve quality, security, or test issues highlighted in PR #${prNumber} before merge.\n\n*Automated issue created by CodeRabbit AI GitHub Action Workflow.*`,
+                labels: ['coderabbit-finding', 'automated-issue', 'code-quality']
+              });
+              console.log(`Created GitHub Issue for CodeRabbit Finding: ${title}`);
+            }
+
       - name: CodeRabbit Final Decision & Mergable Labeling
-        if: always() && steps.coderabbit_gate.outcome == 'success' && github.event_name == 'pull_request'
+        if: steps.coderabbit_gate.outcome == 'success' && github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}

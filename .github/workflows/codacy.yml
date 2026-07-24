@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
   security-events: write
 
 concurrency:
@@ -38,3 +39,43 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: results.sarif
+
+      - name: Create GitHub Issues from Codacy SARIF Report
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (!fs.existsSync('results.sarif')) return;
+            const sarif = JSON.parse(fs.readFileSync('results.sarif', 'utf8'));
+            const runs = sarif.runs || [];
+            for (const run of runs) {
+              const results = run.results || [];
+              for (const result of results) {
+                const ruleId = result.ruleId || 'Codacy Finding';
+                const message = result.message?.text || 'Issue reported by Codacy';
+                const location = result.locations?.[0]?.physicalLocation;
+                const filePath = location?.artifactLocation?.uri || 'Repository File';
+                const line = location?.region?.startLine || 1;
+                const title = `[Codacy] ${ruleId} in ${filePath}:${line}`;
+                
+                const existing = await github.rest.issues.listForRepo({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  state: 'open',
+                  labels: 'codacy-finding'
+                });
+                
+                const duplicate = existing.data.some(i => i.title === title);
+                if (!duplicate) {
+                  await github.rest.issues.create({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    title: title,
+                    body: `## 🛡️ Codacy Analysis Finding\n\n- **Rule ID**: \`${ruleId}\`\n- **File**: \`${filePath}\` (Line ${line})\n- **Details**: ${message}\n\n*Automated issue created by Codacy GitHub Action Workflow.*`,
+                    labels: ['codacy-finding', 'automated-issue']
+                  });
+                  console.log(`Created GitHub Issue: ${title}`);
+                }
+              }
+            }
