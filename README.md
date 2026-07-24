@@ -33,6 +33,8 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
 
 ---
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/dc498a16116e4f1ca9f2b789fa31da93)](https://app.codacy.com/gh/imMamdouhaboammar/agent-kernel?utm_source=github.com&utm_medium=referral&utm_content=imMamdouhaboammar/agent-kernel&utm_campaign=Badge_Grade)
+
 ## Why install Agent Kernel
 
 AI coding agents are useful, but most sessions still begin with missing context. The agent forgets repository rules, repeats old mistakes, runs commands you already rejected, or produces working code that quietly weakens the architecture.
