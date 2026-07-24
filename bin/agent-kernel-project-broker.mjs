@@ -248,7 +248,8 @@ function childExitCode(result, executable) {
 
 export function keychainAdd(profile, provider, secret) {
   const service = `agent-kernel/${provider}`;
-  childProcess.execFileSync('security', [
+  const secBin = resolveRealExecutable('security');
+  childProcess.execFileSync(secBin, [
     'add-generic-password',
     '-a', profile,
     '-s', service,
@@ -259,8 +260,9 @@ export function keychainAdd(profile, provider, secret) {
 
 export function keychainGet(profile, provider) {
   const service = `agent-kernel/${provider}`;
+  const secBin = resolveRealExecutable('security');
   try {
-    return childProcess.execFileSync('security', [
+    return childProcess.execFileSync(secBin, [
       'find-generic-password',
       '-a', profile,
       '-s', service,
@@ -273,8 +275,9 @@ export function keychainGet(profile, provider) {
 
 export function keychainDelete(profile, provider) {
   const service = `agent-kernel/${provider}`;
+  const secBin = resolveRealExecutable('security');
   try {
-    childProcess.execFileSync('security', [
+    childProcess.execFileSync(secBin, [
       'delete-generic-password',
       '-a', profile,
       '-s', service
@@ -720,9 +723,12 @@ export function execGcloud(ctx, args) {
 function resolveRealExecutable(name) {
   const systemPath = process.env.PATH || '';
   const paths = systemPath.split(path.delimiter).filter((entry) => entry && !entry.includes('.agent-kernel/runtime/shims'));
+  const extensions = process.platform === 'win32' ? ['.cmd', '.exe', '.bat', ''] : [''];
   for (const dir of paths) {
-    const full = path.join(dir, name);
-    if (isExecutableFile(full)) return full;
+    for (const ext of extensions) {
+      const full = path.join(dir, `${name}${ext}`);
+      if (isExecutableFile(full)) return full;
+    }
   }
   return name;
 }

@@ -194,6 +194,10 @@ export async function run() {
     const file = path.join(fakeBin, name);
     fs.writeFileSync(file, `#!/usr/bin/env node\n${body}\n`, 'utf8');
     fs.chmodSync(file, 0o755);
+    if (process.platform === 'win32') {
+      const cmdFile = path.join(fakeBin, `${name}.cmd`);
+      fs.writeFileSync(cmdFile, `@echo off\r\nnode "${file}" %*\r\n`, 'utf8');
+    }
   };
   writeExecutable('security', "if (process.argv.includes('find-generic-password')) process.stdout.write('test-token');");
   writeExecutable('supabase', "import fs from 'node:fs'; fs.writeFileSync(process.env.AK_TEST_ARGS_FILE, JSON.stringify(process.argv.slice(2))); ");
