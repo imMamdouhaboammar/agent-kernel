@@ -15,6 +15,8 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
   <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'><img alt='npm downloads' src='https://img.shields.io/npm/dw/@mamdouh-aboammar/agent-kernel'></a>
   <a href='https://bundlephobia.com/package/@mamdouh-aboammar/agent-kernel'><img alt='bundle size' src='https://img.shields.io/bundlephobia/min/@mamdouh-aboammar/agent-kernel'></a>
   <a href='https://github.com/imMamdouhaboammar/agent-kernel/actions/workflows/ci.yml'><img alt='CI' src='https://github.com/imMamdouhaboammar/agent-kernel/actions/workflows/ci.yml/badge.svg'></a>
+  <a href='https://github.com/imMamdouhaboammar/agent-kernel/actions/workflows/codacy.yml'><img alt='Codacy' src='https://img.shields.io/github/actions/workflow/status/imMamdouhaboammar/agent-kernel/codacy.yml?branch=master&label=Codacy&logo=codacy'></a>
+  <a href='https://github.com/imMamdouhaboammar/agent-kernel/actions/workflows/coderabbit.yml'><img alt='CodeRabbit AI' src='https://img.shields.io/github/actions/workflow/status/imMamdouhaboammar/agent-kernel/coderabbit.yml?branch=master&label=CodeRabbit%20AI&logo=coderabbit&logoColor=white'></a>
   <img alt='node' src='https://img.shields.io/badge/node-%3E%3D18.18.0-30363d'>
   <img alt='runtime dependencies' src='https://img.shields.io/badge/runtime_deps-0-30363d'>
   <a href='./LICENSE'><img alt='license' src='https://img.shields.io/badge/license-MIT-30363d'></a>

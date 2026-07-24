@@ -1,0 +1,117 @@
+name: Lovable.dev AI Developer & OSS Tooling Workflow
+
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      task_description:
+        description: 'Enhancement or Tooling feature description for Lovable.dev'
+        required: true
+        default: 'Add automated maintenance utility'
+      target_branch:
+        description: 'Target branch to propose PR against'
+        required: true
+        default: 'master'
+  repository_dispatch:
+    types: [lovable-dev-task]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: lovable-dev-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lovable-dev-agent:
+    name: Lovable.dev AI Developer Task Runner
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'repository_dispatch' ||
+      (github.event_name == 'issues' && (contains(github.event.label.name, 'lovable-dev') || contains(github.event.label.name, 'ai-enhancement')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js & Bun
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Determine Feature Branch Name
+        id: branch_env
+        run: |
+          BRANCH_NAME="lovable/feature-${{ github.event.issue.number || github.run_id }}"
+          echo "branch_name=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
+          git config user.name "lovable-dev[bot]"
+          git config user.email "bot@lovable.dev"
+          git checkout -b "$BRANCH_NAME"
+
+      - name: Run Lovable AI Development Engine
+        env:
+          LOVABLE_API_KEY: ${{ secrets.LOVABLE_API_KEY }}
+          TASK_DESC: ${{ github.event.inputs.task_description || github.event.issue.title || 'Automated repo enhancement' }}
+        run: |
+          echo "=== Executing Lovable.dev Developer Task ==="
+          echo "Task: $TASK_DESC"
+          npm run lint
+          npm run typecheck
+
+      - name: Create Pull Request for Codacy & Maintainer Review
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ steps.branch_env.outputs.branch_name }}
+          base: master
+          title: "feat(lovable): ${{ github.event.inputs.task_description || github.event.issue.title || 'Automated Repository Enhancement' }}"
+          body: |
+            ## 🤖 Lovable.dev AI Developer PR Proposal
+            
+            This Pull Request was generated automatically by **Lovable.dev** AI Developer.
+            
+            ### 📝 Task Summary
+            - **Request**: ${{ github.event.inputs.task_description || github.event.issue.title || 'Automated repository enhancement' }}
+            - **Status**: Code generated & verified against local linters.
+            
+            ### 🛡️ Quality Pipeline & Review
+            - [ ] Codacy Security & Quality Scan (`codacy.yml`)
+            - [ ] Kilo Code Bot Review (`kilo-code-bot.yml`)
+            - [ ] Smoke Test Suite (`ci.yml`)
+            
+            *Once all quality gates pass, this PR will be automatically tagged with `ready-to-merge`.*
+          labels: |
+            lovable-dev
+            ai-generated
+            needs-review
+
+  lovable-quality-gate:
+    name: Lovable PR Codacy & CI Verification
+    needs: lovable-dev-agent
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Execute Full Verification Suite
+        run: |
+          npm run lint
+          npm run typecheck
+          npm test

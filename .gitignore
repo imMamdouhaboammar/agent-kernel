@@ -20,3 +20,4 @@ coverage/
 *.p12
 *.pfx
 *service-account*.json
+local_cache/

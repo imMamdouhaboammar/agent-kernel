@@ -1,0 +1,27 @@
+# CodeRabbit AI Configuration for agent-kernel open-source repository
+version: "2"
+language: "en-US"
+tone_instructions: "Be rigorous, constructive, and security-focused in review summaries."
+reviews:
+  profile: "chill"
+  request_changes_workflow: true
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  auto_review:
+    enabled: true
+    drafts: false
+  pre_merge_checks:
+    title:
+      mode: "error"
+      requirements: "Must follow Conventional Commits pattern (e.g., feat:, fix:, docs:, chore:)"
+    docstrings:
+      mode: "warning"
+      threshold: 80
+    custom_checks:
+      - name: "Zero Security Vulnerabilities & Clean CI"
+        mode: "error"
+        instructions: "Ensure no hardcoded API tokens, private keys, or failing smoke test assertions exist in the PR diff."
+chat:
+  auto_reply: true

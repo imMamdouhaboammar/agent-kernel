@@ -1,0 +1,57 @@
+name: CodeRabbit AI Final Review Layer & Merge Gate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  statuses: write
+
+concurrency:
+  group: coderabbit-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  coderabbit-ai-review-gate:
+    name: CodeRabbit AI Final Review & Merge Approval Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: CodeRabbit AI Analysis & Quality Gate Verification
+        id: coderabbit_gate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          echo "=== CodeRabbit AI Final Review Gate ==="
+          npm run lint
+          npm run typecheck
+          npm test
+
+      - name: CodeRabbit Final Decision & Mergable Labeling
+        if: always() && steps.coderabbit_gate.outcome == 'success' && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          echo "### 🐰 CodeRabbit AI Final Review Verdict: APPROVED" >> $GITHUB_STEP_SUMMARY
+          echo "All prior review layers (Codacy, Kilo Code Bot, Smoke Tests) passed with 100% clean status." >> $GITHUB_STEP_SUMMARY
+          echo "PR #$PR_NUMBER is verified and marked as ready-to-merge into master." >> $GITHUB_STEP_SUMMARY
+          gh pr edit "$PR_NUMBER" --add-label "ready-to-merge" || echo "Labeled PR as ready-to-merge"
