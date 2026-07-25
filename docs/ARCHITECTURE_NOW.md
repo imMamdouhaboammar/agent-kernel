@@ -16,7 +16,9 @@ The npm executable is exposed through `bin/agent-kernel-router.mjs`. It delegate
 |---|---|---|
 | Core CLI | `src/cli.mjs` / `dist/cli.mjs` | Memory, proposals, compile/sync/link, episodes, guard, MCP, and status |
 | Focused helper commands | `bin/*.mjs` | Safe linking, runtime sessions, Failure Lessons, registries, retention and portability, static dashboard, trusted updates, Architecture Guardian, and hooks |
+| Project Context Broker platform boundary | `bin/agent-kernel-project-broker-platform.mjs` | Credential-backend policy, Windows PATH compatibility, allowlisted provider command execution, awaited broker delegation, and process API restoration |
 | Project Context Broker | `bin/agent-kernel-project-broker.mjs` | Project connection lifecycle, validated active context, project-scoped audit inspection, manifest-bound provider routing, credential isolation, explicit capabilities, one-time production approvals, and policy gates |
+| Windows command primitive | `bin/agent-kernel-command-runner.mjs` | Validated `.cmd`/`.bat` delegation through trusted `cmd.exe`, argument quoting, synchronous overload preservation, and launcher allowlisting |
 | Dashboard modules | `bin/dashboard/*.mjs` | Dashboard safety primitives, adaptive local-state normalization, and static HTML rendering |
 | Architecture engine | `bin/architecture-guardian/*.mjs` | Dependency discovery, policy checks, contracts, baselines, exceptions, reuse search, and reporting |
 
@@ -98,6 +100,22 @@ The router may perform check-only metadata refreshes before stale `doctor`, `sta
 
 A separate offline guidance helper reads config and cached update state after successful update, init, compile, sync, or link operations. It never contacts npm, creates missing integration files, or truncates files with malformed markers.
 
+## Project broker platform boundary
+
+```text
+agent-kernel auth|provider|approvals|audit|context|project ...
+  -> bin/agent-kernel-router.mjs
+  -> bin/agent-kernel-project-broker-platform.mjs
+       -> credentialCommandPolicy
+       -> sanitizeWindowsBrokerPath
+       -> bin/agent-kernel-command-runner.mjs (Windows provider launchers only)
+  -> await bin/agent-kernel-project-broker.mjs main()
+```
+
+Persistent credential mutation is available only where a secure backend is configured. The current backend is macOS Keychain. Windows and Linux `auth add`/`auth remove` fail closed with exit code 2 and direct Supabase callers to process-scoped environment credentials. Provider environment values are never persisted by this wrapper.
+
+On Windows, extensionless regular-file provider decoys are removed from discovery without removing directories that merely share a command name. Only absolute regular-file `supabase.cmd`/`.bat` and `gcloud.cmd`/`.bat` launchers are delegated through a command processor that exactly matches `%SystemRoot%\\System32\\cmd.exe`. General shell execution and arbitrary batch names are rejected. The wrapper awaits the broker and restores patched synchronous child-process functions in `finally`.
+
 ## What the CLI does
 
 | Area | Commands | Source of truth |
@@ -109,7 +127,7 @@ A separate offline guidance helper reads config and cached update state after su
 | Retention and portability | `retention status/prune`, `session compact`, `export`, `import`, `view`, `report` | managed local JSON/JSONL state and explicit export files |
 | Static inspection | `dashboard` | read-only projections of known local stores and project architecture state |
 | Trusted updates | `update status/check/enable/disable/channel/trust/revoke/apply` | `config.json#updates`, update cache, and update audit |
-| Project connection and providers | `project connect/disconnect/reconnect/status/doctor`, `context enter/switch/current`, `audit list/tail`, `approvals request/list/approve/deny/revoke`, `provider supabase exec`, `provider gcloud exec` | project `.agent-kernel/project.toml`, global connection registry, active session, scoped approval state, Keychain or isolated GCloud profile state, and provider audit log |
+| Project connection and providers | `project connect/disconnect/reconnect/status/doctor`, `context enter/switch/current`, `audit list/tail`, `approvals request/list/approve/deny/revoke`, `provider supabase exec`, `provider gcloud exec` | project `.agent-kernel/project.toml`, global connection registry, active session, scoped approval state, macOS Keychain or process environment credentials, isolated GCloud profile state, and provider audit log |
 | Architecture conformance | `architecture init/discover/baseline/diff/check/reuse/contract/exception/policy/doctor` | project `.agent-kernel/architecture/*` |
 | Agent output | `compile`, `sync`, `link` | generated agent files |
 | Enforcement | `guard`, enforcement and hook installers, Architecture Guardian hook | deny patterns, architecture policy, contracts, and hook configs |
@@ -144,12 +162,15 @@ Only new unsuppressed blocking findings fail a strict check. Known baseline debt
 | `bin/agent-kernel-portability.mjs` | Retention, compaction, export/import, local view, and compatibility report |
 | `bin/agent-kernel-update.mjs` | Trusted updater command and transaction |
 | `bin/agent-kernel-update-guidance.mjs` | Offline update-notice publisher |
+| `bin/agent-kernel-project-broker-platform.mjs` | Cross-platform credential and provider-execution boundary before broker loading |
+| `bin/agent-kernel-command-runner.mjs` | Allowlisted Windows synchronous command normalization |
 | `bin/agent-kernel-project-broker.mjs` | Project connection lifecycle, provider target enforcement, explicit capability gates, production approval lifecycle, isolated credentials, and audit logging |
 | `bin/agent-kernel-architecture.mjs` | Architecture Guardian command surface |
 | `bin/architecture-guardian/*.mjs` | Architecture analysis and policy modules |
 | `scripts/build.mjs` | Version injection and dist copy |
 | `scripts/lint*.mjs` | Repository consistency, helper, mode, and secret checks |
-| `test/smoke.mjs` | Focused test orchestrator |
+| `test/smoke.mjs` | Focused test orchestrator and bounded cross-platform broker compatibility harness |
+| `test/windows-credential-boundary.mjs` | Credential policy, PATH decoy, awaited delegation, launcher allowlist, ComSpec, and overload regressions |
 | `test/public-cli-dashboard.mjs` | Dashboard behavior, stores, browser, immutability, and audit coverage |
 | `test/public-cli-dashboard-safety.mjs` | Dashboard CSP, injection, JSON errors, malformed config, and output-path safety |
 | `test/public-cli-portability.mjs` | Retention, export/import, restore, report, and path safety |
@@ -176,7 +197,7 @@ Do not add production code there unless the work also wires it into `src/cli.mjs
 
 Dashboard tests use isolated Agent Kernel homes, fake browser executables, temporary projects, and synthetic stores. They cover routing, default and custom output, human and JSON opening, adaptive sections, malformed records, redaction, HTML injection, CSP, network-free output, safe and unsafe proposal IDs, browser failure, project isolation, symlink and non-regular targets, symbolic parents, source immutability, and audit records without opening a real browser or changing real memory.
 
-Updater tests use fake npm and CLI executables. Project Context Broker tests use temporary Git repositories and linked worktrees plus fake Supabase, GCloud, and Keychain executables to verify target enforcement, explicit capabilities, validated context switching, project-scoped audit reads, unknown-command failures, production approval state transitions, single-use consumption, malformed-state preservation, executable resolution, fail-closed process exits, and shim isolation without contacting external services. Portability tests use isolated homes and export/import fixtures. Architecture Guardian runs both focused smoke and data-driven scenarios.
+Updater tests use fake npm and CLI executables. Project Context Broker tests use temporary Git repositories and linked worktrees plus fake Supabase, GCloud, and Keychain executables to verify target enforcement, explicit capabilities, validated context switching, project-scoped audit reads, unknown-command failures, production approval state transitions, single-use consumption, malformed-state preservation, executable resolution, fail-closed process exits, and shim isolation without contacting external services. Native Windows smoke executes batch provider fixtures through the production command boundary; POSIX CI remains responsible for executable and owner-only mode-bit assertions. Portability tests use isolated homes and export/import fixtures. Architecture Guardian runs both focused smoke and data-driven scenarios.
 
 A new feature should add or update a focused test module and wire it through `test/smoke.mjs`.
 
@@ -194,12 +215,14 @@ The planned core extraction remains under `src/core/` and `src/commands/`. Until
 
 ## CI
 
-The CI workflow covers:
+The CI workflows cover:
 
-- build, lint, and smoke on Node 18, 20, and 22
+- build, lint, and smoke on Ubuntu with Node 18, 20, and 22
+- native Windows build, smoke, typecheck, and package dry-run on Node 22
 - TypeScript typecheck
 - package and manifest discipline, including package dry-run
 - dependency audit
-- docs sanity
+- documentation sanity
+- CodeQL and repository review gates
 
-Release workflows publish only from reviewed version tags. This dashboard PR does not change package version, publish, tag, release, or merge behavior.
+Windows smoke failures preserve a seven-day diagnostic artifact and fail the job before typecheck or package validation can be reported as successful. Release workflows publish only from reviewed version tags. This maintenance change does not publish, tag, release, or merge anything.
