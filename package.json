@@ -1,7 +1,7 @@
 {
   "name": "@mamdouh-aboammar/agent-kernel",
   "version": "1.14.0",
-  "description": "Local-first governance kernel for AI coding agents \u2014 shared memory, rule distribution, approval inbox, episodic memory archive, MCP tools, and strict enforcement hooks.",
+  "description": "Local-first governance kernel for AI coding agents — shared memory, rule distribution, approval inbox, episodic memory archive, MCP tools, and strict enforcement hooks.",
   "type": "module",
   "bin": {
     "agent-kernel": "./bin/agent-kernel-router.mjs",
@@ -21,7 +21,7 @@
     "agent-kernel-agent-write": "./bin/agent-kernel-agent-write.mjs",
     "agent-kernel-architecture": "./bin/agent-kernel-architecture.mjs",
     "agent-kernel-architecture-hook": "./bin/agent-kernel-architecture-hook.mjs",
-    "agent-kernel-project-broker": "./bin/agent-kernel-project-broker.mjs"
+    "agent-kernel-project-broker": "./bin/agent-kernel-project-broker-platform.mjs"
   },
   "files": [
     "dist",

@@ -14,6 +14,12 @@ agent-kernel import <file>
 agent-kernel view [surface]
 agent-kernel report <file>
 agent-kernel session compact <session-id>
+agent-kernel project <connect|status|doctor|reconnect|disconnect>
+agent-kernel auth <add|remove|list>
+agent-kernel provider <supabase|gcloud> exec -- <arguments>
+agent-kernel approvals <request|list|approve|deny|revoke>
+agent-kernel audit <list|tail>
+agent-kernel context <enter|switch|current>
 agent-kernel link
 agent-kernel git-hook install
 ak dashboard <options>
@@ -25,6 +31,8 @@ ak git-hook install
 The dashboard is routed to `bin/agent-kernel-dashboard.mjs`, which delegates to focused modules under `bin/dashboard/`. It reads known local stores, creates one sanitized static HTML snapshot, writes it atomically, and may open it through the operating system browser. Browser JavaScript is limited to filtering and copying rendered text; it cannot mutate Agent Kernel state.
 
 The updater is routed to `bin/agent-kernel-update.mjs`. It is the only public command boundary that may query the npm registry or install a global package.
+
+Project connection, provider, approval, audit, context, and auth families route through `bin/agent-kernel-project-broker-platform.mjs` before the broker implementation loads. The platform wrapper rejects persistent credential mutations on systems without a configured secure backend, sanitizes Windows provider discovery, installs an allowlisted synchronous command boundary for `supabase` and `gcloud` batch launchers, awaits the delegated broker entry point, and restores the process API after completion.
 
 When agent-approved mode is enabled, the router may call the updater helper in check-only mode before stale `doctor`, `start`, `compile`, `sync`, or `status` operations. This interval-limited path cannot install a package and cannot fail the requested command.
 
@@ -46,3 +54,5 @@ Commands without an explicit router rule delegate to `dist/cli.mjs` or an existi
 - Cached notices are suppressed for `--json` output.
 - The guidance publisher must not create missing agent files or truncate files with malformed markers.
 - Agent-approved installation must authorize the caller before npm executes.
+- Persistent project credentials are supported only when a secure platform backend is configured. The current persistent backend is macOS Keychain; other platforms fail closed and may use non-persistent provider environment credentials.
+- Windows `.cmd` and `.bat` provider launchers must be absolute regular files with an allowlisted basename and must execute through the validated `%SystemRoot%\\System32\\cmd.exe` path. General `shell: true` execution is prohibited.
