@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import childProcess from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { credentialCommandPolicy } from '../bin/agent-kernel-project-broker-platform.mjs';
+import {
+  credentialCommandPolicy,
+  sanitizeWindowsBrokerPath
+} from '../bin/agent-kernel-project-broker-platform.mjs';
 
 export const name = 'windows-credential-boundary';
 
@@ -27,6 +33,19 @@ export async function run() {
 
   assert.equal(credentialCommandPolicy(['provider', 'supabase', 'exec'], 'win32').allowed, true);
   assert.equal(credentialCommandPolicy(['auth', 'add', 'supabase'], 'darwin').allowed, true);
+
+  const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-kernel-windows-path-'));
+  try {
+    const systemDirectory = path.join(fixtureRoot, 'System32');
+    fs.mkdirSync(path.join(systemDirectory, 'security'), { recursive: true });
+    assert.equal(
+      sanitizeWindowsBrokerPath(systemDirectory, 'win32'),
+      systemDirectory,
+      'A directory named security must not make a valid PATH entry look like an executable decoy'
+    );
+  } finally {
+    fs.rmSync(fixtureRoot, { recursive: true, force: true });
+  }
 
   if (process.platform === 'win32') {
     const routerPath = fileURLToPath(new URL('../bin/agent-kernel-router.mjs', import.meta.url));
