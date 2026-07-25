@@ -8,6 +8,7 @@
 // The orchestrator does NOT swallow failures. If any test fails, the
 // process exits with code 1 so npm test fails loudly.
 
+import childProcess from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { run as runVersion } from './version.mjs';
@@ -54,13 +55,15 @@ import { run as runDocLinks } from './doc-links.mjs';
 import { run as runCliStatusJson } from './cli-status-json.mjs';
 import { run as runProjectContextBroker } from './project-context-broker.test.mjs';
 import { run as runProjectConnect } from './project-connect.test.mjs';
-import { sanitizeWindowsBrokerPath } from '../bin/agent-kernel-project-broker-platform.mjs';
+import { installChildProcessCompatibility } from '../bin/agent-kernel-command-runner.mjs';
 
 async function runProjectContextBrokerCompat() {
   const previousNodeOptions = process.env.NODE_OPTIONS;
   const previousSupabaseToken = process.env.SUPABASE_ACCESS_TOKEN;
-  const previousPath = process.env.PATH;
   const originalWriteFileSync = fs.writeFileSync;
+  const restoreChildProcess = process.platform === 'win32'
+    ? installChildProcessCompatibility(childProcess, { platform: 'win32' })
+    : () => {};
   const moduleDefaultFlag = '--experimental-default-type=module';
   const nodeMajor = Number(process.versions.node.split('.')[0]);
   if (nodeMajor === 18 && !String(previousNodeOptions || '').includes(moduleDefaultFlag)) {
@@ -68,7 +71,6 @@ async function runProjectContextBrokerCompat() {
   }
   if (process.platform === 'win32') {
     if (!previousSupabaseToken) process.env.SUPABASE_ACCESS_TOKEN = 'test-token';
-    process.env.PATH = sanitizeWindowsBrokerPath(previousPath, process.platform);
     fs.writeFileSync = (file, ...args) => {
       const filePath = String(file);
       const isPosixOnlyDecoy = filePath.includes(`${path.sep}non-executable-bin${path.sep}`) && path.extname(filePath) === '';
@@ -79,13 +81,12 @@ async function runProjectContextBrokerCompat() {
   try {
     await runProjectContextBroker();
   } finally {
+    restoreChildProcess();
     fs.writeFileSync = originalWriteFileSync;
     if (previousNodeOptions === undefined) delete process.env.NODE_OPTIONS;
     else process.env.NODE_OPTIONS = previousNodeOptions;
     if (previousSupabaseToken === undefined) delete process.env.SUPABASE_ACCESS_TOKEN;
     else process.env.SUPABASE_ACCESS_TOKEN = previousSupabaseToken;
-    if (previousPath === undefined) delete process.env.PATH;
-    else process.env.PATH = previousPath;
   }
 }
 
