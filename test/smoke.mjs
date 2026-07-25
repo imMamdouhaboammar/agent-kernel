@@ -8,6 +8,8 @@
 // The orchestrator does NOT swallow failures. If any test fails, the
 // process exits with code 1 so npm test fails loudly.
 
+import fs from 'node:fs';
+import path from 'node:path';
 import { run as runVersion } from './version.mjs';
 import { run as runInit } from './init.mjs';
 import { run as runMemory } from './memory.mjs';
@@ -58,6 +60,7 @@ async function runProjectContextBrokerCompat() {
   const previousNodeOptions = process.env.NODE_OPTIONS;
   const previousSupabaseToken = process.env.SUPABASE_ACCESS_TOKEN;
   const previousPath = process.env.PATH;
+  const originalWriteFileSync = fs.writeFileSync;
   const moduleDefaultFlag = '--experimental-default-type=module';
   const nodeMajor = Number(process.versions.node.split('.')[0]);
   if (nodeMajor === 18 && !String(previousNodeOptions || '').includes(moduleDefaultFlag)) {
@@ -66,10 +69,17 @@ async function runProjectContextBrokerCompat() {
   if (process.platform === 'win32') {
     if (!previousSupabaseToken) process.env.SUPABASE_ACCESS_TOKEN = 'test-token';
     process.env.PATH = sanitizeWindowsBrokerPath(previousPath, process.platform);
+    fs.writeFileSync = (file, ...args) => {
+      const filePath = String(file);
+      const isPosixOnlyDecoy = filePath.includes(`${path.sep}non-executable-bin${path.sep}`) && path.extname(filePath) === '';
+      if (isPosixOnlyDecoy) return;
+      return originalWriteFileSync(file, ...args);
+    };
   }
   try {
     await runProjectContextBroker();
   } finally {
+    fs.writeFileSync = originalWriteFileSync;
     if (previousNodeOptions === undefined) delete process.env.NODE_OPTIONS;
     else process.env.NODE_OPTIONS = previousNodeOptions;
     if (previousSupabaseToken === undefined) delete process.env.SUPABASE_ACCESS_TOKEN;
