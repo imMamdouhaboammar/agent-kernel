@@ -24,8 +24,8 @@ export async function run() {
   assert.equal(credentialCommandPolicy(['auth', 'add', 'supabase'], 'darwin').allowed, true);
 
   if (process.platform === 'win32') {
-    const wrapperPath = fileURLToPath(new URL('../bin/agent-kernel-project-broker-platform.mjs', import.meta.url));
-    const result = childProcess.spawnSync(process.execPath, [wrapperPath, 'auth', 'add', 'supabase', '--profile', 'client'], {
+    const routerPath = fileURLToPath(new URL('../bin/agent-kernel-router.mjs', import.meta.url));
+    const result = childProcess.spawnSync(process.execPath, [routerPath, 'auth', 'add', 'supabase', '--profile', 'client'], {
       encoding: 'utf8',
       env: process.env
     });
