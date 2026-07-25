@@ -28,15 +28,24 @@ export function credentialCommandPolicy(args, platform = process.platform) {
   };
 }
 
+function isRegularFile(filePath) {
+  try {
+    return fs.statSync(filePath).isFile();
+  } catch {
+    return false;
+  }
+}
+
 export function sanitizeWindowsBrokerPath(pathValue, platform = process.platform) {
   if (platform !== 'win32') return pathValue || '';
   const names = ['security', 'supabase', 'gcloud'];
-  return String(pathValue || '').split(path.delimiter).filter((dir) => {
-    if (!dir) return false;
+  return String(pathValue || '').split(path.delimiter).filter((entry) => {
+    if (!entry) return false;
+    const directory = path.resolve(entry);
     return !names.some((name) => {
-      const extensionless = path.join(dir, name);
-      const recognized = ['.cmd', '.exe', '.bat'].some((ext) => fs.existsSync(path.join(dir, `${name}${ext}`)));
-      return fs.existsSync(extensionless) && !recognized;
+      const extensionless = path.join(directory, name);
+      const recognized = ['.cmd', '.exe', '.bat'].some((ext) => isRegularFile(path.join(directory, `${name}${ext}`)));
+      return isRegularFile(extensionless) && !recognized;
     });
   }).join(path.delimiter);
 }
