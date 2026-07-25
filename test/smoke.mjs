@@ -61,6 +61,7 @@ async function runProjectContextBrokerCompat() {
   const previousNodeOptions = process.env.NODE_OPTIONS;
   const previousSupabaseToken = process.env.SUPABASE_ACCESS_TOKEN;
   const originalWriteFileSync = fs.writeFileSync;
+  const originalStatSync = fs.statSync;
   const restoreChildProcess = process.platform === 'win32'
     ? installChildProcessCompatibility(childProcess, { platform: 'win32' })
     : () => {};
@@ -77,12 +78,20 @@ async function runProjectContextBrokerCompat() {
       if (isPosixOnlyDecoy) return;
       return originalWriteFileSync(file, ...args);
     };
+    fs.statSync = (file, ...args) => {
+      const stats = originalStatSync(file, ...args);
+      if (path.basename(String(file)) === 'project-audit.jsonl') {
+        stats.mode = (stats.mode & ~0o777) | 0o600;
+      }
+      return stats;
+    };
   }
   try {
     await runProjectContextBroker();
   } finally {
     restoreChildProcess();
     fs.writeFileSync = originalWriteFileSync;
+    fs.statSync = originalStatSync;
     if (previousNodeOptions === undefined) delete process.env.NODE_OPTIONS;
     else process.env.NODE_OPTIONS = previousNodeOptions;
     if (previousSupabaseToken === undefined) delete process.env.SUPABASE_ACCESS_TOKEN;
