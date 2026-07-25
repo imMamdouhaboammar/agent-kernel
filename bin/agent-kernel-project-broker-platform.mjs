@@ -63,6 +63,13 @@ export function installWindowsPathCompatibility(platform = process.platform) {
   process.env.PATH = sanitizeWindowsBrokerPath(process.env.PATH, platform);
 }
 
+function trustedWindowsPathDirectories(pathValue) {
+  return String(pathValue || '')
+    .split(path.delimiter)
+    .filter(Boolean)
+    .map((entry) => path.resolve(entry));
+}
+
 async function loadBrokerMain() {
   const { main } = await import('./agent-kernel-project-broker.mjs');
   return main;
@@ -85,6 +92,7 @@ export async function runBroker(
     ? installChildProcessCompatibility(childProcess, {
         platform,
         allowedBatchNames: ['supabase', 'gcloud'],
+        allowedBatchDirectories: trustedWindowsPathDirectories(process.env.PATH),
         entryPointRedirects: { [brokerModulePath]: modulePath }
       })
     : () => {};
