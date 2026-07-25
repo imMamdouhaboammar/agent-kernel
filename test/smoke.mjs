@@ -52,17 +52,20 @@ import { run as runDocLinks } from './doc-links.mjs';
 import { run as runCliStatusJson } from './cli-status-json.mjs';
 import { run as runProjectContextBroker } from './project-context-broker.test.mjs';
 import { run as runProjectConnect } from './project-connect.test.mjs';
+import { sanitizeWindowsBrokerPath } from '../bin/agent-kernel-project-broker-platform.mjs';
 
 async function runProjectContextBrokerCompat() {
   const previousNodeOptions = process.env.NODE_OPTIONS;
   const previousSupabaseToken = process.env.SUPABASE_ACCESS_TOKEN;
+  const previousPath = process.env.PATH;
   const moduleDefaultFlag = '--experimental-default-type=module';
   const nodeMajor = Number(process.versions.node.split('.')[0]);
   if (nodeMajor === 18 && !String(previousNodeOptions || '').includes(moduleDefaultFlag)) {
     process.env.NODE_OPTIONS = [previousNodeOptions, moduleDefaultFlag].filter(Boolean).join(' ');
   }
-  if (process.platform === 'win32' && !previousSupabaseToken) {
-    process.env.SUPABASE_ACCESS_TOKEN = 'test-token';
+  if (process.platform === 'win32') {
+    if (!previousSupabaseToken) process.env.SUPABASE_ACCESS_TOKEN = 'test-token';
+    process.env.PATH = sanitizeWindowsBrokerPath(previousPath, process.platform);
   }
   try {
     await runProjectContextBroker();
@@ -71,6 +74,8 @@ async function runProjectContextBrokerCompat() {
     else process.env.NODE_OPTIONS = previousNodeOptions;
     if (previousSupabaseToken === undefined) delete process.env.SUPABASE_ACCESS_TOKEN;
     else process.env.SUPABASE_ACCESS_TOKEN = previousSupabaseToken;
+    if (previousPath === undefined) delete process.env.PATH;
+    else process.env.PATH = previousPath;
   }
 }
 
@@ -131,23 +136,21 @@ for (const [name, run] of tests) {
   process.stdout.write(`  • ${name} ... `);
   try {
     await run();
-    process.stdout.write('ok\n');
-    passed++;
-  } catch (err) {
-    process.stdout.write('FAIL\n');
-    console.log(`    ${err.message.split('\n').join('\n    ')}`);
-    failed++;
-    failedTests.push(name);
+    passed += 1;
+    console.log('ok');
+  } catch (error) {
+    failed += 1;
+    failedTests.push({ name, error });
+    console.log('FAILED');
   }
 }
 
-console.log();
-console.log(`  ${passed}/${tests.length} passed`);
+console.log(`\n${passed} passed, ${failed} failed`);
 
-if (failed > 0) {
-  console.log(`\n  failed tests: ${failedTests.join(', ')}`);
-  console.log(`\nsmoke: FAIL`);
+if (failedTests.length > 0) {
+  for (const { name, error } of failedTests) {
+    console.error(`\n[${name}]`);
+    console.error(error?.stack || error);
+  }
   process.exit(1);
 }
-
-console.log(`\nsmoke: OK`);
