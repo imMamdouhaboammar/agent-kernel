@@ -14,17 +14,20 @@ export function credentialCommandPolicy(args, platform = process.platform) {
   const command = args[0];
   const action = args[1];
   const provider = args[2] || 'provider';
-  if (platform !== 'win32' || command !== 'auth' || !['add', 'remove'].includes(action)) {
+  if (command !== 'auth' || !['add', 'remove'].includes(action) || platform === 'darwin') {
     return { allowed: true, exitCode: 0, message: '' };
   }
 
   const guidance = provider === 'supabase'
     ? supabaseEnvironmentGuidance(action)
     : 'Configure credentials through the provider CLI or environment without storing them in repository files.';
+  const backendMessage = platform === 'win32'
+    ? 'a Windows Credential Manager backend is not configured'
+    : `a secure credential backend is not configured for ${platform}`;
   return {
     allowed: false,
     exitCode: 2,
-    message: `Agent Kernel auth ${action} is unavailable on Windows because a Windows Credential Manager backend is not configured. ${guidance}`
+    message: `Agent Kernel auth ${action} is unavailable because ${backendMessage}. ${guidance}`
   };
 }
 
