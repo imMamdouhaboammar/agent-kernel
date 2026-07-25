@@ -24,6 +24,28 @@ function sanitizedWindowsTestEnvironment() {
 }
 
 export async function run() {
+  const packageJsonPath = fileURLToPath(new URL('../package.json', import.meta.url));
+  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+  assert.equal(
+    packageJson.bin['agent-kernel-project-broker'],
+    './bin/agent-kernel-project-broker-platform.mjs',
+    'The published broker binary must enter through the platform security boundary'
+  );
+  const brokerSource = fs.readFileSync(
+    fileURLToPath(new URL('../bin/agent-kernel-project-broker.mjs', import.meta.url)),
+    'utf8'
+  );
+  assert.match(
+    brokerSource,
+    /import childProcess from 'node:child_process';/,
+    'The broker must use the mutable default child_process export used by the compatibility boundary'
+  );
+  assert.doesNotMatch(
+    brokerSource,
+    /import\s*\{[^}]*spawnSync[^}]*\}\s*from\s*'node:child_process'/,
+    'The broker must not bypass the compatibility boundary through a named spawnSync import'
+  );
+
   const windowsAdd = credentialCommandPolicy(['auth', 'add', 'supabase', '--profile', 'client'], 'win32');
   assert.equal(windowsAdd.allowed, false);
   assert.equal(windowsAdd.exitCode, 2);
@@ -73,13 +95,14 @@ export async function run() {
 
   const normalizedBatch = normalizeChildCommand(
     'C:\\Program Files\\Supabase\\supabase.cmd',
-    ['status', '--project-ref', 'project with spaces'],
+    ['status', '--project-ref', 'project with spaces', '100% literal'],
     {
       platform: 'win32',
       systemRoot: 'C:\\Windows',
       comspec: 'C:\\Windows\\System32\\cmd.exe',
       node: 'C:\\node.exe',
       allowedBatchNames: ['supabase'],
+      allowedBatchDirectories: ['C:\\Program Files\\Supabase'],
       validateFiles: false
     }
   );
@@ -88,6 +111,7 @@ export async function run() {
   assert.equal(normalizedBatch.windowsVerbatimArguments, true);
   assert.match(normalizedBatch.args[3], /supabase\.cmd/);
   assert.match(normalizedBatch.args[3], /project with spaces/);
+  assert.match(normalizedBatch.args[3], /100%:~,% literal/);
   assert.equal(normalizedBatch.shell, undefined);
 
   assert.throws(() => normalizeChildCommand(
@@ -98,6 +122,7 @@ export async function run() {
       systemRoot: 'C:\\Windows',
       comspec: 'C:\\Windows\\System32\\cmd.exe',
       allowedBatchNames: ['supabase'],
+      allowedBatchDirectories: ['C:\\tools'],
       validateFiles: false
     }
   ), /not allowlisted/i);
@@ -109,9 +134,21 @@ export async function run() {
       systemRoot: 'C:\\Windows',
       comspec: 'C:\\Temp\\cmd.exe',
       allowedBatchNames: ['supabase'],
+      allowedBatchDirectories: ['C:\\tools'],
       validateFiles: false
     }
   ), /untrusted Windows command processor/i);
+  assert.throws(() => normalizeChildCommand(
+    'C:\\Temp\\supabase.cmd',
+    [],
+    {
+      platform: 'win32',
+      systemRoot: 'C:\\Windows',
+      comspec: 'C:\\Windows\\System32\\cmd.exe',
+      allowedBatchNames: ['supabase'],
+      allowedBatchDirectories: ['C:\\Program Files\\Supabase']
+    }
+  ), /directory is not trusted/i);
 
   const normalizedScript = normalizeChildCommand(
     'C:\\tools\\provider.mjs',
@@ -163,6 +200,7 @@ export async function run() {
     comspec: 'C:\\Windows\\System32\\cmd.exe',
     node: 'C:\\node.exe',
     allowedBatchNames: ['provider'],
+    allowedBatchDirectories: ['C:\\tools'],
     validateFiles: false
   });
   try {
@@ -177,7 +215,44 @@ export async function run() {
   assert.equal(calls[1].options.cwd, 'C:\\workspace');
   assert.equal(calls[1].options.windowsVerbatimArguments, true);
 
+  if (process.platform !== 'darwin') {
+    const brokerPlatformPath = fileURLToPath(new URL('../bin/agent-kernel-project-broker-platform.mjs', import.meta.url));
+    const result = childProcess.spawnSync(
+      process.execPath,
+      [brokerPlatformPath, 'auth', 'add', 'supabase', '--profile', 'client'],
+      {
+        encoding: 'utf8',
+        env: process.platform === 'win32' ? sanitizedWindowsTestEnvironment() : process.env
+      }
+    );
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /credential backend is not configured|Windows Credential Manager backend is not configured/i);
+    assert.doesNotMatch(result.stdout + result.stderr, /credential_ref|Added auth profile|secret|token value/i);
+  }
+
   if (process.platform === 'win32') {
+    const percentRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-kernel-percent-'));
+    try {
+      const percentLauncher = path.join(percentRoot, 'supabase.cmd');
+      fs.writeFileSync(percentLauncher, '@echo off\r\n<nul set /p "=%~1"\r\n', 'utf8');
+      const invocation = normalizeChildCommand(
+        percentLauncher,
+        ['100% literal %PATH%'],
+        {
+          allowedBatchNames: ['supabase'],
+          allowedBatchDirectories: [percentRoot]
+        }
+      );
+      const output = childProcess.execFileSync(invocation.command, invocation.args, {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        windowsVerbatimArguments: invocation.windowsVerbatimArguments
+      });
+      assert.equal(output, '100% literal %PATH%');
+    } finally {
+      fs.rmSync(percentRoot, { recursive: true, force: true });
+    }
+
     const routerPath = fileURLToPath(new URL('../bin/agent-kernel-router.mjs', import.meta.url));
     const result = childProcess.spawnSync(process.execPath, [routerPath, 'auth', 'add', 'supabase', '--profile', 'client'], {
       encoding: 'utf8',
