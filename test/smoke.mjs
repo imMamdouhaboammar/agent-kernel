@@ -32,6 +32,7 @@ import { run as runPublicCliDashboard } from './public-cli-dashboard.mjs';
 import { run as runPublicCliDashboardSafety } from './public-cli-dashboard-safety.mjs';
 import { run as runPublicCliUpdate } from './public-cli-update.mjs';
 import { run as runWindowsUpdateRunner } from './windows-update-runner.mjs';
+import { run as runWindowsCredentialBoundary } from './windows-credential-boundary.mjs';
 import { run as runFileContext } from './file-context.mjs';
 import { run as runFileReferences } from './file-references.mjs';
 import { run as runStructuredSearch } from './structured-search.mjs';
@@ -92,6 +93,7 @@ const tests = [
   ['public-cli-dashboard-safety', runPublicCliDashboardSafety],
   ['public-cli-update', runPublicCliUpdate],
   ['windows-update-runner', runWindowsUpdateRunner],
+  ['windows-credential-boundary', runWindowsCredentialBoundary],
   ['file-context', runFileContext],
   ['file-references', runFileReferences],
   ['structured-search', runStructuredSearch],
