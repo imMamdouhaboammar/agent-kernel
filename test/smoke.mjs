@@ -60,6 +60,7 @@ import { installChildProcessCompatibility } from '../bin/agent-kernel-command-ru
 
 const brokerModulePath = fileURLToPath(new URL('../bin/agent-kernel-project-broker.mjs', import.meta.url));
 const brokerPlatformPath = fileURLToPath(new URL('../bin/agent-kernel-project-broker-platform.mjs', import.meta.url));
+const windowsProviderFixtureNames = new Set(['supabase', 'gcloud']);
 
 async function runProjectContextBrokerCompat() {
   const previousNodeOptions = process.env.NODE_OPTIONS;
@@ -82,9 +83,21 @@ async function runProjectContextBrokerCompat() {
     if (!previousSupabaseToken) process.env.SUPABASE_ACCESS_TOKEN = 'test-token';
     fs.writeFileSync = (file, ...args) => {
       const filePath = String(file);
-      const isPosixOnlyDecoy = filePath.includes(`${path.sep}non-executable-bin${path.sep}`) && path.extname(filePath) === '';
+      const isExtensionless = path.extname(filePath) === '';
+      const isPosixOnlyDecoy = filePath.includes(`${path.sep}non-executable-bin${path.sep}`) && isExtensionless;
       if (isPosixOnlyDecoy) return;
-      return originalWriteFileSync(file, ...args);
+
+      const result = originalWriteFileSync(file, ...args);
+      const basename = path.basename(filePath).toLowerCase();
+      if (isExtensionless && windowsProviderFixtureNames.has(basename)) {
+        const source = args[0];
+        const sourceOptions = args[1];
+        const modulePath = `${filePath}.mjs`;
+        originalWriteFileSync(modulePath, source, sourceOptions);
+        const launcher = `@echo off\r\n"${process.execPath}" "%~dp0${basename}.mjs" %*\r\n`;
+        originalWriteFileSync(`${filePath}.cmd`, launcher, 'utf8');
+      }
+      return result;
     };
     fs.statSync = (file, ...args) => {
       const stats = originalStatSync(file, ...args);
