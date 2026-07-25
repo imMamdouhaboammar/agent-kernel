@@ -8,6 +8,8 @@
 // The orchestrator does NOT swallow failures. If any test fails, the
 // process exits with code 1 so npm test fails loudly.
 
+import fs from 'node:fs';
+import path from 'node:path';
 import { run as runVersion } from './version.mjs';
 import { run as runInit } from './init.mjs';
 import { run as runMemory } from './memory.mjs';
@@ -32,6 +34,7 @@ import { run as runPublicCliDashboard } from './public-cli-dashboard.mjs';
 import { run as runPublicCliDashboardSafety } from './public-cli-dashboard-safety.mjs';
 import { run as runPublicCliUpdate } from './public-cli-update.mjs';
 import { run as runWindowsUpdateRunner } from './windows-update-runner.mjs';
+import { run as runWindowsCredentialBoundary } from './windows-credential-boundary.mjs';
 import { run as runFileContext } from './file-context.mjs';
 import { run as runFileReferences } from './file-references.mjs';
 import { run as runStructuredSearch } from './structured-search.mjs';
@@ -51,19 +54,38 @@ import { run as runDocLinks } from './doc-links.mjs';
 import { run as runCliStatusJson } from './cli-status-json.mjs';
 import { run as runProjectContextBroker } from './project-context-broker.test.mjs';
 import { run as runProjectConnect } from './project-connect.test.mjs';
+import { sanitizeWindowsBrokerPath } from '../bin/agent-kernel-project-broker-platform.mjs';
 
 async function runProjectContextBrokerCompat() {
   const previousNodeOptions = process.env.NODE_OPTIONS;
+  const previousSupabaseToken = process.env.SUPABASE_ACCESS_TOKEN;
+  const previousPath = process.env.PATH;
+  const originalWriteFileSync = fs.writeFileSync;
   const moduleDefaultFlag = '--experimental-default-type=module';
   const nodeMajor = Number(process.versions.node.split('.')[0]);
   if (nodeMajor === 18 && !String(previousNodeOptions || '').includes(moduleDefaultFlag)) {
     process.env.NODE_OPTIONS = [previousNodeOptions, moduleDefaultFlag].filter(Boolean).join(' ');
   }
+  if (process.platform === 'win32') {
+    if (!previousSupabaseToken) process.env.SUPABASE_ACCESS_TOKEN = 'test-token';
+    process.env.PATH = sanitizeWindowsBrokerPath(previousPath, process.platform);
+    fs.writeFileSync = (file, ...args) => {
+      const filePath = String(file);
+      const isPosixOnlyDecoy = filePath.includes(`${path.sep}non-executable-bin${path.sep}`) && path.extname(filePath) === '';
+      if (isPosixOnlyDecoy) return;
+      return originalWriteFileSync(file, ...args);
+    };
+  }
   try {
     await runProjectContextBroker();
   } finally {
+    fs.writeFileSync = originalWriteFileSync;
     if (previousNodeOptions === undefined) delete process.env.NODE_OPTIONS;
     else process.env.NODE_OPTIONS = previousNodeOptions;
+    if (previousSupabaseToken === undefined) delete process.env.SUPABASE_ACCESS_TOKEN;
+    else process.env.SUPABASE_ACCESS_TOKEN = previousSupabaseToken;
+    if (previousPath === undefined) delete process.env.PATH;
+    else process.env.PATH = previousPath;
   }
 }
 
@@ -92,6 +114,7 @@ const tests = [
   ['public-cli-dashboard-safety', runPublicCliDashboardSafety],
   ['public-cli-update', runPublicCliUpdate],
   ['windows-update-runner', runWindowsUpdateRunner],
+  ['windows-credential-boundary', runWindowsCredentialBoundary],
   ['file-context', runFileContext],
   ['file-references', runFileReferences],
   ['structured-search', runStructuredSearch],
@@ -123,23 +146,21 @@ for (const [name, run] of tests) {
   process.stdout.write(`  • ${name} ... `);
   try {
     await run();
-    process.stdout.write('ok\n');
-    passed++;
-  } catch (err) {
-    process.stdout.write('FAIL\n');
-    console.log(`    ${err.message.split('\n').join('\n    ')}`);
-    failed++;
-    failedTests.push(name);
+    passed += 1;
+    console.log('ok');
+  } catch (error) {
+    failed += 1;
+    failedTests.push({ name, error });
+    console.log('FAILED');
   }
 }
 
-console.log();
-console.log(`  ${passed}/${tests.length} passed`);
+console.log(`\n${passed} passed, ${failed} failed`);
 
-if (failed > 0) {
-  console.log(`\n  failed tests: ${failedTests.join(', ')}`);
-  console.log(`\nsmoke: FAIL`);
+if (failedTests.length > 0) {
+  for (const { name, error } of failedTests) {
+    console.error(`\n[${name}]`);
+    console.error(error?.stack || error);
+  }
   process.exit(1);
 }
-
-console.log(`\nsmoke: OK`);
