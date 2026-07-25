@@ -45,11 +45,35 @@ function validateBatchLauncher(executable, runtime) {
   }
 }
 
+function redirectWindowsEntryPoint(executable, args, runtime) {
+  const node = runtime.node || process.execPath;
+  if (normalizeWindowsPath(executable) !== normalizeWindowsPath(node) || args.length === 0) return args;
+  const redirects = Object.entries(runtime.entryPointRedirects || {});
+  const requested = normalizeWindowsPath(args[0]);
+  const redirect = redirects.find(([source]) => normalizeWindowsPath(source) === requested);
+  if (!redirect) return args;
+  const target = redirect[1];
+  if (!path.win32.isAbsolute(target)) {
+    throw new Error(`Windows entry-point redirect must use an absolute path: ${target}`);
+  }
+  if (runtime.validateFiles !== false && !isRegularFile(target)) {
+    throw new Error(`Windows entry-point redirect is not a regular file: ${target}`);
+  }
+  return [target, ...args.slice(1)];
+}
+
 export function normalizeChildCommand(command, args = [], runtime = {}) {
   const platform = runtime.platform || process.platform;
   const node = runtime.node || process.execPath;
   const executable = String(command);
   const commandArgs = Array.isArray(args) ? [...args] : [];
+
+  if (platform === 'win32') {
+    const redirectedArgs = redirectWindowsEntryPoint(executable, commandArgs, runtime);
+    if (redirectedArgs !== commandArgs) {
+      return { command: executable, args: redirectedArgs };
+    }
+  }
 
   if (platform === 'win32' && /\.(?:cmd|bat)$/i.test(executable)) {
     validateBatchLauncher(executable, runtime);
