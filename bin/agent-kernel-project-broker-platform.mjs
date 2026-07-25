@@ -63,8 +63,8 @@ export function installWindowsPathCompatibility(platform = process.platform) {
   process.env.PATH = sanitizeWindowsBrokerPath(process.env.PATH, platform);
 }
 
-function trustedWindowsPathDirectories(pathValue) {
-  return String(pathValue || '')
+function trustedWindowsPathDirectories() {
+  return String(process.env.PATH || '')
     .split(path.delimiter)
     .filter(Boolean)
     .map((entry) => path.resolve(entry));
@@ -92,7 +92,7 @@ export async function runBroker(
     ? installChildProcessCompatibility(childProcess, {
         platform,
         allowedBatchNames: ['supabase', 'gcloud'],
-        allowedBatchDirectories: trustedWindowsPathDirectories(process.env.PATH),
+        allowedBatchDirectories: trustedWindowsPathDirectories,
         entryPointRedirects: { [brokerModulePath]: modulePath }
       })
     : () => {};
