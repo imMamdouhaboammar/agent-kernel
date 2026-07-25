@@ -61,6 +61,11 @@ import { installChildProcessCompatibility } from '../bin/agent-kernel-command-ru
 
 const brokerModulePath = fileURLToPath(new URL('../bin/agent-kernel-project-broker.mjs', import.meta.url));
 const brokerPlatformPath = fileURLToPath(new URL('../bin/agent-kernel-project-broker-platform.mjs', import.meta.url));
+const windowsOwnerOnlyStateFiles = new Set([
+  'active-session.json',
+  'approvals.json',
+  'project-audit.jsonl'
+]);
 
 function createWindowsProviderFixtureDirectory() {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-kernel-windows-providers-'));
@@ -70,7 +75,7 @@ function createWindowsProviderFixtureDirectory() {
 import fs from 'node:fs';
 const args = process.argv.slice(2);
 if (process.env.AK_APPROVAL_ARGS_FILE) {
-  fs.appendFileSync(process.env.AK_APPROVAL_ARGS_FILE, JSON.stringify({ tool: '${tool}', args }) + '\\n');
+  fs.appendFileSync(process.env.AK_APPROVAL_ARGS_FILE, JSON.stringify({ tool: '${tool}', args }) + '\n');
 } else if (process.env.AK_TEST_ARGS_FILE) {
   fs.writeFileSync(process.env.AK_TEST_ARGS_FILE, JSON.stringify(args));
 }
@@ -78,7 +83,9 @@ if (process.env.AK_APPROVAL_ARGS_FILE) {
     fs.writeFileSync(modulePath, moduleSource, 'utf8');
     fs.writeFileSync(
       path.join(directory, `${tool}.cmd`),
-      `@echo off\r\n"${process.execPath}" "%~dp0${tool}.mjs" %*\r\n`,
+      `@echo off
+"${process.execPath}" "%~dp0${tool}.mjs" %*
+`,
       'utf8'
     );
   }
@@ -117,7 +124,7 @@ async function runProjectContextBrokerCompat() {
     };
     fs.statSync = (file, ...args) => {
       const stats = originalStatSync(file, ...args);
-      if (path.basename(String(file)) === 'project-audit.jsonl') {
+      if (windowsOwnerOnlyStateFiles.has(path.basename(String(file)))) {
         stats.mode = (stats.mode & ~0o777) | 0o600;
       }
       return stats;
@@ -205,11 +212,13 @@ for (const [name, run] of tests) {
   }
 }
 
-console.log(`\n${passed} passed, ${failed} failed`);
+console.log(`
+${passed} passed, ${failed} failed`);
 
 if (failedTests.length > 0) {
   for (const { name, error } of failedTests) {
-    console.error(`\n[${name}]`);
+    console.error(`
+[${name}]`);
     console.error(error?.stack || error);
   }
   process.exit(1);
