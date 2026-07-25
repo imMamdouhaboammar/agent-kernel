@@ -1,5 +1,4 @@
 # CodeRabbit AI Configuration for agent-kernel open-source repository
-version: "2"
 language: "en-US"
 tone_instructions: "Be rigorous, constructive, and security-focused in review summaries."
 reviews:
