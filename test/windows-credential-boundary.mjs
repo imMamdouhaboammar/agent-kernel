@@ -5,6 +5,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  installChildProcessCompatibility,
+  normalizeChildCommand
+} from '../bin/agent-kernel-command-runner.mjs';
+import {
   credentialCommandPolicy,
   runBroker,
   sanitizeWindowsBrokerPath
@@ -66,6 +70,54 @@ export async function run() {
   });
   assert.equal(delegatedExitCode, 0);
   assert.equal(delegatedMainCompleted, true, 'The platform wrapper must await the delegated broker entry point');
+
+  const normalizedBatch = normalizeChildCommand(
+    'C:\\Program Files\\Supabase\\supabase.cmd',
+    ['status', '--project-ref', 'project with spaces'],
+    { platform: 'win32', comspec: 'C:\\Windows\\System32\\cmd.exe', node: 'C:\\node.exe' }
+  );
+  assert.equal(normalizedBatch.command, 'C:\\Windows\\System32\\cmd.exe');
+  assert.deepEqual(normalizedBatch.args.slice(0, 3), ['/d', '/s', '/c']);
+  assert.equal(normalizedBatch.windowsVerbatimArguments, true);
+  assert.match(normalizedBatch.args[3], /supabase\.cmd/);
+  assert.match(normalizedBatch.args[3], /project with spaces/);
+  assert.equal(normalizedBatch.shell, undefined);
+
+  const normalizedScript = normalizeChildCommand(
+    'C:\\tools\\provider.mjs',
+    ['status'],
+    { platform: 'win32', comspec: 'cmd.exe', node: 'C:\\node.exe' }
+  );
+  assert.equal(normalizedScript.command, 'C:\\node.exe');
+  assert.deepEqual(normalizedScript.args, ['C:\\tools\\provider.mjs', 'status']);
+
+  const calls = [];
+  const fakeChildProcess = {
+    execFileSync(command, args, options) {
+      calls.push({ method: 'execFileSync', command, args, options });
+      return 'ok';
+    },
+    spawnSync(command, args, options) {
+      calls.push({ method: 'spawnSync', command, args, options });
+      return { status: 0 };
+    }
+  };
+  const restoreCompatibility = installChildProcessCompatibility(fakeChildProcess, {
+    platform: 'win32',
+    comspec: 'C:\\Windows\\System32\\cmd.exe',
+    node: 'C:\\node.exe'
+  });
+  try {
+    fakeChildProcess.execFileSync('C:\\tools\\provider.cmd', { encoding: 'utf8' });
+    fakeChildProcess.spawnSync('C:\\tools\\provider.cmd', ['status'], { cwd: 'C:\\workspace' });
+  } finally {
+    restoreCompatibility();
+  }
+  assert.deepEqual(calls[0].args.slice(0, 3), ['/d', '/s', '/c']);
+  assert.equal(calls[0].options.encoding, 'utf8', 'execFileSync(file, options) must preserve its overload options');
+  assert.equal(calls[0].options.windowsVerbatimArguments, true);
+  assert.equal(calls[1].options.cwd, 'C:\\workspace');
+  assert.equal(calls[1].options.windowsVerbatimArguments, true);
 
   if (process.platform === 'win32') {
     const routerPath = fileURLToPath(new URL('../bin/agent-kernel-router.mjs', import.meta.url));
