@@ -18,7 +18,7 @@ export async function run() {
   const windowsRemove = credentialCommandPolicy(['auth', 'remove', 'supabase', 'client'], 'win32');
   assert.equal(windowsRemove.allowed, false);
   assert.equal(windowsRemove.exitCode, 2);
-  assert.match(windowsRemove.message, /remove the environment variable/i);
+  assert.match(windowsRemove.message, /Remove SUPABASE_ACCESS_TOKEN or SUPABASE_TOKEN/i);
 
   assert.equal(credentialCommandPolicy(['provider', 'supabase', 'exec'], 'win32').allowed, true);
   assert.equal(credentialCommandPolicy(['auth', 'add', 'supabase'], 'darwin').allowed, true);
