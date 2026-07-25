@@ -47,10 +47,25 @@ export function sanitizeWindowsBrokerPath(pathValue, platform = process.platform
   }).join(path.delimiter);
 }
 
+function resolveWindowsExecutable(command, env, platform) {
+  const executable = String(command);
+  if (platform !== 'win32' || !path.isAbsolute(executable) || path.extname(executable)) return executable;
+  const executableName = path.basename(executable);
+  const searchPath = sanitizeWindowsBrokerPath(env?.PATH || process.env.PATH, platform);
+  for (const dir of searchPath.split(path.delimiter)) {
+    for (const extension of ['.cmd', '.exe', '.bat']) {
+      const candidate = path.join(dir, `${executableName}${extension}`);
+      if (fs.existsSync(candidate)) return candidate;
+    }
+  }
+  return executable;
+}
+
 function normalizeInvocation(command, args, options, platform) {
   const commandArgs = Array.isArray(args) ? args : [];
   const commandOptions = Array.isArray(args) ? (options || {}) : (args || {});
-  const normalized = normalizeUpdateCommand(command, commandArgs, { platform });
+  const executable = resolveWindowsExecutable(command, commandOptions.env, platform);
+  const normalized = normalizeUpdateCommand(executable, commandArgs, { platform });
   return {
     command: normalized.command,
     args: normalized.args,
