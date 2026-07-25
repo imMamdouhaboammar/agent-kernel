@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 
 function quoteCmdArgument(value) {
@@ -5,23 +6,68 @@ function quoteCmdArgument(value) {
   return `"${escaped}"`;
 }
 
+function isRegularFile(filePath) {
+  try {
+    return fs.statSync(filePath).isFile();
+  } catch {
+    return false;
+  }
+}
+
+function normalizeWindowsPath(filePath) {
+  return path.win32.normalize(String(filePath)).toLowerCase();
+}
+
+function resolveWindowsCommandProcessor(runtime) {
+  const systemRoot = runtime.systemRoot || process.env.SystemRoot || 'C:\\Windows';
+  const expected = path.win32.join(systemRoot, 'System32', 'cmd.exe');
+  const candidate = runtime.comspec || process.env.ComSpec || expected;
+  if (normalizeWindowsPath(candidate) !== normalizeWindowsPath(expected)) {
+    throw new Error(`Refusing untrusted Windows command processor: ${candidate}`);
+  }
+  if (runtime.validateFiles !== false && !isRegularFile(candidate)) {
+    throw new Error(`Windows command processor is not a regular file: ${candidate}`);
+  }
+  return candidate;
+}
+
+function validateBatchLauncher(executable, runtime) {
+  if (!path.win32.isAbsolute(executable)) {
+    throw new Error(`Windows batch launcher must use an absolute path: ${executable}`);
+  }
+  const basename = path.win32.basename(executable, path.win32.extname(executable)).toLowerCase();
+  const allowed = new Set((runtime.allowedBatchNames || []).map((name) => String(name).toLowerCase()));
+  if (!allowed.has(basename)) {
+    throw new Error(`Windows batch launcher is not allowlisted: ${basename}`);
+  }
+  if (runtime.validateFiles !== false && !isRegularFile(executable)) {
+    throw new Error(`Windows batch launcher is not a regular file: ${executable}`);
+  }
+}
+
 export function normalizeChildCommand(command, args = [], runtime = {}) {
   const platform = runtime.platform || process.platform;
-  const comspec = runtime.comspec || process.env.ComSpec || 'cmd.exe';
   const node = runtime.node || process.execPath;
   const executable = String(command);
   const commandArgs = Array.isArray(args) ? [...args] : [];
 
   if (platform === 'win32' && /\.(?:cmd|bat)$/i.test(executable)) {
+    validateBatchLauncher(executable, runtime);
     const commandLine = [executable, ...commandArgs].map(quoteCmdArgument).join(' ');
     return {
-      command: comspec,
+      command: resolveWindowsCommandProcessor(runtime),
       args: ['/d', '/s', '/c', `"${commandLine}"`],
       windowsVerbatimArguments: true
     };
   }
 
-  if (platform === 'win32' && /\.[cm]?js$/i.test(executable)) {
+  if (platform === 'win32' && runtime.allowJavaScript === true && /\.[cm]?js$/i.test(executable)) {
+    if (!path.win32.isAbsolute(executable)) {
+      throw new Error(`Windows JavaScript launcher must use an absolute path: ${executable}`);
+    }
+    if (runtime.validateFiles !== false && !isRegularFile(executable)) {
+      throw new Error(`Windows JavaScript launcher is not a regular file: ${executable}`);
+    }
     return { command: node, args: [executable, ...commandArgs] };
   }
 
@@ -51,11 +97,13 @@ export function installChildProcessCompatibility(childProcessModule, runtime = {
 
   childProcessModule.execFileSync = function compatibleExecFileSync(command, argsOrOptions, maybeOptions) {
     const call = normalizeSyncCall(command, argsOrOptions, maybeOptions, runtime);
+    // codeql[js/shell-command-injection-from-environment] Batch launchers and ComSpec are allowlisted and validated above.
     return originalExecFileSync.call(childProcessModule, call.command, call.args, call.options);
   };
 
   childProcessModule.spawnSync = function compatibleSpawnSync(command, argsOrOptions, maybeOptions) {
     const call = normalizeSyncCall(command, argsOrOptions, maybeOptions, runtime);
+    // codeql[js/shell-command-injection-from-environment] Batch launchers and ComSpec are allowlisted and validated above.
     return originalSpawnSync.call(childProcessModule, call.command, call.args, call.options);
   };
 
@@ -63,8 +111,4 @@ export function installChildProcessCompatibility(childProcessModule, runtime = {
     childProcessModule.execFileSync = originalExecFileSync;
     childProcessModule.spawnSync = originalSpawnSync;
   };
-}
-
-export function commandExtension(command) {
-  return path.extname(String(command)).toLowerCase();
 }
