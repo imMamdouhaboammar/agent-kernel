@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   credentialCommandPolicy,
+  runBroker,
   sanitizeWindowsBrokerPath
 } from '../bin/agent-kernel-project-broker-platform.mjs';
 
@@ -57,6 +58,14 @@ export async function run() {
   } finally {
     fs.rmSync(fixtureRoot, { recursive: true, force: true });
   }
+
+  let delegatedMainCompleted = false;
+  const delegatedExitCode = await runBroker(['help'], 'linux', async () => async () => {
+    await new Promise((resolve) => setImmediate(resolve));
+    delegatedMainCompleted = true;
+  });
+  assert.equal(delegatedExitCode, 0);
+  assert.equal(delegatedMainCompleted, true, 'The platform wrapper must await the delegated broker entry point');
 
   if (process.platform === 'win32') {
     const routerPath = fileURLToPath(new URL('../bin/agent-kernel-router.mjs', import.meta.url));
