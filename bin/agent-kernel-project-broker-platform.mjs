@@ -58,7 +58,16 @@ export function installWindowsPathCompatibility(platform = process.platform) {
   process.env.PATH = sanitizeWindowsBrokerPath(process.env.PATH, platform);
 }
 
-export async function runBroker(args = process.argv.slice(2), platform = process.platform) {
+async function loadBrokerMain() {
+  const { main } = await import('./agent-kernel-project-broker.mjs');
+  return main;
+}
+
+export async function runBroker(
+  args = process.argv.slice(2),
+  platform = process.platform,
+  loadMain = loadBrokerMain
+) {
   const policy = credentialCommandPolicy(args, platform);
   if (!policy.allowed) {
     process.stderr.write(`${policy.message}\n`);
@@ -66,8 +75,8 @@ export async function runBroker(args = process.argv.slice(2), platform = process
     return policy.exitCode;
   }
   installWindowsPathCompatibility(platform);
-  const { main } = await import('./agent-kernel-project-broker.mjs');
-  main();
+  const main = await loadMain();
+  await main();
   return process.exitCode || 0;
 }
 
