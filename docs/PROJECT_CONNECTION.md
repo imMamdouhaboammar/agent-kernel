@@ -166,9 +166,11 @@ Read-only Supabase operations are explicitly allowlisted (`db pull`, `db dump`, 
 ## Core Guarantees & Safety Architecture
 
 ### 1. Zero Runtime Duplication
+
 Projects receive only lightweight manifest configuration (`.agent-kernel/project.toml`) and instruction references. The full Agent Kernel runtime remains centralized under `~/.agent-kernel`.
 
 ### 2. Idempotent Managed Blocks
+
 All instruction file adapters and `.gitignore` entries use strict comment delimiters:
 
 ```markdown
@@ -181,16 +183,20 @@ This project is connected to Agent Kernel.
 Running `connect` repeatedly will never duplicate blocks or corrupt user-written content.
 
 ### 3. Process-Safe Atomic Registry Writes
+
 The global registry at `~/.agent-kernel/connections/registry.toml` is protected by mutex file-locking (`registry.toml.lock`) and atomic writes to prevent race conditions during concurrent execution.
 
-Sanitized provider audit events use the same lock discipline and are written with owner-only permissions. Recognized secret values are redacted before persistence. Repository drift checks also work from Git worktrees, where `.git` is a file rather than a directory.
+Sanitized provider audit events use the same lock discipline and are written with owner-only permissions on POSIX filesystems. Windows validation preserves the audit content, redaction, and lock-recovery guarantees without treating synthesized NTFS POSIX mode bits as an access-control contract. Repository drift checks also work from Git worktrees, where `.git` is a file rather than a directory.
 
 Provider execution strips the documented `--` separator before invoking the real CLI. Supabase always receives the manifest-bound `project_ref`. GCloud removes caller overrides for project, region, configuration, account, impersonation, and billing project, then applies the connected profile and manifest-bound target.
 
-Provider executable discovery uses the operating system PATH delimiter, ignores non-executable path entries, and reports a nonzero exit when the underlying CLI cannot start. Generated command shims follow the same fail-closed behavior. Lock retries use an in-process synchronous wait rather than relying on an external `sleep` command.
+Provider executable discovery uses the operating system PATH delimiter, ignores non-executable path entries, and reports a nonzero exit when the underlying CLI cannot start. Generated command shims follow the same fail-closed behavior. On Windows, only absolute regular-file `supabase.cmd`/`supabase.bat` and `gcloud.cmd`/`gcloud.bat` launchers are delegated through the validated `%SystemRoot%\\System32\\cmd.exe` path; arbitrary batch launchers and general `shell: true` execution are rejected. Lock retries use an in-process synchronous wait rather than relying on an external `sleep` command.
 
 ### 4. Secret & Credential Boundary Preservation
+
 Sensitive project files (`.env`, `service-account.json`, `id_rsa`, `*.pem`, `supabase/config.toml`, `.gcp/credentials.json`) are scanned by path classification only. Secret values are **never printed, logged, or recorded** in global registries.
+
+Persistent `auth add` and `auth remove` operations are available only when Agent Kernel has a configured secure platform backend. The current persistent backend is macOS Keychain. Windows and Linux fail closed with exit code 2 rather than recording a credential reference that cannot be retrieved securely. Supabase provider execution on those platforms may use `SUPABASE_ACCESS_TOKEN` or `SUPABASE_TOKEN` from the current process environment; Agent Kernel does not write those values to disk or include them in audit output.
 
 ---
 
