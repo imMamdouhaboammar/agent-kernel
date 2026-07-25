@@ -31,6 +31,17 @@ export async function run() {
   assert.equal(windowsRemove.exitCode, 2);
   assert.match(windowsRemove.message, /Remove SUPABASE_ACCESS_TOKEN or SUPABASE_TOKEN/i);
 
+  const linuxAdd = credentialCommandPolicy(['auth', 'add', 'supabase', '--profile', 'client'], 'linux');
+  assert.equal(linuxAdd.allowed, false, 'Linux must not record a credential reference when no secure backend exists');
+  assert.equal(linuxAdd.exitCode, 2);
+  assert.match(linuxAdd.message, /secure credential backend is not configured/i);
+  assert.match(linuxAdd.message, /SUPABASE_ACCESS_TOKEN/);
+
+  const linuxRemove = credentialCommandPolicy(['auth', 'remove', 'supabase', 'client'], 'linux');
+  assert.equal(linuxRemove.allowed, false);
+  assert.equal(linuxRemove.exitCode, 2);
+  assert.match(linuxRemove.message, /Remove SUPABASE_ACCESS_TOKEN or SUPABASE_TOKEN/i);
+
   assert.equal(credentialCommandPolicy(['provider', 'supabase', 'exec'], 'win32').allowed, true);
   assert.equal(credentialCommandPolicy(['auth', 'add', 'supabase'], 'darwin').allowed, true);
 
