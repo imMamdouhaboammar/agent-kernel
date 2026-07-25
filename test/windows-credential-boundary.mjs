@@ -1,12 +1,16 @@
 import assert from 'node:assert/strict';
 import childProcess from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import {
-  credentialCommandPolicy,
-  installWindowsCommandCompatibility
-} from '../bin/agent-kernel-project-broker-platform.mjs';
+import { credentialCommandPolicy } from '../bin/agent-kernel-project-broker-platform.mjs';
 
 export const name = 'windows-credential-boundary';
+
+function sanitizedWindowsTestEnvironment() {
+  const names = ['PATH', 'SystemRoot', 'ComSpec', 'PATHEXT', 'TEMP', 'TMP'];
+  return Object.fromEntries(names
+    .filter((name) => process.env[name] !== undefined)
+    .map((name) => [name, process.env[name]]));
+}
 
 export async function run() {
   const windowsAdd = credentialCommandPolicy(['auth', 'add', 'supabase', '--profile', 'client'], 'win32');
@@ -28,11 +32,10 @@ export async function run() {
     const routerPath = fileURLToPath(new URL('../bin/agent-kernel-router.mjs', import.meta.url));
     const result = childProcess.spawnSync(process.execPath, [routerPath, 'auth', 'add', 'supabase', '--profile', 'client'], {
       encoding: 'utf8',
-      env: process.env
+      env: sanitizedWindowsTestEnvironment()
     });
     assert.equal(result.status, 2);
     assert.match(result.stderr, /Windows Credential Manager backend is not configured/i);
-    assert.doesNotMatch(result.stdout + result.stderr, /credential_ref|Added auth profile/i);
-    installWindowsCommandCompatibility();
+    assert.doesNotMatch(result.stdout + result.stderr, /credential_ref|Added auth profile|secret|token value/i);
   }
 }
