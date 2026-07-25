@@ -31,6 +31,16 @@ function resolveWindowsCommandProcessor(runtime) {
   return candidate;
 }
 
+function configuredBatchDirectories(runtime) {
+  if (typeof runtime.allowedBatchDirectories === 'function') {
+    return runtime.allowedBatchDirectories();
+  }
+  if (Array.isArray(runtime.allowedBatchDirectories)) {
+    return runtime.allowedBatchDirectories;
+  }
+  return String(process.env.PATH || '').split(path.delimiter).filter(Boolean);
+}
+
 function validateBatchLauncher(executable, runtime) {
   if (!path.win32.isAbsolute(executable)) {
     throw new Error(`Windows batch launcher must use an absolute path: ${executable}`);
@@ -43,7 +53,7 @@ function validateBatchLauncher(executable, runtime) {
   if (runtime.validateFiles !== false) {
     const directory = normalizeWindowsPath(path.win32.dirname(executable));
     const allowedDirectories = new Set(
-      (runtime.allowedBatchDirectories || []).map((item) => normalizeWindowsPath(item))
+      configuredBatchDirectories(runtime).map((item) => normalizeWindowsPath(item))
     );
     if (!allowedDirectories.has(directory)) {
       throw new Error(`Windows batch launcher directory is not trusted: ${path.win32.dirname(executable)}`);
