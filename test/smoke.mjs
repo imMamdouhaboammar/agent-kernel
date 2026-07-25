@@ -55,16 +55,22 @@ import { run as runProjectConnect } from './project-connect.test.mjs';
 
 async function runProjectContextBrokerCompat() {
   const previousNodeOptions = process.env.NODE_OPTIONS;
+  const previousSupabaseToken = process.env.SUPABASE_ACCESS_TOKEN;
   const moduleDefaultFlag = '--experimental-default-type=module';
   const nodeMajor = Number(process.versions.node.split('.')[0]);
   if (nodeMajor === 18 && !String(previousNodeOptions || '').includes(moduleDefaultFlag)) {
     process.env.NODE_OPTIONS = [previousNodeOptions, moduleDefaultFlag].filter(Boolean).join(' ');
+  }
+  if (process.platform === 'win32' && !previousSupabaseToken) {
+    process.env.SUPABASE_ACCESS_TOKEN = 'test-token';
   }
   try {
     await runProjectContextBroker();
   } finally {
     if (previousNodeOptions === undefined) delete process.env.NODE_OPTIONS;
     else process.env.NODE_OPTIONS = previousNodeOptions;
+    if (previousSupabaseToken === undefined) delete process.env.SUPABASE_ACCESS_TOKEN;
+    else process.env.SUPABASE_ACCESS_TOKEN = previousSupabaseToken;
   }
 }
 
