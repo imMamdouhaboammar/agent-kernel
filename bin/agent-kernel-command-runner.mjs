@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 function quoteCmdArgument(value) {
-  const escaped = String(value).replace(/%/g, '%%').replace(/"/g, '""');
+  const escaped = String(value).replace(/%/g, '%:~,%').replace(/"/g, '""');
   return `"${escaped}"`;
 }
 
@@ -40,8 +40,17 @@ function validateBatchLauncher(executable, runtime) {
   if (!allowed.has(basename)) {
     throw new Error(`Windows batch launcher is not allowlisted: ${basename}`);
   }
-  if (runtime.validateFiles !== false && !isRegularFile(executable)) {
-    throw new Error(`Windows batch launcher is not a regular file: ${executable}`);
+  if (runtime.validateFiles !== false) {
+    const directory = normalizeWindowsPath(path.win32.dirname(executable));
+    const allowedDirectories = new Set(
+      (runtime.allowedBatchDirectories || []).map((item) => normalizeWindowsPath(item))
+    );
+    if (!allowedDirectories.has(directory)) {
+      throw new Error(`Windows batch launcher directory is not trusted: ${path.win32.dirname(executable)}`);
+    }
+    if (!isRegularFile(executable)) {
+      throw new Error(`Windows batch launcher is not a regular file: ${executable}`);
+    }
   }
 }
 
