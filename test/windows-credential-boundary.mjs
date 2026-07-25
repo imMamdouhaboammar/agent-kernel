@@ -126,6 +126,26 @@ export async function run() {
   assert.equal(normalizedScript.command, 'C:\\node.exe');
   assert.deepEqual(normalizedScript.args, ['C:\\tools\\provider.mjs', 'status']);
 
+  const redirectedBroker = normalizeChildCommand(
+    'C:\\node.exe',
+    ['C:\\agent-kernel\\bin\\agent-kernel-project-broker.mjs', 'approvals', 'list'],
+    {
+      platform: 'win32',
+      node: 'C:\\node.exe',
+      validateFiles: false,
+      entryPointRedirects: {
+        'C:\\agent-kernel\\bin\\agent-kernel-project-broker.mjs':
+          'C:\\agent-kernel\\bin\\agent-kernel-project-broker-platform.mjs'
+      }
+    }
+  );
+  assert.equal(redirectedBroker.command, 'C:\\node.exe');
+  assert.deepEqual(redirectedBroker.args, [
+    'C:\\agent-kernel\\bin\\agent-kernel-project-broker-platform.mjs',
+    'approvals',
+    'list'
+  ]);
+
   const calls = [];
   const fakeChildProcess = {
     execFileSync(command, args, options) {
