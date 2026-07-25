@@ -5,6 +5,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { installChildProcessCompatibility } from './agent-kernel-command-runner.mjs';
 
+const modulePath = fileURLToPath(import.meta.url);
+const brokerModulePath = fileURLToPath(new URL('./agent-kernel-project-broker.mjs', import.meta.url));
+
 function supabaseEnvironmentGuidance(action) {
   const prefix = action === 'remove'
     ? 'Remove SUPABASE_ACCESS_TOKEN or SUPABASE_TOKEN from the process environment instead.'
@@ -81,7 +84,8 @@ export async function runBroker(
   const restoreChildProcess = platform === 'win32'
     ? installChildProcessCompatibility(childProcess, {
         platform,
-        allowedBatchNames: ['supabase', 'gcloud']
+        allowedBatchNames: ['supabase', 'gcloud'],
+        entryPointRedirects: { [brokerModulePath]: modulePath }
       })
     : () => {};
   try {
@@ -94,5 +98,4 @@ export async function runBroker(
 }
 
 const invokedPath = process.argv[1] ? path.resolve(process.argv[1]) : '';
-const modulePath = fileURLToPath(import.meta.url);
 if (invokedPath === modulePath) await runBroker();
