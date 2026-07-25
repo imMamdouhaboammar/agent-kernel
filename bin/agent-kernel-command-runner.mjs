@@ -1,9 +1,24 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-function quoteCmdArgument(value) {
-  const escaped = String(value).replace(/%/g, '%:~,%').replace(/"/g, '""');
-  return `"${escaped}"`;
+let batchEnvironmentSequence = 0;
+
+function escapeBatchEnvironmentValue(value) {
+  return String(value).replace(/"/g, '""');
+}
+
+function createBatchEnvironmentInvocation(executable, args) {
+  const prefix = `AGENT_KERNEL_CMD_${process.pid}_${batchEnvironmentSequence++}`;
+  const environment = {};
+  const references = [executable, ...args].map((value, index) => {
+    const name = `${prefix}_${index}`;
+    environment[name] = escapeBatchEnvironmentValue(value);
+    return `"%${name}%"`;
+  });
+  return {
+    commandLine: `"${references.join(' ')}"`,
+    environment
+  };
 }
 
 function isRegularFile(filePath) {
@@ -96,10 +111,11 @@ export function normalizeChildCommand(command, args = [], runtime = {}) {
 
   if (platform === 'win32' && /\.(?:cmd|bat)$/i.test(executable)) {
     validateBatchLauncher(executable, runtime);
-    const commandLine = [executable, ...commandArgs].map(quoteCmdArgument).join(' ');
+    const invocation = createBatchEnvironmentInvocation(executable, commandArgs);
     return {
       command: resolveWindowsCommandProcessor(runtime),
-      args: ['/d', '/s', '/c', `"${commandLine}"`],
+      args: ['/d', '/v:off', '/s', '/c', invocation.commandLine],
+      environment: invocation.environment,
       windowsVerbatimArguments: true
     };
   }
@@ -127,6 +143,9 @@ function normalizeSyncCall(command, argsOrOptions, maybeOptions, runtime) {
     args: normalized.args,
     options: {
       ...options,
+      ...(normalized.environment === undefined
+        ? {}
+        : { env: { ...process.env, ...(options.env || {}), ...normalized.environment } }),
       ...(normalized.windowsVerbatimArguments === undefined
         ? {}
         : { windowsVerbatimArguments: normalized.windowsVerbatimArguments })
@@ -140,13 +159,13 @@ export function installChildProcessCompatibility(childProcessModule, runtime = {
 
   childProcessModule.execFileSync = function compatibleExecFileSync(command, argsOrOptions, maybeOptions) {
     const call = normalizeSyncCall(command, argsOrOptions, maybeOptions, runtime);
-    // codeql[js/shell-command-injection-from-environment] Batch launchers and ComSpec are allowlisted and validated above.
+    // codeql[js/shell-command-injection-from-environment] Batch launchers, directories, and ComSpec are validated above.
     return originalExecFileSync.call(childProcessModule, call.command, call.args, call.options);
   };
 
   childProcessModule.spawnSync = function compatibleSpawnSync(command, argsOrOptions, maybeOptions) {
     const call = normalizeSyncCall(command, argsOrOptions, maybeOptions, runtime);
-    // codeql[js/shell-command-injection-from-environment] Batch launchers and ComSpec are allowlisted and validated above.
+    // codeql[js/shell-command-injection-from-environment] Batch launchers, directories, and ComSpec are validated above.
     return originalSpawnSync.call(childProcessModule, call.command, call.args, call.options);
   };
 
