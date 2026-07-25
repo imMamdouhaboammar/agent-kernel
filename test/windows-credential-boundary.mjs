@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import childProcess from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
-  credentialCommandPolicy
+  credentialCommandPolicy,
+  installWindowsCommandCompatibility
 } from '../bin/agent-kernel-project-broker-platform.mjs';
 
 export const name = 'windows-credential-boundary';
@@ -32,5 +33,6 @@ export async function run() {
     assert.equal(result.status, 2);
     assert.match(result.stderr, /Windows Credential Manager backend is not configured/i);
     assert.doesNotMatch(result.stdout + result.stderr, /credential_ref|Added auth profile/i);
+    installWindowsCommandCompatibility();
   }
 }
