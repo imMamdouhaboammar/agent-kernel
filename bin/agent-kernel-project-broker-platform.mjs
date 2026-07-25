@@ -79,7 +79,10 @@ export async function runBroker(
 
   installWindowsPathCompatibility(platform);
   const restoreChildProcess = platform === 'win32'
-    ? installChildProcessCompatibility(childProcess, { platform })
+    ? installChildProcessCompatibility(childProcess, {
+        platform,
+        allowedBatchNames: ['supabase', 'gcloud']
+      })
     : () => {};
   try {
     const main = await loadMain();
