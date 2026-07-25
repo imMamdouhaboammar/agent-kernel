@@ -6,7 +6,7 @@ function supabaseEnvironmentGuidance(action) {
   const prefix = action === 'remove'
     ? 'Remove SUPABASE_ACCESS_TOKEN or SUPABASE_TOKEN from the process environment instead.'
     : 'Set SUPABASE_ACCESS_TOKEN or SUPABASE_TOKEN for provider execution instead.';
-  return `${prefix} Agent Kernel does not persist environment token values.`;
+  return `${prefix} Agent Kernel does not write environment credentials to disk.`;
 }
 
 export function credentialCommandPolicy(args, platform = process.platform) {
