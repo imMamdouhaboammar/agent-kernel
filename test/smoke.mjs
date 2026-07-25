@@ -10,6 +10,7 @@
 
 import childProcess from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { run as runVersion } from './version.mjs';
@@ -60,13 +61,39 @@ import { installChildProcessCompatibility } from '../bin/agent-kernel-command-ru
 
 const brokerModulePath = fileURLToPath(new URL('../bin/agent-kernel-project-broker.mjs', import.meta.url));
 const brokerPlatformPath = fileURLToPath(new URL('../bin/agent-kernel-project-broker-platform.mjs', import.meta.url));
-const windowsProviderFixtureNames = new Set(['supabase', 'gcloud']);
+
+function createWindowsProviderFixtureDirectory() {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-kernel-windows-providers-'));
+  for (const tool of ['supabase', 'gcloud']) {
+    const modulePath = path.join(directory, `${tool}.mjs`);
+    const moduleSource = `
+import fs from 'node:fs';
+const args = process.argv.slice(2);
+if (process.env.AK_APPROVAL_ARGS_FILE) {
+  fs.appendFileSync(process.env.AK_APPROVAL_ARGS_FILE, JSON.stringify({ tool: '${tool}', args }) + '\\n');
+} else if (process.env.AK_TEST_ARGS_FILE) {
+  fs.writeFileSync(process.env.AK_TEST_ARGS_FILE, JSON.stringify(args));
+}
+`;
+    fs.writeFileSync(modulePath, moduleSource, 'utf8');
+    fs.writeFileSync(
+      path.join(directory, `${tool}.cmd`),
+      `@echo off\r\n"${process.execPath}" "%~dp0${tool}.mjs" %*\r\n`,
+      'utf8'
+    );
+  }
+  return directory;
+}
 
 async function runProjectContextBrokerCompat() {
   const previousNodeOptions = process.env.NODE_OPTIONS;
   const previousSupabaseToken = process.env.SUPABASE_ACCESS_TOKEN;
+  const previousPath = process.env.PATH;
   const originalWriteFileSync = fs.writeFileSync;
   const originalStatSync = fs.statSync;
+  const windowsProviderDirectory = process.platform === 'win32'
+    ? createWindowsProviderFixtureDirectory()
+    : null;
   const restoreChildProcess = process.platform === 'win32'
     ? installChildProcessCompatibility(childProcess, {
         platform: 'win32',
@@ -81,23 +108,12 @@ async function runProjectContextBrokerCompat() {
   }
   if (process.platform === 'win32') {
     if (!previousSupabaseToken) process.env.SUPABASE_ACCESS_TOKEN = 'test-token';
+    process.env.PATH = `${windowsProviderDirectory}${path.delimiter}${previousPath || ''}`;
     fs.writeFileSync = (file, ...args) => {
       const filePath = String(file);
-      const isExtensionless = path.extname(filePath) === '';
-      const isPosixOnlyDecoy = filePath.includes(`${path.sep}non-executable-bin${path.sep}`) && isExtensionless;
+      const isPosixOnlyDecoy = filePath.includes(`${path.sep}non-executable-bin${path.sep}`) && path.extname(filePath) === '';
       if (isPosixOnlyDecoy) return;
-
-      const result = originalWriteFileSync(file, ...args);
-      const basename = path.basename(filePath).toLowerCase();
-      if (isExtensionless && windowsProviderFixtureNames.has(basename)) {
-        const source = args[0];
-        const sourceOptions = args[1];
-        const modulePath = `${filePath}.mjs`;
-        originalWriteFileSync(modulePath, source, sourceOptions);
-        const launcher = `@echo off\r\n"${process.execPath}" "%~dp0${basename}.mjs" %*\r\n`;
-        originalWriteFileSync(`${filePath}.cmd`, launcher, 'utf8');
-      }
-      return result;
+      return originalWriteFileSync(file, ...args);
     };
     fs.statSync = (file, ...args) => {
       const stats = originalStatSync(file, ...args);
@@ -117,6 +133,9 @@ async function runProjectContextBrokerCompat() {
     else process.env.NODE_OPTIONS = previousNodeOptions;
     if (previousSupabaseToken === undefined) delete process.env.SUPABASE_ACCESS_TOKEN;
     else process.env.SUPABASE_ACCESS_TOKEN = previousSupabaseToken;
+    if (previousPath === undefined) delete process.env.PATH;
+    else process.env.PATH = previousPath;
+    if (windowsProviderDirectory) fs.rmSync(windowsProviderDirectory, { recursive: true, force: true });
   }
 }
 
