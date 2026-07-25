@@ -11,6 +11,7 @@
 import childProcess from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { run as runVersion } from './version.mjs';
 import { run as runInit } from './init.mjs';
 import { run as runMemory } from './memory.mjs';
@@ -57,6 +58,9 @@ import { run as runProjectContextBroker } from './project-context-broker.test.mj
 import { run as runProjectConnect } from './project-connect.test.mjs';
 import { installChildProcessCompatibility } from '../bin/agent-kernel-command-runner.mjs';
 
+const brokerModulePath = fileURLToPath(new URL('../bin/agent-kernel-project-broker.mjs', import.meta.url));
+const brokerPlatformPath = fileURLToPath(new URL('../bin/agent-kernel-project-broker-platform.mjs', import.meta.url));
+
 async function runProjectContextBrokerCompat() {
   const previousNodeOptions = process.env.NODE_OPTIONS;
   const previousSupabaseToken = process.env.SUPABASE_ACCESS_TOKEN;
@@ -65,7 +69,8 @@ async function runProjectContextBrokerCompat() {
   const restoreChildProcess = process.platform === 'win32'
     ? installChildProcessCompatibility(childProcess, {
         platform: 'win32',
-        allowedBatchNames: ['supabase', 'gcloud']
+        allowedBatchNames: ['supabase', 'gcloud'],
+        entryPointRedirects: { [brokerModulePath]: brokerPlatformPath }
       })
     : () => {};
   const moduleDefaultFlag = '--experimental-default-type=module';
