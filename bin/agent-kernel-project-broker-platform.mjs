@@ -1,7 +1,9 @@
 #!/usr/bin/env node
+import childProcess from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { installChildProcessCompatibility } from './agent-kernel-command-runner.mjs';
 
 function supabaseEnvironmentGuidance(action) {
   const prefix = action === 'remove'
@@ -74,10 +76,18 @@ export async function runBroker(
     process.exitCode = policy.exitCode;
     return policy.exitCode;
   }
+
   installWindowsPathCompatibility(platform);
-  const main = await loadMain();
-  await main();
-  return process.exitCode || 0;
+  const restoreChildProcess = platform === 'win32'
+    ? installChildProcessCompatibility(childProcess, { platform })
+    : () => {};
+  try {
+    const main = await loadMain();
+    await main();
+    return process.exitCode || 0;
+  } finally {
+    restoreChildProcess();
+  }
 }
 
 const invokedPath = process.argv[1] ? path.resolve(process.argv[1]) : '';
