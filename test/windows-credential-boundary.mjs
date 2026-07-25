@@ -74,7 +74,14 @@ export async function run() {
   const normalizedBatch = normalizeChildCommand(
     'C:\\Program Files\\Supabase\\supabase.cmd',
     ['status', '--project-ref', 'project with spaces'],
-    { platform: 'win32', comspec: 'C:\\Windows\\System32\\cmd.exe', node: 'C:\\node.exe' }
+    {
+      platform: 'win32',
+      systemRoot: 'C:\\Windows',
+      comspec: 'C:\\Windows\\System32\\cmd.exe',
+      node: 'C:\\node.exe',
+      allowedBatchNames: ['supabase'],
+      validateFiles: false
+    }
   );
   assert.equal(normalizedBatch.command, 'C:\\Windows\\System32\\cmd.exe');
   assert.deepEqual(normalizedBatch.args.slice(0, 3), ['/d', '/s', '/c']);
@@ -83,10 +90,38 @@ export async function run() {
   assert.match(normalizedBatch.args[3], /project with spaces/);
   assert.equal(normalizedBatch.shell, undefined);
 
+  assert.throws(() => normalizeChildCommand(
+    'C:\\tools\\malware.cmd',
+    [],
+    {
+      platform: 'win32',
+      systemRoot: 'C:\\Windows',
+      comspec: 'C:\\Windows\\System32\\cmd.exe',
+      allowedBatchNames: ['supabase'],
+      validateFiles: false
+    }
+  ), /not allowlisted/i);
+  assert.throws(() => normalizeChildCommand(
+    'C:\\tools\\supabase.cmd',
+    [],
+    {
+      platform: 'win32',
+      systemRoot: 'C:\\Windows',
+      comspec: 'C:\\Temp\\cmd.exe',
+      allowedBatchNames: ['supabase'],
+      validateFiles: false
+    }
+  ), /untrusted Windows command processor/i);
+
   const normalizedScript = normalizeChildCommand(
     'C:\\tools\\provider.mjs',
     ['status'],
-    { platform: 'win32', comspec: 'cmd.exe', node: 'C:\\node.exe' }
+    {
+      platform: 'win32',
+      node: 'C:\\node.exe',
+      allowJavaScript: true,
+      validateFiles: false
+    }
   );
   assert.equal(normalizedScript.command, 'C:\\node.exe');
   assert.deepEqual(normalizedScript.args, ['C:\\tools\\provider.mjs', 'status']);
@@ -104,8 +139,11 @@ export async function run() {
   };
   const restoreCompatibility = installChildProcessCompatibility(fakeChildProcess, {
     platform: 'win32',
+    systemRoot: 'C:\\Windows',
     comspec: 'C:\\Windows\\System32\\cmd.exe',
-    node: 'C:\\node.exe'
+    node: 'C:\\node.exe',
+    allowedBatchNames: ['provider'],
+    validateFiles: false
   });
   try {
     fakeChildProcess.execFileSync('C:\\tools\\provider.cmd', { encoding: 'utf8' });
