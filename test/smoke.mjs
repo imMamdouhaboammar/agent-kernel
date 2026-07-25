@@ -75,7 +75,7 @@ function createWindowsProviderFixtureDirectory() {
 import fs from 'node:fs';
 const args = process.argv.slice(2);
 if (process.env.AK_APPROVAL_ARGS_FILE) {
-  fs.appendFileSync(process.env.AK_APPROVAL_ARGS_FILE, JSON.stringify({ tool: '${tool}', args }) + '\n');
+  fs.appendFileSync(process.env.AK_APPROVAL_ARGS_FILE, JSON.stringify({ tool: '${tool}', args }) + String.fromCharCode(10));
 } else if (process.env.AK_TEST_ARGS_FILE) {
   fs.writeFileSync(process.env.AK_TEST_ARGS_FILE, JSON.stringify(args));
 }
