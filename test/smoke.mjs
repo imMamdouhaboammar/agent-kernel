@@ -63,7 +63,10 @@ async function runProjectContextBrokerCompat() {
   const originalWriteFileSync = fs.writeFileSync;
   const originalStatSync = fs.statSync;
   const restoreChildProcess = process.platform === 'win32'
-    ? installChildProcessCompatibility(childProcess, { platform: 'win32' })
+    ? installChildProcessCompatibility(childProcess, {
+        platform: 'win32',
+        allowedBatchNames: ['supabase', 'gcloud']
+      })
     : () => {};
   const moduleDefaultFlag = '--experimental-default-type=module';
   const nodeMajor = Number(process.versions.node.split('.')[0]);
