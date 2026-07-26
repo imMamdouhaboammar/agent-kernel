@@ -106,19 +106,26 @@ export async function run() {
       validateFiles: false
     }
   );
-  assert.equal(normalizedBatch.command, 'C:\\Windows\\System32\\cmd.exe');
-  assert.deepEqual(normalizedBatch.args.slice(0, 3), ['/d', '/v:off', '/c']);
-  assert.equal(normalizedBatch.windowsVerbatimArguments, true);
-  assert.match(normalizedBatch.args[3], /%AGENT_KERNEL_CMD_/);
-  assert.doesNotMatch(normalizedBatch.args[3], /supabase\.cmd|project with spaces|100% literal/);
-  assert.deepEqual(Object.values(normalizedBatch.environment), [
-    'C:\\Program Files\\Supabase\\supabase.cmd',
-    'status',
-    '--project-ref',
-    'project with spaces',
-    '100% literal'
-  ]);
-  assert.equal(normalizedBatch.shell, undefined);
+  try {
+    assert.equal(normalizedBatch.command, 'C:\\Windows\\System32\\cmd.exe');
+    assert.deepEqual(normalizedBatch.args.slice(0, 3), ['/d', '/v:off', '/c']);
+    assert.equal(normalizedBatch.windowsVerbatimArguments, false);
+    assert.equal(normalizedBatch.shell, false);
+    assert.match(normalizedBatch.args[3], /invoke\.cmd$/i);
+    const trampolineSource = fs.readFileSync(normalizedBatch.args[3], 'utf8');
+    assert.match(trampolineSource, /%AGENT_KERNEL_CMD_/);
+    assert.doesNotMatch(trampolineSource, /supabase\.cmd|project with spaces|100% literal/);
+    assert.deepEqual(Object.values(normalizedBatch.environment), [
+      'C:\\Program Files\\Supabase\\supabase.cmd',
+      'status',
+      '--project-ref',
+      'project with spaces',
+      '100% literal'
+    ]);
+  } finally {
+    normalizedBatch.cleanup();
+  }
+  assert.equal(fs.existsSync(normalizedBatch.args[3]), false);
 
   assert.throws(() => normalizeChildCommand(
     'C:\\tools\\malware.cmd',
@@ -155,6 +162,18 @@ export async function run() {
       allowedBatchDirectories: ['C:\\Program Files\\Supabase']
     }
   ), /directory is not trusted/i);
+  assert.throws(() => normalizeChildCommand(
+    'C:\\tools\\supabase.cmd',
+    ['line one\nline two'],
+    {
+      platform: 'win32',
+      systemRoot: 'C:\\Windows',
+      comspec: 'C:\\Windows\\System32\\cmd.exe',
+      allowedBatchNames: ['supabase'],
+      allowedBatchDirectories: ['C:\\tools'],
+      validateFiles: false
+    }
+  ), /line breaks/i);
 
   const normalizedScript = normalizeChildCommand(
     'C:\\tools\\provider.mjs',
@@ -192,11 +211,11 @@ export async function run() {
   const calls = [];
   const fakeChildProcess = {
     execFileSync(command, args, options) {
-      calls.push({ method: 'execFileSync', command, args, options });
+      calls.push({ method: 'execFileSync', command, args, options, scriptExists: fs.existsSync(args[3]) });
       return 'ok';
     },
     spawnSync(command, args, options) {
-      calls.push({ method: 'spawnSync', command, args, options });
+      calls.push({ method: 'spawnSync', command, args, options, scriptExists: fs.existsSync(args[3]) });
       return { status: 0 };
     }
   };
@@ -217,11 +236,15 @@ export async function run() {
   }
   assert.deepEqual(calls[0].args.slice(0, 3), ['/d', '/v:off', '/c']);
   assert.equal(calls[0].options.encoding, 'utf8', 'execFileSync(file, options) must preserve its overload options');
-  assert.equal(calls[0].options.windowsVerbatimArguments, true);
+  assert.equal(calls[0].options.windowsVerbatimArguments, false);
   assert.equal(calls[0].options.shell, false);
+  assert.equal(calls[0].scriptExists, true);
+  assert.equal(fs.existsSync(calls[0].args[3]), false);
   assert.ok(Object.keys(calls[0].options.env).some((name) => name.startsWith('AGENT_KERNEL_CMD_')));
   assert.equal(calls[1].options.cwd, 'C:\\workspace');
-  assert.equal(calls[1].options.windowsVerbatimArguments, true);
+  assert.equal(calls[1].options.windowsVerbatimArguments, false);
+  assert.equal(calls[1].scriptExists, true);
+  assert.equal(fs.existsSync(calls[1].args[3]), false);
 
   if (process.platform !== 'darwin') {
     const brokerPlatformPath = fileURLToPath(new URL('../bin/agent-kernel-project-broker-platform.mjs', import.meta.url));
@@ -240,10 +263,11 @@ export async function run() {
 
   if (process.platform === 'win32') {
     const percentRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-kernel-percent-'));
+    let invocation;
     try {
       const percentLauncher = path.join(percentRoot, 'supabase.cmd');
       fs.writeFileSync(percentLauncher, '@echo off\r\n<nul set /p "=%~1"\r\n', 'utf8');
-      const invocation = normalizeChildCommand(
+      invocation = normalizeChildCommand(
         percentLauncher,
         ['100% literal %PATH%'],
         {
@@ -254,11 +278,13 @@ export async function run() {
       const output = childProcess.execFileSync(invocation.command, invocation.args, {
         encoding: 'utf8',
         env: { ...process.env, ...invocation.environment },
+        shell: invocation.shell,
         stdio: ['ignore', 'pipe', 'pipe'],
         windowsVerbatimArguments: invocation.windowsVerbatimArguments
       });
       assert.equal(output, '100% literal %PATH%');
     } finally {
+      invocation?.cleanup();
       fs.rmSync(percentRoot, { recursive: true, force: true });
     }
 
