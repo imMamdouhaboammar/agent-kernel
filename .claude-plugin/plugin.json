@@ -3,7 +3,7 @@
   "name": "agent-kernel",
   "displayName": "Agent Kernel",
   "version": "1.15.1",
-  "description": "Local-first governance kernel for AI coding agents \u2014 shared memory, architecture conformance, rule distribution, approval inbox, episodic memory archive, MCP tools, hooks, and deterministic policy guards.",
+  "description": "Local-first governance for AI coding agents: approved shared memory, bounded runtime evidence, Failure Lessons, project and provider isolation, architecture contracts, MCP, hooks, and release integrity.",
   "author": {
     "name": "Mamdouh Aboammar",
     "email": "mamdouhfces1997@gmail.com"
@@ -27,7 +27,12 @@
     "mcp",
     "episodic-memory",
     "approval-inbox",
-    "policy-guard"
+    "policy-guard",
+    "failure-lessons",
+    "project-isolation",
+    "runtime-evidence",
+    "secure-runtime",
+    "release-integrity"
   ],
   "skills": [
     "./",

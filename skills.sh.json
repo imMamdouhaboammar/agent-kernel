@@ -4,21 +4,21 @@
   "groupings": [
     {
       "title": "Memory & governance",
-      "description": "Local-first memory layers, episodic recall, approval inboxes, and policy enforcement for AI coding agents.",
+      "description": "Local-first approved memory, pending proposals, runtime evidence, Failure Lessons, project isolation, and policy enforcement for AI coding agents.",
       "skills": [
         "agent-kernel"
       ]
     },
     {
       "title": "Architecture conformance",
-      "description": "Dependency boundaries, change contracts, reuse-first search, baselines, scoped exceptions, and architecture drift gates.",
+      "description": "Reuse-first architecture discovery, dependency boundaries, change contracts, reviewed baselines, scoped exceptions, and drift gates.",
       "skills": [
         "architecture-guardian"
       ]
     },
     {
       "title": "Cross-agent rule distribution",
-      "description": "Compile one JSON-first memory source into AGENTS.md / CLAUDE.md / .cursor/rules / GEMINI.md — every agent, same rules.",
+      "description": "Compile one JSON-first memory source into AGENTS.md / CLAUDE.md / .cursor/rules / GEMINI.md \u2014 every agent, same rules.",
       "skills": [
         "agent-kernel",
         "architecture-guardian"
@@ -49,7 +49,12 @@
       "gemini",
       "mcp",
       "episodic-memory",
-      "approval-inbox"
+      "approval-inbox",
+      "failure-lessons",
+      "project-isolation",
+      "runtime-evidence",
+      "secure-runtime",
+      "release-integrity"
     ]
   }
 }

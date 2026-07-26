@@ -1,69 +1,47 @@
 ---
 name: architecture-guardian
 description: |
-  Prevent AI coding agents from introducing architectural drift. Use before
-  non-trivial features, refactors, cross-module fixes, new services, new
-  dependencies, schema changes, public API changes, or edits governed by a
-  change contract. Architecture Guardian is a local-first conformance workflow
-  with discovery, dependency rules, change contracts, baselines, scoped
-  expiring exceptions, and reuse-first search.
+  Use before non-trivial features, refactors, cross-module fixes, new capabilities, dependencies,
+  schema changes, public API changes, or contract-governed edits. Requires discovery, reuse-first
+  search, reviewed scope, baseline-aware classification, and a final architecture check.
 ---
 
-# Architecture Guardian — Agent Skill
+# Architecture Guardian for AGENTS-compatible agents
 
-Use this skill in any AGENTS.md-compatible agent before any non-trivial code
-change. The canonical skill with all command references lives at
-[`skills/architecture-guardian/SKILL.md`](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/skills/architecture-guardian/SKILL.md).
-Read the references under `skills/architecture-guardian/references/` when a
-specific capability is needed.
+The canonical workflow lives in [`skills/architecture-guardian/SKILL.md`](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/skills/architecture-guardian/SKILL.md).
 
-Required workflow:
+## Required sequence
 
-1. Run `agent-kernel architecture doctor .` to confirm governance state is valid.
-2. Run `agent-kernel architecture discover . --json` to see source roots and layers.
-3. Search reuse candidates before creating a new capability:
-   `agent-kernel architecture reuse "<business capability>" . --json`.
-4. Create or validate an active change contract for non-trivial work.
-5. Implement only inside the approved scope. The hook can block writes
-   outside an active contract.
-6. Run `agent-kernel architecture check . --json` before commit.
-7. Treat only new findings as regressions. Keep baseline debt visible.
-8. Use scoped, expiring exceptions only after the user accepts the trade-off.
-9. Capture repeated architectural failures as Failure Lessons.
-
-Hard rules:
-
-- Do not create a second source of truth without evidence that responsibilities differ.
-- Do not move business rules into transport, UI, persistence, or framework layers.
-- Do not bypass an existing public interface to reach infrastructure directly.
-- Do not add dependencies that violate the reviewed layer graph.
-- Do not suppress findings without a reason, owner, scope, and expiry.
-- Do not treat a high aggregate score as permission to ignore one critical violation.
-- Do not block on low-confidence semantic guesses. Report them for review instead.
-
-Quick command surface:
+1. Read `AGENTS.md` and the current architecture policy.
+2. Run `agent-kernel architecture doctor . --json`.
+3. Run `agent-kernel architecture discover . --json`.
+4. Search reuse candidates before creating a parallel capability.
+5. Create or validate a change contract for non-trivial work.
+6. Implement only inside the reviewed scope.
+7. Run `agent-kernel architecture check . --json` before commit.
+8. Separate baseline debt from new regressions.
+9. Use only scoped, owned, expiring exceptions.
+10. Capture repeated architecture failures as Failure Lessons.
 
 ```bash
-agent-kernel architecture init .
-agent-kernel architecture policy validate .
-agent-kernel architecture discover . --json
-agent-kernel architecture baseline . --json
 agent-kernel architecture reuse "<capability>" . --json
 agent-kernel architecture contract init . \
-  --task "<reviewed task>" \
-  --owner "<domain or team>" \
+  --task "<task>" \
+  --owner "<owner>" \
   --allow "src/area/**,test/area/**" \
   --expect "src/area/file.ts,test/area/file.test.ts" \
-  --tests "<observable behavior>"
-
+  --tests "<behavior>"
 agent-kernel architecture check . --json
-agent-kernel architecture check . --strict --json
 ```
 
-Full documentation:
+## Hard boundaries
 
-- [docs/ARCHITECTURE_GUARDIAN.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/ARCHITECTURE_GUARDIAN.md)
-- [docs/architecture-guardian/COMMAND_REFERENCE.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/architecture-guardian/COMMAND_REFERENCE.md)
-- [docs/architecture-guardian/SECURITY.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/architecture-guardian/SECURITY.md)
+- Do not create a second source of truth without evidence.
+- Do not move business rules into UI, transport, persistence, provider, or framework layers.
+- Do not bypass a public interface to reach infrastructure.
+- Do not broaden a contract because implementation drifted.
+- Do not weaken policy or hide a blocker behind an aggregate score.
+- Do not treat expired exceptions or baseline findings as authorization for new violations.
+- Use strict mode only after policy, baseline, contract, and exception review.
 
-License: MIT
+Read [docs/ARCHITECTURE_GUARDIAN.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/ARCHITECTURE_GUARDIAN.md) and [docs/architecture-guardian/COMMAND_REFERENCE.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/architecture-guardian/COMMAND_REFERENCE.md).

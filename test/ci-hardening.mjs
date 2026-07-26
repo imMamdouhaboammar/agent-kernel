@@ -49,6 +49,12 @@ assert.doesNotMatch(
   'publish:dry must not fail because the current version already exists on npm',
 );
 
+const codacy = await readFile(resolve(root, '.codacy.yml'), 'utf8');
+assert.match(codacy, /scripts\/check-doc-contracts\.mjs/u,
+  'Codacy exclusion must stay scoped to the repository docs checker');
+assert.doesNotMatch(codacy, /scripts\/\*\*|\*\*\/\*\.mjs|src\/\*\*|bin\/\*\*/u,
+  'Codacy exclusions must not hide broad runtime or script paths');
+
 const dependabot = await readFile(resolve(root, '.github', 'dependabot.yml'), 'utf8');
 assert.match(dependabot, /package-ecosystem:\s*["']npm["']/u);
 assert.match(dependabot, /package-ecosystem:\s*["']github-actions["']/u);

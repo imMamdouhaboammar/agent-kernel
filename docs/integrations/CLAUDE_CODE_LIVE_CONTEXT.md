@@ -20,7 +20,14 @@ Use Claude Code as `propose-only` in the current Agent Kernel model:
 - Run guard checks
 - Never approve or publish durable memory without an explicit user action
 
-The agent registry and enforced trust levels are planned separately. Until that work lands, this is an operating recommendation rather than a runtime permission profile.
+Register the identity explicitly when this agent needs capture or proposal access:
+
+```bash
+agent-kernel agent add claude --trust propose-only --surface cli
+agent-kernel agent show claude --json
+```
+
+Unknown agents remain transient `read-only`; a denied lookup does not silently register them.
 
 ## 1. Install Agent Kernel
 
@@ -156,7 +163,7 @@ Start it only when a local workflow needs HTTP observation and context endpoints
 
 ```bash
 agent-kernel daemon start
-agent-kernel daemon status
+agent-kernel daemon status --json
 ```
 
 The daemon binds to `127.0.0.1` by default. Its local endpoints include:
@@ -174,7 +181,7 @@ Stop it with:
 agent-kernel daemon stop
 ```
 
-Do not expose the daemon to a non-local interface unless the security consequences are understood and remote access is intentionally enabled.
+A non-loopback bind is rejected unless `AGENT_KERNEL_DAEMON_ALLOW_REMOTE=1` and `AGENT_KERNEL_DAEMON_TOKEN` contains at least 32 bytes. Remote clients must send `Authorization: Bearer <token>`. Use a private network or authenticated tunnel; do not expose the daemon directly to the public internet.
 
 ## Recommended working flow
 
@@ -196,10 +203,10 @@ agent-kernel approve <proposal-id> --publish
 
 ## Known limitations
 
-- Claude Code project MCP approval is controlled by Claude Code, not Agent Kernel
+- Agent Kernel gates MCP approval behind extended mode plus `AGENT_KERNEL_MCP_ALLOW_APPROVE=1`; Claude tool prompts are an additional client-side control
 - Stdio MCP processes are started by the client and are separate from the optional daemon
 - Agent Kernel does not guarantee that every Claude Code release keeps identical hook payload fields
-- The current trust recommendation is not yet backed by the planned agent registry
+- Agent identity trust must be configured explicitly; project instructions alone do not grant capture or proposal access
 - Hooks do not provide approval authority
 - Static files can become stale until `compile`, `sync`, or safe-link is run again
 
@@ -248,7 +255,7 @@ Restart Claude Code after changing MCP configuration.
 ### Context is empty
 
 ```bash
-agent-kernel context --query "current task" --budget 1200 --json
+agent-kernel context "current task" --budget 1200 --json
 agent-kernel file-context src/cli.mjs --budget 1200 --json
 ```
 

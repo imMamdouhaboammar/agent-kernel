@@ -2,7 +2,7 @@
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "agent-kernel",
   "version": "1.15.1",
-  "description": "Local-first governance kernel for AI coding agents \u2014 shared memory, architecture conformance, rule distribution, approval inbox, episodic memory archive, MCP tools, hooks, and deterministic policy guards.",
+  "description": "Local-first governance for AI coding agents: approved shared memory, bounded runtime evidence, Failure Lessons, project and provider isolation, architecture contracts, MCP, hooks, and release integrity.",
   "owner": {
     "name": "Mamdouh Aboammar",
     "email": "mamdouhfces1997@gmail.com"
@@ -23,14 +23,19 @@
     "cursor",
     "antigravity",
     "gemini",
-    "mcp"
+    "mcp",
+    "failure-lessons",
+    "project-isolation",
+    "runtime-evidence",
+    "secure-runtime",
+    "release-integrity"
   ],
   "plugins": [
     {
       "name": "agent-kernel",
       "displayName": "Agent Kernel",
       "version": "1.15.1",
-      "description": "Local-first agent governance with shared memory, architecture conformance, approval workflows, Failure Lessons, MCP tools, hooks, and deterministic policy guards.",
+      "description": "Local-first governance for AI coding agents: approved shared memory, bounded runtime evidence, Failure Lessons, project and provider isolation, architecture contracts, MCP, hooks, and release integrity.",
       "author": {
         "name": "Mamdouh Aboammar",
         "email": "mamdouhfces1997@gmail.com"
@@ -52,7 +57,12 @@
         "codex",
         "cursor",
         "antigravity",
-        "gemini"
+        "gemini",
+        "failure-lessons",
+        "project-isolation",
+        "runtime-evidence",
+        "secure-runtime",
+        "release-integrity"
       ],
       "category": "development",
       "tags": [
@@ -61,7 +71,10 @@
         "architecture",
         "default",
         "mcp",
-        "agent-rules"
+        "agent-rules",
+        "failure-lessons",
+        "project-isolation",
+        "secure-runtime"
       ],
       "source": "./",
       "strict": false,

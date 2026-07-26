@@ -1,5 +1,40 @@
 # Evaluation
 
-The torture bench must include positive and negative cases. A good detector catches forbidden dependency direction, cycles, scope drift, denied packages, and expired exceptions while remaining silent for comments, approved boundaries, active exceptions, and baseline debt.
+Architecture Guardian evaluation requires positive and negative fixtures.
 
-Track false-positive rate separately from detection rate. A detector that blocks valid work is not safe merely because it catches every violation.
+## Detection cases
+
+Include:
+
+- forbidden layer direction
+- internal cycle
+- contract scope drift
+- denied package
+- unapproved dependency
+- expired exception
+- duplicate responsibility review hint
+
+## Non-detection cases
+
+Include:
+
+- comments and strings that resemble imports
+- approved dependency direction
+- active scoped exception
+- unchanged baseline debt
+- allowed new dependency in the active contract
+- valid worktree paths
+- generated or ignored directories
+
+## Metrics
+
+Track separately:
+
+- detection rate
+- false-positive rate
+- false-negative rate
+- stable fingerprint rate
+- runtime and bounded-file behavior
+- cross-platform consistency
+
+A detector that catches every violation but blocks valid work is not production-safe.

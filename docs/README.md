@@ -10,11 +10,15 @@ Use it to understand the current runtime, connect agent surfaces, update memory 
 
 | Situation | Read first | Then read |
 |---|---|---|
-| I want to install and use Agent Kernel | `INSTALL_AND_AGENT_SETUP.md` | `OPERATING_MODEL.md`, `PROJECT_CONNECTION.md`, `SAFE_LINKING.md` |
+| I want to install and use Agent Kernel | `INSTALL_AND_AGENT_SETUP.md` | `COMMAND_REFERENCE.md`, `ENVIRONMENT_VARIABLES.md`, `OPERATING_MODEL.md` |
 | I want to connect any software project to Agent Kernel | `PROJECT_CONNECTION.md` | `INSTALL_AND_AGENT_SETUP.md`, `SAFE_LINKING.md` |
 | I want to inspect pending, approved, rejected, memory, episode, failure, and runtime state in a browser | `STATIC_MEMORY_DASHBOARD.md` | `RETENTION_AND_PORTABILITY.md`, `MEMORY_PROTOCOL.md` |
 | I want trusted agents to check or apply Agent Kernel updates | `UPDATES.md` | `AGENT_WRITE_MODES.md`, `ARCHITECTURE_NOW.md` |
 | I want to understand how the system works | `OPERATING_MODEL.md` | `ARCHITECTURE_NOW.md` |
+| I need the exact current command surface | `COMMAND_REFERENCE.md` | Relevant protocol and security doc |
+| I need runtime environment variables | `ENVIRONMENT_VARIABLES.md` | `SECURE_RUNTIME_AND_RELEASES.md`, `MCP_SERVER.md` |
+| I am editing or distributing skill docs | `SKILL_CONTRACT.md` | Root `SKILL.md`, adapter skill, `AGENT_RUNBOOK.md` |
+| I need daemon, identifier, CI, or release security | `SECURE_RUNTIME_AND_RELEASES.md` | `SECURITY.md`, current hardening audit |
 | I want to understand which agents may capture or propose data | `AGENT_WRITE_MODES.md` | `AGENT_PROPOSALS.md`, `MEMORY_PROTOCOL.md` |
 | I want to clean up, back up, restore, or report on local state | `RETENTION_AND_PORTABILITY.md` | `MEMORY_PROTOCOL.md`, `JSON_FIRST_STORAGE.md` |
 | I want to prevent architecture drift in AI-generated code | `ARCHITECTURE_GUARDIAN.md` | `architecture-guardian/COMMAND_REFERENCE.md`, `skills/architecture-guardian/references/` |
@@ -41,16 +45,17 @@ For a new reader, follow this order:
 
 1. `README.md` at repo root for the product-level overview and current release.
 2. `INSTALL_AND_AGENT_SETUP.md` for the safest setup path.
-3. `OPERATING_MODEL.md` for the propose, approve, publish, capture, and promote workflow.
-4. `AGENT_WRITE_MODES.md` and `AGENT_PROPOSALS.md` for agent trust boundaries.
-5. `ARCHITECTURE_NOW.md` for the actual current runtime shape.
-6. `ARCHITECTURE_GUARDIAN.md` when AI agents will make non-trivial code changes.
-7. `SAFE_LINKING.md` and `SAFE_GIT_HOOKS.md` before modifying an existing project.
-8. The relevant file under `integrations/` for exact client setup and rollback.
-9. `STATIC_MEMORY_DASHBOARD.md` when a browser snapshot is useful for reviewing local state.
-10. `RETENTION_AND_PORTABILITY.md` before pruning, exporting, importing, or restoring local state.
-11. `UPDATES.md` before allowing an AI agent to install a global Agent Kernel version.
-12. `TROUBLESHOOTING.md` if setup, linking, hooks, MCP, architecture checks, memory, portability, dashboard, or updates behave unexpectedly.
+3. `COMMAND_REFERENCE.md` and `ENVIRONMENT_VARIABLES.md` for the exact current interface.
+4. `OPERATING_MODEL.md` for the propose, approve, publish, capture, and promote workflow.
+5. `AGENT_WRITE_MODES.md` and `AGENT_PROPOSALS.md` for agent trust boundaries.
+6. `ARCHITECTURE_NOW.md` for the actual current runtime shape.
+7. `ARCHITECTURE_GUARDIAN.md` when AI agents will make non-trivial code changes.
+8. `SAFE_LINKING.md` and `SAFE_GIT_HOOKS.md` before modifying an existing project.
+9. The relevant file under `integrations/` for exact client setup and rollback.
+10. `STATIC_MEMORY_DASHBOARD.md` when a browser snapshot is useful for reviewing local state.
+11. `RETENTION_AND_PORTABILITY.md` before pruning, exporting, importing, or restoring local state.
+12. `UPDATES.md` before allowing an AI agent to install a global Agent Kernel version.
+13. `TROUBLESHOOTING.md` if setup, linking, hooks, MCP, architecture checks, memory, portability, dashboard, or updates behave unexpectedly.
 
 This order gets a user from installation to safe project adoption before asking them to understand every protocol.
 
@@ -58,6 +63,10 @@ This order gets a user from installation to safe project adoption before asking 
 
 ## Runtime and protocol docs
 
+- `COMMAND_REFERENCE.md` is the canonical current command and public-binary map.
+- `ENVIRONMENT_VARIABLES.md` classifies stable user-facing variables and internal test overrides.
+- `SKILL_CONTRACT.md` defines the shared behavioral contract across canonical and adapter skills.
+- `SECURE_RUNTIME_AND_RELEASES.md` documents daemon, identifier, CI, trusted-publishing, and release boundaries.
 - `ARCHITECTURE_NOW.md` documents the real current runtime. It is the source to check before editing code.
 - `ARCHITECTURE_GUARDIAN.md` documents dependency boundaries, change contracts, baselines, exceptions, reuse-first search, reports, and architecture hooks.
 - `architecture-guardian/COMMAND_REFERENCE.md` lists the complete Architecture Guardian command surface.
@@ -67,7 +76,7 @@ This order gets a user from installation to safe project adoption before asking 
 - `OPERATING_MODEL.md` explains the day-to-day governance loop and where each type of knowledge belongs.
 - `MEMORY_PROTOCOL.md` documents durable memory, proposals, approval, publish, and sync.
 - `AGENT_PROPOSALS.md` documents the restricted proposal helper, trust checks, input limits, structured output, and pending-only lifecycle.
-- `AGENT_WRITE_MODES.md` documents `read-only`, `capture-only`, `propose-only`, and `trusted-local` behavior for agent-authored runtime capture.
+- `AGENT_WRITE_MODES.md` separates agent identity trust, global memory write modes, pending proposals, and runtime session capture.
 - `FAILURE_LESSONS_PROTOCOL.md` documents the error-to-skill loop.
 - `STATIC_MEMORY_DASHBOARD.md` documents the read-only adaptive HTML snapshot, browser boundary, copy-only review commands, redaction, and output safety.
 - `RETENTION_AND_PORTABILITY.md` documents raw-observation retention, deterministic session compaction, redacted export, review-first import, explicit restore, terminal views, and static local reports.
@@ -174,8 +183,8 @@ When behavior changes, update docs in the same PR.
 
 | Change | Docs to update |
 |---|---|
-| New core command | `README.md`, `ARCHITECTURE_NOW.md`, relevant protocol doc, smoke test docs if needed |
-| New helper binary | `README.md`, `ARCHITECTURE_NOW.md`, relevant setup or protocol doc |
+| New core command | `README.md`, `COMMAND_REFERENCE.md`, `ARCHITECTURE_NOW.md`, relevant protocol doc, focused tests |
+| New helper binary | `README.md`, `COMMAND_REFERENCE.md`, `ARCHITECTURE_NOW.md`, relevant setup or protocol doc, docs contract |
 | Static dashboard command, stores, browser behavior, privacy, or output safety | `STATIC_MEMORY_DASHBOARD.md`, `README.md`, `ARCHITECTURE_NOW.md`, routed-command docs, focused tests |
 | Updater command, trust, channel, cache, notification, install, or rollback behavior | `UPDATES.md`, `README.md`, `ARCHITECTURE_NOW.md`, routed-command docs, focused tests |
 | Proposal helper, identity, or trust behavior | `AGENT_PROPOSALS.md`, `AGENT_WRITE_MODES.md`, `MEMORY_PROTOCOL.md`, focused tests |
@@ -188,5 +197,8 @@ When behavior changes, update docs in the same PR.
 | New Failure Lessons behavior | `FAILURE_LESSONS_PROTOCOL.md`, `OPERATING_MODEL.md`, `hooks/FAILURE_LESSONS_HOOK.md`, tests |
 | New bundle behavior | `BUNDLE_KB.md`, `MEMORY_PROTOCOL.md`, `OPERATING_MODEL.md`, `README.md`, tests |
 | New hook | `hooks/CLAUDE_HOOKS_BEST_PRACTICES.md`, `INTEGRATIONS.md`, example settings |
-| New MCP tool | `MCP_SERVER.md`, tests, README if user-facing |
+| New MCP tool | `MCP_SERVER.md`, `COMMAND_REFERENCE.md`, tests, README if user-facing |
 | New client integration | Matching file under `integrations/`, `docs/README.md`, and `INTEGRATIONS.md` when the support matrix changes |
+| Skill trigger, workflow, or trust-boundary change | `SKILL.md`, both adapter skills, `SKILL_CONTRACT.md`, relevant protocol doc, docs contract |
+| Public environment variable | `ENVIRONMENT_VARIABLES.md`, relevant setup/security doc, docs contract |
+| Workflow or release behavior | `SECURE_RUNTIME_AND_RELEASES.md`, `TROUBLESHOOTING.md`, `CHANGELOG.md`, CI hardening test |

@@ -1,304 +1,287 @@
 # AI agent runbook
 
-This runbook is for AI coding agents working on the `agent-kernel` repository or using Agent Kernel inside another project.
-
-The goal is simple: make useful changes without guessing, overwriting durable context, or turning generated files into fake source of truth.
-
----
+This runbook applies to AI coding agents changing the Agent Kernel repository or using Agent Kernel in another project.
 
 ## Prime directive
 
-Before changing runtime behavior, read:
+Do not guess shipped behavior. Inspect the current code, help output, tests, and protocol docs before editing.
+
+For this repository, read:
 
 1. `AGENTS.md`
 2. `docs/ARCHITECTURE_NOW.md`
 3. `docs/OPERATING_MODEL.md`
-4. The relevant protocol doc for the area being changed
+4. `docs/COMMAND_REFERENCE.md`
+5. the focused protocol or security doc
 
-Do not use roadmap files as proof of shipped behavior. Current runtime behavior is determined by the code and `docs/ARCHITECTURE_NOW.md`.
-
----
+Roadmaps and backlogs describe intent, not proof of current behavior.
 
 ## First-response checklist
 
-When the user asks you to work on this repo:
+1. classify the request
+2. identify the real runtime entry point
+3. inspect current tests and documentation
+4. state only material assumptions
+5. reproduce a bug before fixing it
+6. make the smallest coherent change
+7. add a regression guard
+8. update docs and skill surfaces when behavior is user-visible
+9. run focused and full verification
+10. report exact evidence and remaining limitations
 
-1. Identify the request type.
-2. Inspect the relevant files before editing.
-3. State any risky assumption briefly.
-4. Make the smallest coherent change.
-5. Update tests and docs when behavior changes.
-6. Capture repeated failures instead of blind retrying.
-7. Leave a clear summary of changed files and validation.
+## Request matrix
 
----
-
-## Request type matrix
-
-| User asks for | First files to inspect | Expected output |
+| Request | Inspect first | Required evidence |
 |---|---|---|
-| Docs improvement | `README.md`, `docs/README.md`, relevant docs | Focused docs PR |
-| Runtime command change | `src/cli.mjs`, `test/smoke.mjs`, focused tests | Code, tests, docs, changelog |
-| Helper binary change | `bin/*.mjs`, `package.json#bin`, tests | Helper update and smoke coverage |
-| Safe-link issue | `bin/agent-kernel-safe-link.mjs`, `docs/SAFE_LINKING.md`, safe-link tests | Idempotent fix with regression test |
-| Hook issue | hook docs, hook helper binary, examples | Narrow event-specific hook update |
-| MCP issue | `docs/MCP_SERVER.md`, MCP code path, tests | MCP fix with trust boundary intact |
-| Failure Lessons issue | Failure Lessons protocol, helper, schema, tests | Capture/search/promote behavior fix |
-| Release issue | `package.json`, `CHANGELOG.md`, workflows, `CONTRIBUTING.md` | Release metadata and verification |
+| core CLI behavior | router, focused helper, `src/cli.mjs`, tests | focused reproduction, build, smoke |
+| helper binary | `bin/<helper>.mjs`, package bin map, focused test | helper test, bin lint, package preview |
+| daemon or session | daemon/session code, secure runtime doc | auth/path/body tests, process cleanup |
+| MCP | MCP surface, tool definitions, MCP doc | core/extended tool tests, approval boundary |
+| Project Context Broker | broker source, manifests, provider tests | target isolation, approval, audit, Windows tests |
+| Architecture Guardian | canonical skill, policy, detector, tests | doctor, discover, focused detector, check |
+| docs or skill refresh | help output, package bins, env vars, docs map | docs links, docs contract, lint |
+| workflow or release | workflows, CI hardening test, secure release doc | actionlint, PR checks, tag precondition |
 
----
+## Runtime map
 
-## Safe editing rules
-
-### Runtime source
-
-The core runtime is currently:
+Core build path:
 
 ```text
 src/cli.mjs -> scripts/build.mjs -> dist/cli.mjs
 ```
 
-Rules:
+The public router delegates many command families to focused `bin/*.mjs` helpers. Inspect `bin/agent-kernel-router.mjs` before assuming a command is implemented in `src/cli.mjs`.
 
-- edit `src/cli.mjs` for core runtime behavior
-- run build to regenerate `dist/cli.mjs`
-- do not hand-edit `dist/cli.mjs`
-- do not add production behavior under placeholder folders unless the modularization is wired into runtime and tests
+Do not hand-edit `dist/cli.mjs`. Run the build.
 
-Placeholder folders today:
+## Generated and canonical files
 
-```text
-src/adapters/
-src/commands/
-src/core/
-src/hooks/
-```
-
-### Generated project files
-
-Do not manually edit generated Agent Kernel outputs as the durable fix.
-
-Generated files include:
+Canonical state:
 
 ```text
-~/.agent-kernel/dist/AGENTS.md
-~/.agent-kernel/dist/CLAUDE.md
-~/.agent-kernel/dist/GEMINI.md
-project AGENTS.md Agent Kernel marked block
-project CLAUDE.md Agent Kernel marked block
-project GEMINI.md Agent Kernel marked block
-.cursor/rules/00-agent-kernel.mdc Agent Kernel block
-.agents/agents.md Agent Kernel block
+~/.agent-kernel/source/
+~/.agent-kernel/inbox/
+~/.agent-kernel/episodes/
+~/.agent-kernel/connections/
+project/.agent-kernel/architecture/
 ```
 
-If generated output is wrong, fix the source memory, compiler behavior, or docs, then regenerate.
-
----
-
-## Memory rules for agents
-
-Agents may propose memory. Agents should not approve or publish memory silently.
-
-Use proposal flow:
-
-```bash
-agent-kernel propose \
-  --from <agent> \
-  --text "<durable memory>" \
-  --reason "<why this should persist>"
-```
-
-Or use the helper:
-
-```bash
-agent-kernel-agent-propose --from <agent> --reason "<reason>" --text "<memory>"
-```
-
-The user should review:
-
-```bash
-agent-kernel inbox
-agent-kernel approve <proposal-id> --publish
-```
-
-Do not bypass this by editing memory JSON directly unless the user explicitly asks for a direct maintenance operation.
-
----
-
-## Failure behavior
-
-When a command fails in a repeatable way, capture it before retry loops.
-
-```bash
-agent-kernel failure capture \
-  --from <agent> \
-  --type test-failure \
-  --command "<command>" \
-  --exit-code <code> \
-  --text "<error output>" \
-  --root-cause "<why it happened>" \
-  --fix "<smallest known fix>"
-```
-
-Before retrying a similar failure:
-
-```bash
-agent-kernel failure search "<error code or signature>"
-```
-
-Promote only reusable lessons:
-
-```bash
-agent-kernel failure propose <failure-lesson-id> --as rule
-```
-
-Valid promotion targets:
+Generated or derived state:
 
 ```text
-rule
-policy
-workflow
-skill
-note
+~/.agent-kernel/dist/
+project AGENTS.md managed block
+project CLAUDE.md managed block
+project GEMINI.md managed block
+.cursor/rules managed block
+static dashboard and reports
 ```
 
----
+Fix the source or generator, then regenerate.
 
-## Hook boundaries
+## Memory and evidence rules
 
-Hooks are lifecycle adapters, not hidden agents.
+Agents may capture evidence and create proposals. They should not silently approve or publish.
 
-Allowed hook behavior:
-
-- block dangerous commands before execution
-- capture failed tool payloads
-- add short context where the agent platform supports it
-- write local evidence for review
-
-Disallowed hook behavior:
-
-- approve memory
-- publish memory
-- rewrite source memory without review
-- run broad autonomous workflows
-- leak secrets or private MCP credentials
-
-Claude failure capture should prefer:
-
-```text
-PostToolUseFailure
-narrow matchers
-exec-form command hooks
-short timeouts
-structured JSON output
+```bash
+agent-kernel propose --from <agent> --text "<memory>" --reason "<reason>"
+agent-kernel failure capture --from <agent> --type <type> --text "<redacted evidence>"
 ```
 
----
+Before retrying a familiar failure:
 
-## MCP boundaries
+```bash
+agent-kernel failure search "<signature>"
+```
 
-MCP should help agents inspect and propose, not silently govern.
+Do not store secrets, tokens, `.env` values, service-account files, or auth material in memory, episodes, Failure Lessons, manifests, skills, tests, logs, or examples.
 
-Default safe MCP uses:
+## File-backed identifier boundary
 
-- inspect status
-- search memory
-- propose memory
-- list pending proposals
-- run guard checks
-- work with episodes where supported
+Session, proposal, episode, commit-link, profile, and file-record IDs are identifiers. Never concatenate untrusted IDs into paths.
 
-Approval through MCP is disabled by default. Do not enable it unless the user explicitly asks for a trusted local workflow.
+Regression tests for a file-backed command should verify:
 
----
+- path separators are rejected
+- `.` and `..` are rejected
+- traversal cannot read, write, move, or append adjacent files
+- valid IDs retain existing behavior
 
-## Change discipline
+## Daemon rules
 
-### For code changes
+- local loopback is the default
+- remote bind requires explicit opt-in and at least a 32-byte bearer token
+- tokens are never written to status or logs
+- request bodies are capped
+- malformed URLs fail closed
+- tests must terminate child daemon processes
+
+Do not expose remote daemon mode in examples without the token and private-transport warning.
+
+## MCP rules
+
+- core mode remains the default
+- extended mode is explicit
+- approval requires an additional explicit flag
+- publish and delete are not exposed
+- rejected proposals do not become context
+- context remains bounded
+- tool lists in docs must match `agent-kernel mcp test`
+
+## Project Context Broker rules
+
+- project and environment are validated against the manifest
+- provider profile names are bounded identifiers
+- caller target overrides are removed
+- production operations consume a matching short-lived approval
+- credentials use secure storage or process environment
+- audit output is project-scoped and redacted
+- unsupported secure backends fail closed
+- Windows command execution remains restricted to validated launchers
+
+## Architecture Guardian rules
+
+Before non-trivial code work:
+
+```bash
+agent-kernel architecture doctor . --json
+agent-kernel architecture discover . --json
+agent-kernel architecture reuse "<capability>" . --json
+agent-kernel architecture check . --json
+```
+
+Do not broaden policy, baseline, contract, or exception state without review. Classify baseline debt separately from new regressions.
+
+## Hook rules
+
+Hooks are narrow lifecycle adapters.
+
+Allowed:
+
+- command/path checks
+- architecture scope checks
+- failure evidence capture
+- short context injection
+
+Not allowed:
+
+- memory approval or publication
+- policy broadening
+- automatic exception creation
+- broad autonomous repair loops
+- credential access or logging
+
+Prefer failure-specific events, narrow matchers, bounded timeouts, and structured output.
+
+## Documentation rules
+
+For a docs or skill change:
+
+1. compare examples with current help output
+2. verify all linked files exist
+3. ensure public binaries are covered by `docs/COMMAND_REFERENCE.md`
+4. ensure public environment variables are classified
+5. preserve the shared skill contract across adapter skills
+6. avoid documenting internal test overrides as stable public API
+7. update `docs/README.md` and root README navigation
+8. add an Unreleased changelog entry when release-visible
 
 Run:
 
 ```bash
-npm install
-npm run build
-npm test
+npm run docs:check
 npm run lint
-npm run typecheck
 ```
 
-Also run targeted tests when available.
+## Workflow and release rules
 
-Update:
+Workflow changes require:
+
+```bash
+go run github.com/rhysd/actionlint/cmd/actionlint@latest -color .github/workflows/*.yml
+npm run ci:check
+```
+
+Do not rely on YAML parsing alone. GitHub expressions and shell expansions are different languages.
+
+Release gate:
+
+```bash
+npm ci
+npm run verify:release
+npm run publish:dry
+```
+
+Then install the generated tarball in a clean temporary project and run the installed CLI.
+
+Before tagging:
+
+- PR checks are green on Linux and Windows
+- CodeQL is green
+- package version is unpublished
+- `master` contains the intended version
+- release workflows load successfully
+- tag matches `package.json`
+
+After tagging:
+
+- npm version is live
+- package integrity is visible
+- provenance path is recorded
+- GitHub Release contains source archive, npm tarball, and `SHA256SUMS`
+
+## Test sequence
+
+Use the smallest useful sequence:
 
 ```text
-README.md
-docs/ARCHITECTURE_NOW.md
-relevant protocol doc
-CHANGELOG.md
-SKILL.md if discovery surface changes
+focused failing test
+focused passing test
+build
+lint and docs contracts
+typecheck
+full smoke suite
+runtime audit
+package preview
+clean tarball install
+supported Node and platform CI
 ```
 
-### For docs-only changes
-
-Check:
-
-- command examples exist in the current package
-- docs link to real files
-- `docs/README.md` reading path stays accurate
-- docs do not claim planned behavior as shipped
-- `CHANGELOG.md` has an Unreleased entry when the change is release-visible
-
-### For discovery changes
-
-Keep these aligned:
-
-```text
-README.md
-SKILL.md
-skills.sh.json
-.claude-plugin/marketplace.json
-.claude-plugin/plugin.json
-.claude/skills/agent-kernel/SKILL.md
-.agents/skills/agent-kernel/SKILL.md
-```
-
----
+Do not claim a test passed unless its current output was observed.
 
 ## Anti-patterns
 
-Avoid these patterns:
-
+- blind retries without capturing a repeatable failure
 - editing `dist/cli.mjs` by hand
-- adding runtime files under placeholder folders without wiring them
-- changing package version in one manifest but not the others
-- replacing hand-written project `AGENTS.md` content with generated content
-- broad hook matchers that run on every event
-- turning one local error into a global policy too early
-- hiding generated or temporary state in committed files
-- changing docs without checking current command names
+- adding behavior under placeholder modules without routing it
+- changing one version surface only
+- using `shell: true` for fixed executable plus argument invocation
+- treating a package profile or record ID as a path
+- storing secrets in examples or generated files
+- using mutable GitHub Action references
+- claiming a release before registry and asset verification
+- changing docs without a regression contract
 
----
-
-## PR summary template
-
-Use this shape in the final message or PR body:
+## PR summary
 
 ```md
 ## Summary
 
-<one paragraph>
+<what changed and why>
 
-## Changed files
+## Security and trust boundaries
 
-- `<path>`: <what changed>
+- <boundary preserved or tightened>
 
 ## Validation
 
 - `<command>`: <result>
 
-## Notes
+## Release impact
 
-- <known limitation or follow-up, if any>
+- <version, package, workflow, docs, or no release impact>
+
+## Known limitations
+
+- <remaining constraint, or none>
 ```
-
-If validation could not be run, say so directly and explain why.

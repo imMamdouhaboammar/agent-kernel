@@ -15,7 +15,14 @@ Use Codex as `propose-only`:
 - Run guard checks
 - Never approve or publish durable memory without an explicit user action
 
-The agent registry and enforced trust profiles are planned separately. This recommendation does not grant additional runtime permissions today.
+Register the identity explicitly when this agent needs capture or proposal access:
+
+```bash
+agent-kernel agent add codex --trust propose-only --surface cli
+agent-kernel agent show codex --json
+```
+
+Unknown agents remain transient `read-only`; a denied lookup does not silently register them.
 
 ## 1. Install and initialize
 
@@ -187,10 +194,10 @@ Start the daemon only when a wrapper or local automation needs HTTP observations
 
 ```bash
 agent-kernel daemon start
-agent-kernel daemon status
+agent-kernel daemon status --json
 ```
 
-The daemon is local-only by default and is independent from the stdio MCP process started by Codex.
+The daemon is local-only by default and is independent from the stdio MCP process started by Codex. A non-loopback bind additionally requires `AGENT_KERNEL_DAEMON_ALLOW_REMOTE=1`, a bearer token of at least 32 bytes in `AGENT_KERNEL_DAEMON_TOKEN`, and private or authenticated transport.
 
 Stop it with:
 
@@ -216,7 +223,7 @@ Codex reads AGENTS.md
 - Codex hook enforcement depends on the host environment or wrapper and is not a native Agent Kernel guarantee
 - The optional daemon does not replace the MCP server
 - Project-scoped `.codex/config.toml` is appropriate only for trusted projects
-- The agent trust recommendation is not yet enforced by the planned registry
+- Agent identity trust must be configured explicitly; generated guidance alone does not grant capture or proposal access
 - Static `AGENTS.md` guidance can become stale until compile and safe-link run again
 - MCP approval remains disabled by default inside Agent Kernel
 
@@ -273,7 +280,7 @@ Restart Codex after changing MCP configuration.
 ### MCP starts but returns no context
 
 ```bash
-agent-kernel context --query "current task" --budget 1200 --json
+agent-kernel context "current task" --budget 1200 --json
 agent-kernel file-context src/cli.mjs --budget 1200 --json
 ```
 

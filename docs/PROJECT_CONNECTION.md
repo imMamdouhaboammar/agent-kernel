@@ -1,217 +1,258 @@
-# Project Connection Command Suite
+# Project Connection and Provider Isolation
 
-`agent-kernel project connect` connects any local software repository to the global Agent Kernel runtime without duplicating code, credentials, or agent state.
+`agent-kernel project connect` connects a repository to the global Agent Kernel runtime without copying credentials, duplicating the runtime, or replacing user-owned instructions.
 
----
-
-## Overview
-
-Agent Kernel acts as a local-first governance kernel. When managing multiple projects across local repositories, coding agents must remain strictly isolated within project boundaries while sharing global policy, memory, failure lessons, and tool registries.
+## Model
 
 ```text
-  Local Repository (e.g. ~/Projects/App)
-    ├── .agent-kernel/project.toml      # Project manifest & capability controls
-    ├── .agent-kernel/policy.toml       # Local project safety gates
-    ├── .gitignore                       # Managed runtime directory entries
-    └── CLAUDE.md / AGENTS.md            # Managed instruction adapters
-                       │
-                       │ connected via Project Context Broker
-                       ▼
-  Global Agent Kernel (~/.agent-kernel/)
-    ├── connections/registry.toml       # Global project connection registry
-    ├── connections/active-session.json  # Active session leases & context
-    ├── memory/                          # Cross-agent shared memory & Failure Lessons
-    └── bin/agent-kernel                 # Single global executable runtime
+project repository
+  .agent-kernel/project.toml
+  .agent-kernel/policy.toml
+  managed instruction blocks
+          |
+          | Project Context Broker
+          v
+~/.agent-kernel/
+  connections/registry.toml
+  connections/active-session.json
+  connections/approvals.json
+  logs/project-audit.jsonl
+  source/...
 ```
 
----
+The project owns reviewed identifiers, environments, capability flags, provider profiles, and target metadata. The global home owns connection registry state, active context, approvals, audit events, memory, and credentials through the supported secure backend.
 
-## Preferred CLI Commands
+## Connect
 
-| Command | Alias | Description |
-| :--- | :--- | :--- |
-| `agent-kernel project connect` | `agent-kernel connect` | Connects current directory to global Agent Kernel |
-| `agent-kernel project status` | - | Displays project connection state and system readiness |
-| `agent-kernel project doctor` | - | Runs 15+ integrity diagnostics on manifest and adapters |
-| `agent-kernel project reconnect` | - | Repairs stale registries, missing adapters, or gitignore entries |
-| `agent-kernel project disconnect` | `agent-kernel disconnect` | Safely removes global registration & managed blocks |
-| `agent-kernel approvals request/list/approve/deny/revoke` | - | Controls one-time production provider authorization |
-| `agent-kernel audit list/tail` | - | Reads provider and approval audit events for the current project only |
-| `agent-kernel context enter/switch/current` | - | Creates and inspects a validated active project environment session |
-
----
-
-## Fast Start
-
-Run from inside any project directory using **Bun**:
+Preview first:
 
 ```bash
-# Navigate to your project root
-cd ~/Projects/my-app
+agent-kernel project connect --dry-run
+```
 
-# Connect project to global kernel
-agent-kernel project connect
+Apply safe defaults:
 
-# Or using Bunx without global installation:
-bunx @mamdouh-aboammar/agent-kernel project connect
+```bash
+agent-kernel project connect --yes
+agent-kernel project status --json
+agent-kernel project doctor
+```
 
-# Inspect connection status
-agent-kernel project status
+One-off execution without global install:
 
-# Run diagnostics and auto-repair if needed
+```bash
+npx -y @mamdouh-aboammar/agent-kernel project connect --dry-run
+bunx @mamdouh-aboammar/agent-kernel project connect --dry-run
+```
+
+A global install is preferred when generated package scripts or hooks need a stable executable path.
+
+## Connect options
+
+```text
+--path <dir>       explicit project root
+--agents <list>    comma-separated adapter list or all
+--no-agent-files   do not write managed agent instruction blocks
+--no-scripts       do not add kernel package scripts
+--yes              accept safe defaults non-interactively
+--json             structured output
+--quiet            suppress non-error human output
+--dry-run          plan without mutation
+```
+
+When package scripts are enabled, Agent Kernel adds managed commands such as:
+
+```json
+{
+  "kernel:status": "agent-kernel project status",
+  "kernel:doctor": "agent-kernel project doctor",
+  "kernel:connect": "agent-kernel project connect",
+  "kernel:disconnect": "agent-kernel project disconnect"
+}
+```
+
+## Status, repair, and disconnect
+
+```bash
+agent-kernel project status --json
+agent-kernel project doctor
 agent-kernel project doctor --fix
+agent-kernel project reconnect
+agent-kernel project disconnect --dry-run
+agent-kernel project disconnect --keep-manifest
+agent-kernel project disconnect --remove-manifest
 ```
 
----
+Disconnect removes managed registry entries, scripts, and instruction blocks conservatively. `--remove-manifest` is the explicit destructive option for the local `.agent-kernel` connection directory.
 
-## Command Flags
-
-### `agent-kernel project connect`
+## Lower-level project commands
 
 ```bash
-agent-kernel project connect [options]
-
-Options:
-  --path <dir>     Explicitly set project directory root
-  --agents <list>  Comma-separated agents to install adapters for (e.g., claude,codex,cursor,all)
-  --no-agent-files Skip writing managed agent instruction blocks (CLAUDE.md, AGENTS.md)
-  --no-scripts     Skip injecting helper scripts into package.json
-  --json           Output status in structured JSON format
-  --dry-run        Simulate connection without modifying filesystem or registry
-  --quiet          Suppress non-error log messages
-  --yes            Accept safe default options non-interactively
+agent-kernel project init
+agent-kernel project register
+agent-kernel project inspect
+agent-kernel project verify
+agent-kernel projects discover [path]
+agent-kernel projects inventory
 ```
 
-### `agent-kernel project disconnect`
+Use the high-level `project connect` flow unless a recovery or advanced setup requires lower-level control.
+
+## Validated context
+
+`context enter` and `context switch` validate that:
+
+- the project ID matches the current manifest
+- the requested environment exists in the manifest
+- repository identity and root are consistent
+- risk metadata is known
 
 ```bash
-agent-kernel project disconnect [options]
-
-Options:
-  --keep-manifest   Preserve .agent-kernel/project.toml configuration (default)
-  --remove-manifest Completely remove local .agent-kernel directory
-  --dry-run         Simulate disconnection without file mutations
-```
-
-### `agent-kernel project doctor`
-
-```bash
-agent-kernel project doctor [options]
-
-Options:
-  --fix   Automatically repair missing footers, corrupted adapters, and stale registry entries
-```
-
----
-
-## Validated Context and Audit Inspection
-
-`context enter` and `context switch` write an owner-only active session only after verifying that the requested project ID matches the current project manifest and that the environment is declared in that manifest. The stored session includes the project ID, environment, risk, repository UUID, root, timestamp, and active status.
-
-```bash
-agent-kernel context enter my-project production
+agent-kernel context enter my-project development --json
 agent-kernel context switch my-project staging --json
 agent-kernel context current --json
 ```
 
-`audit list` and `audit tail` read `~/.agent-kernel/logs/project-audit.jsonl`, filter events to the current manifest project, and return at most 1-500 records. Malformed unrelated log lines are counted and skipped rather than returned as project evidence.
+The active context is stored in `~/.agent-kernel/connections/active-session.json`. It is local runtime state, not a repository file.
+
+## Audit
 
 ```bash
 agent-kernel audit list --limit 50
-agent-kernel audit tail --limit 10 --json
+agent-kernel audit list --limit 10 --json
 ```
 
-Unknown or unsupported subcommands in routed broker families fail with a nonzero exit. Help exits successfully only when invoked without a command or with `help`, `-h`, or `--help`.
+Audit reads are scoped to the current project manifest. Malformed unrelated lines are counted and skipped instead of being returned as valid evidence.
 
----
+Audit output is sanitized. Provider tokens, service-account material, and caller environment values are not recorded.
 
-## Production Provider Approvals
+## Agent and provider profiles
 
-Sensitive provider commands in an environment declared with `risk = "production"` require a short-lived approval scoped to the current project ID, environment, provider, and normalized operation. Approvals cannot authorize another project, environment, provider, account, project reference, region, or operation.
+Agent identity trust and provider credential profiles are separate concepts.
+
+Agent registry:
 
 ```bash
-# Create a pending request
+agent-kernel agent list --json
+agent-kernel agent add codex --trust propose-only --surface cli
+```
+
+Provider profile management:
+
+```bash
+agent-kernel auth add supabase --profile work
+agent-kernel auth list
+agent-kernel auth remove supabase work
+```
+
+Provider profile names are validated as bounded identifiers before keychain lookup or configuration-path use.
+
+Persistent provider credentials are available only through a supported secure platform backend. The current persistent backend is macOS Keychain. Unsupported platforms fail closed instead of writing unrecoverable credential references.
+
+Supabase can also read `SUPABASE_ACCESS_TOKEN` or `SUPABASE_TOKEN` from the current process. Agent Kernel does not persist or log those values.
+
+## Provider execution
+
+Supabase:
+
+```bash
+agent-kernel provider supabase exec -- db pull
+agent-kernel provider supabase exec -- db push
+```
+
+GCloud:
+
+```bash
+agent-kernel provider gcloud exec -- run services list
+agent-kernel provider gcloud exec -- run deploy <service>
+```
+
+The broker removes caller attempts to override manifest-bound targets. Supabase receives the reviewed project reference. GCloud receives the reviewed project, region, and configuration profile. Account, impersonation, billing project, and configuration overrides are removed.
+
+Provider executable discovery ignores invalid or non-executable path entries. Windows batch delegation is restricted to validated Supabase and GCloud launchers through the trusted system command processor path; general `shell: true` execution is not used.
+
+## Production approvals
+
+Sensitive operations in a production-risk environment require a short-lived matching approval.
+
+```bash
 agent-kernel approvals request \
   --provider supabase \
   --operation db-push \
   --reason "Migration reviewed in change window"
 
-# Review pending and historical records
-agent-kernel approvals list
 agent-kernel approvals list --status pending --json
-
-# Resolve the request
 agent-kernel approvals approve <approval-id> --ttl-minutes 15
+```
+
+Deny or revoke:
+
+```bash
 agent-kernel approvals deny <approval-id> --reason "Change window closed"
 agent-kernel approvals revoke <approval-id> --reason "Deployment cancelled"
 ```
 
-Supported approval operations are `supabase:db-push`, `supabase:migration`, `gcloud:run`, and `gcloud:deploy`. Approval TTL must be an integer from 1 to 60 minutes. An approved record is consumed atomically by the first matching production command and cannot be replayed. Repeating `request` while a matching pending or unexpired approved record exists returns the active record instead of stacking another authorization.
+Supported production approval operations include:
 
-The state machine is:
+```text
+supabase:db-push
+supabase:migration
+gcloud:run
+gcloud:deploy
+```
+
+Approval properties:
+
+- scoped to project, environment, provider, and normalized operation
+- TTL from 1 to 60 minutes
+- consumed atomically by the first matching command
+- cannot authorize another project, account, region, or operation
+- malformed state fails closed
+- requests and state changes are audited
+
+State transitions:
 
 ```text
 pending -> approved -> consumed
        \-> denied
 approved -> revoked
-approved -> expired (derived after expiresAt)
+approved -> expired
 ```
 
-Approval state is stored at `~/.agent-kernel/connections/approvals.json` with owner-only permissions. Mutations are lock-protected and atomic. A malformed state file causes commands to fail closed without overwriting the file. Request reasons are redacted before persistence, and request, approval, denial, revocation, and consumption actions are recorded in the provider audit log.
+## Read-only and unknown operations
 
-Read-only Supabase operations are explicitly allowlisted (`db pull`, `db dump`, `db lint`, and `migration list`). Unknown Supabase commands are classified as sensitive rather than read-only. Sensitive operations also require the mapped capability and environment risk metadata to be explicitly enabled in `project.toml`.
+Explicitly recognized Supabase read-only operations include `db pull`, `db dump`, `db lint`, and `migration list`.
 
----
+Unknown Supabase operations are classified as sensitive, not read-only. This prevents an unrecognized write command from bypassing production approval.
 
-## Core Guarantees & Safety Architecture
+## Safety guarantees
 
-### 1. Zero Runtime Duplication
+- global runtime and memory are not copied into the project
+- project instructions are updated through managed blocks
+- registry and approval writes are lock-protected and atomic
+- worktree repository identity is supported
+- credentials are not stored in project manifests
+- provider targets are manifest-bound
+- unknown routed subcommands fail nonzero
+- project and profile identifiers are validated before local path use
+- audit events are project-scoped and redacted
 
-Projects receive only lightweight manifest configuration (`.agent-kernel/project.toml`) and instruction references. The full Agent Kernel runtime remains centralized under `~/.agent-kernel`.
-
-### 2. Idempotent Managed Blocks
-
-All instruction file adapters and `.gitignore` entries use strict comment delimiters:
-
-```markdown
-<!-- >>> agent-kernel managed instructions >>> -->
-This project is connected to Agent Kernel.
-...
-<!-- <<< agent-kernel managed instructions <<< -->
-```
-
-Running `connect` repeatedly will never duplicate blocks or corrupt user-written content.
-
-### 3. Process-Safe Atomic Registry Writes
-
-The global registry at `~/.agent-kernel/connections/registry.toml` is protected by mutex file-locking (`registry.toml.lock`) and atomic writes to prevent race conditions during concurrent execution.
-
-Sanitized provider audit events use the same lock discipline and are written with owner-only permissions on POSIX filesystems. Windows validation preserves the audit content, redaction, and lock-recovery guarantees without treating synthesized NTFS POSIX mode bits as an access-control contract. Repository drift checks also work from Git worktrees, where `.git` is a file rather than a directory.
-
-Provider execution strips the documented `--` separator before invoking the real CLI. Supabase always receives the manifest-bound `project_ref`. GCloud removes caller overrides for project, region, configuration, account, impersonation, and billing project, then applies the connected profile and manifest-bound target.
-
-Provider executable discovery uses the operating system PATH delimiter, ignores non-executable path entries, and reports a nonzero exit when the underlying CLI cannot start. Generated command shims follow the same fail-closed behavior. On Windows, only absolute regular-file `supabase.cmd`/`supabase.bat` and `gcloud.cmd`/`gcloud.bat` launchers are delegated through the validated `%SystemRoot%\\System32\\cmd.exe` path; arbitrary batch launchers and general `shell: true` execution are rejected. Lock retries use an in-process synchronous wait rather than relying on an external `sleep` command.
-
-### 4. Secret & Credential Boundary Preservation
-
-Sensitive project files (`.env`, `service-account.json`, `id_rsa`, `*.pem`, `supabase/config.toml`, `.gcp/credentials.json`) are scanned by path classification only. Secret values are **never printed, logged, or recorded** in global registries.
-
-Persistent `auth add` and `auth remove` operations are available only when Agent Kernel has a configured secure platform backend. The current persistent backend is macOS Keychain. Windows and Linux fail closed with exit code 2 rather than recording a credential reference that cannot be retrieved securely. Supabase provider execution on those platforms may use `SUPABASE_ACCESS_TOKEN` or `SUPABASE_TOKEN` from the current process environment; Agent Kernel does not write those values to disk or include them in audit output.
-
----
-
-## Native Bun Support
-
-Bun is fully supported for all workflow phases:
+## Recovery checklist
 
 ```bash
-# Installation
-bun install -g @mamdouh-aboammar/agent-kernel
-
-# Package Execution
-bunx agent-kernel project connect
-
-# Package Scripts (automatically injected into package.json)
-bun run kernel:status
-bun run kernel:doctor
+agent-kernel project status --json
+agent-kernel project doctor
+agent-kernel project doctor --fix
+agent-kernel context current --json
+agent-kernel audit list --limit 20 --json
 ```
+
+If state remains inconsistent, run `project disconnect --dry-run`, inspect the plan, then reconnect. Do not manually delete global connection state unless the user is performing a reviewed recovery.
+
+## Related references
+
+- `COMMAND_REFERENCE.md`
+- `ENVIRONMENT_VARIABLES.md`
+- `INSTALL_AND_AGENT_SETUP.md`
+- `SECURE_RUNTIME_AND_RELEASES.md`
+- `TROUBLESHOOTING.md`

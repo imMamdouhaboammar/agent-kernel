@@ -1,77 +1,111 @@
 ---
 name: agent-kernel
 description: |
-  Local-first governance, memory, architecture conformance, and safety layer for AI coding agents.
-  Use this skill to install Agent Kernel, capture durable rules and Failure Lessons,
-  share memory across Claude Code, Codex, Cursor, OpenCode, Antigravity, and Gemini CLI,
-  enforce architecture conformance, search episodes, run change contracts, install hooks,
-  configure MCP, or make multiple coding agents follow the same standards.
-  Triggers: remember this rule, save this workflow, capture this failure, search past
-  episodes, learn from this error, prevent architecture drift, search before creating a
-  service, create a change contract, baseline existing debt, install agent guidance,
-  safe-link this repo, configure MCP, add a guard policy.
+  Use Agent Kernel when an AGENTS.md-compatible coding agent needs shared durable rules,
+  reviewed memory proposals, Failure Lessons, bounded context, local sessions, safe project
+  connection, provider isolation, Architecture Guardian, hooks, MCP, or release verification.
+  Trigger on: remember this rule, capture this failure, search past debugging evidence,
+  connect this repo safely, prevent architecture drift, configure local MCP, secure the daemon,
+  or make multiple coding agents follow the same reviewed workflow.
 ---
 
-# Agent Kernel — Agent Skill
+# Agent Kernel for AGENTS-compatible agents
 
-This skill gives any AGENTS.md-compatible agent the Agent Kernel workflow for
-local-first governance, shared memory, and architecture conformance.
+Use the canonical skill at [`SKILL.md`](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/SKILL.md) for the complete operating model. This adapter gives Codex, Antigravity, and other AGENTS-compatible agents the minimum non-negotiable contract.
 
-Canonical install:
+## Start
 
 ```bash
-npm install -g @mamdouh-aboammar/agent-kernel
 agent-kernel --version
+agent-kernel doctor
+agent-kernel status
 ```
 
-The full surface and command map live in the canonical skill at
-[`SKILL.md`](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/SKILL.md).
-Read that file for trigger phrases, command surface, mental model, and safety rules.
-
-For architecture conformance work, also load the dedicated
-[`architecture-guardian`](../architecture-guardian/SKILL.md) skill before any
-non-trivial code change.
-
-Common entry points:
+Before modifying an existing project:
 
 ```bash
-# Approve a rule the user just asked you to remember
-agent-kernel remember "Never store raw tokens in JSON memory." \
-  --type policy --level critical --publish
+agent-kernel compile
+agent-kernel-safe-link . --dry-run
+agent-kernel-safe-link .
+```
 
-# Search past debugging before retrying a failing command
-agent-kernel failure search "ERR_MODULE_NOT_FOUND"
+Read `AGENTS.md`, `.codex/AGENTS.md`, or `.agents/agents.md` as applicable. Do not replace user-owned instructions outside Agent Kernel managed blocks.
 
-# Capture this failure as a lesson
+## Core contract
+
+- Approved source memory is canonical. Generated guidance is disposable.
+- Agents may capture evidence and propose memory. Users approve and publish.
+- Failure Lessons are evidence first; promotion creates a pending proposal.
+- File-backed IDs are identifiers, not paths.
+- MCP defaults to the bounded core tool surface. Approval is disabled by default.
+- The daemon is local-only by default. Remote mode requires `AGENT_KERNEL_DAEMON_ALLOW_REMOTE=1` and a strong `AGENT_KERNEL_DAEMON_TOKEN`.
+- Provider targets come from reviewed project manifests, not caller overrides.
+- Use Architecture Guardian before non-trivial code changes.
+
+## Normal work loop
+
+```bash
+agent-kernel search "<task or error>" --explain
+agent-kernel context "<task>" --files src/example.mjs --budget 1200
+agent-kernel failure search "<error signature>"
+```
+
+Create a pending durable-memory proposal:
+
+```bash
+agent-kernel propose \
+  --from codex \
+  --text "<durable rule>" \
+  --reason "<why it should persist>"
+```
+
+Capture a verified failure lesson:
+
+```bash
 agent-kernel failure capture \
-  --from codex --type test-failure \
-  --command "npm test" --exit-code 1 \
-  --text "<error output>" \
-  --root-cause "<why>" --fix "<known fix>"
+  --from codex \
+  --type test-failure \
+  --command "npm test" \
+  --exit-code 1 \
+  --text "<redacted error>" \
+  --root-cause "<supported cause>" \
+  --fix "<verified fix>"
+```
 
-# Architecture: discover, reuse, check before commit
+## Architecture workflow
+
+Load [`architecture-guardian`](../architecture-guardian/SKILL.md) before a feature, refactor, new dependency, schema change, public API change, or cross-module fix.
+
+```bash
 agent-kernel architecture doctor .
 agent-kernel architecture discover . --json
 agent-kernel architecture reuse "<capability>" . --json
 agent-kernel architecture check . --json
 ```
 
-Safety rules:
+Do not silently broaden policy, baseline, contract, or exception scope.
 
-- Do not approve or publish memory unless the user explicitly asks.
-- Do not silently broaden architecture policy, baseline, contract, or exception scope.
-- Do not store secrets, `.env` values, MCP credentials, or local auth files in repo-local config.
-- Do not bypass an existing public interface to reach infrastructure directly.
-- Search Failure Lessons and architecture reuse candidates before repeating work.
-- Use safe-link before modifying existing project guidance files.
-- Treat hooks as narrow, auditable lifecycle adapters.
+## Project and runtime boundaries
 
-Full documentation:
+```bash
+agent-kernel project status --json
+agent-kernel context current --json
+agent-kernel session start --agent codex --project . --json
+agent-kernel mcp test
+agent-kernel daemon status --json
+```
 
-- [docs/README.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/README.md)
-- [docs/ARCHITECTURE_GUARDIAN.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/ARCHITECTURE_GUARDIAN.md)
-- [docs/AGENT_RUNBOOK.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/AGENT_RUNBOOK.md)
-- [docs/FAILURE_LESSONS_PROTOCOL.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/FAILURE_LESSONS_PROTOCOL.md)
-- [docs/MCP_SERVER.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/MCP_SERVER.md)
+Do not expose the daemon publicly. Do not enable MCP approval, bypass mode, strict architecture hooks, replacement imports, or production provider approvals without explicit user intent.
 
-License: MIT
+## Validation
+
+For repository changes, run the targeted test first, then the required full gate. For Agent Kernel itself:
+
+```bash
+npm run docs:check
+npm run lint
+npm run typecheck
+npm test
+```
+
+Use [docs/COMMAND_REFERENCE.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/COMMAND_REFERENCE.md), [docs/AGENT_RUNBOOK.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/AGENT_RUNBOOK.md), and [docs/SECURE_RUNTIME_AND_RELEASES.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/SECURE_RUNTIME_AND_RELEASES.md).
