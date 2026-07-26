@@ -31,3 +31,7 @@ export async function run() {
     fs.rmSync(fixtureRoot, { recursive: true, force: true });
   }
 }
+
+const invokedPath = process.argv[1] ? path.resolve(process.argv[1]) : '';
+const modulePath = fileURLToPath(import.meta.url);
+if (invokedPath === modulePath) await run();
