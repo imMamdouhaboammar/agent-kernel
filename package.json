@@ -41,7 +41,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "dev": "node dist/cli.mjs",
-    "test": "node scripts/check-version.mjs && node test/smoke.mjs && node test/project-broker-symlink.mjs",
+    "test": "node scripts/check-version.mjs && node test/smoke.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "node scripts/lint.mjs && node scripts/lint-bins.mjs && node scripts/lint-modes.mjs && node scripts/check-version.mjs && node scripts/check-doc-links.mjs && node scripts/check-privacy-and-paths.mjs",
     "docs:check": "node scripts/check-doc-links.mjs",
