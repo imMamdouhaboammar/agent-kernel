@@ -105,5 +105,14 @@ export async function runBroker(
   }
 }
 
-const invokedPath = process.argv[1] ? path.resolve(process.argv[1]) : '';
-if (invokedPath === modulePath) await runBroker();
+function canonicalInvocationPath(filePath) {
+  if (!filePath) return '';
+  try {
+    return fs.realpathSync.native(filePath);
+  } catch {
+    return path.resolve(filePath);
+  }
+}
+
+const invokedPath = canonicalInvocationPath(process.argv[1]);
+if (invokedPath === canonicalInvocationPath(modulePath)) await runBroker();
