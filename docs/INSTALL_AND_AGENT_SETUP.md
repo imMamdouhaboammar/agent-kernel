@@ -1,12 +1,13 @@
 # Install and agent setup
 
-This guide covers the safest path for using Agent Kernel as a shared local memory, runtime evidence, and governance layer across coding agents.
+This guide covers the supported installation and the safest way to connect coding agents without turning generated guidance, project files, or credentials into a second source of truth.
 
 ## Requirements
 
 - Node.js `>=18.18.0`
-- a local user account that can write to the selected Agent Kernel home
-- Git when installing project hooks or using repository-aware commands
+- npm, Bun, or another package runner capable of installing the npm package
+- Git for repository-aware commands, hooks, and commit evidence
+- one local owner for the selected Agent Kernel home
 
 Agent Kernel has zero runtime npm dependencies.
 
@@ -30,70 +31,76 @@ agent-kernel init --sync
 agent-kernel doctor
 ```
 
-The stable package version documented by this repository is `1.13.0`.
+The stable package version represented by this repository is `1.15.1`.
 
-You can also inspect the CLI without a global install:
+One-off inspection:
 
 ```bash
-# Using npx
 npx -y @mamdouh-aboammar/agent-kernel --version
-
-# Using Bunx
 bunx @mamdouh-aboammar/agent-kernel --version
 ```
 
-## Native memory home
+Prefer a global install for hooks, MCP clients, and generated project commands that need a stable executable path.
 
-By default, Agent Kernel writes to:
+## Local home
+
+The default local home is:
 
 ```text
 ~/.agent-kernel
 ```
 
-Override it before running commands when you need an isolated home:
+Use an isolated home for tests, migration rehearsals, or separate work profiles:
 
 ```bash
 export AGENT_KERNEL_HOME="$HOME/.agent-kernel-work"
 agent-kernel init --sync
 ```
 
-Do not point multiple uncoordinated users or machines at the same writable home. Agent Kernel is local-first and expects one local owner to review durable state.
+Do not share one writable home between unrelated users or machines. Local file ownership is part of the trust boundary.
 
-## Understand the write boundary
+## Two separate write controls
 
-Agent Kernel separates three actions:
+Agent Kernel has two different controls. Do not confuse them.
 
-1. read shared guidance
-2. capture ephemeral runtime evidence
-3. propose durable memory for user review
+### Agent identity trust
 
-Agent identities use four trust levels:
-
-| Trust level | Read | Capture sessions | Propose memory | Direct approved memory |
+| Trust | Read | Capture evidence | Propose memory | Direct durable write |
 |---|---:|---:|---:|---:|
 | `read-only` | yes | no | no | no |
 | `capture-only` | yes | yes | no | no |
 | `propose-only` | yes | yes | yes | no |
-| `trusted-local` | yes | yes | yes | limited governed actions only |
+| `trusted-local` | yes | yes | yes | governed only |
 
-Unknown agents receive a transient `read-only` identity and are not registered by a denied lookup.
-
-Inspect current identities and modes before granting write access:
+Manage identities with the registry commands:
 
 ```bash
-agent-kernel-agent-write mode list
-agent-kernel-agent-write mode get codex
-agent-kernel-agent-write mode set codex propose-only
+agent-kernel agent list --json
+agent-kernel agent add codex --trust propose-only --surface cli
+agent-kernel agent set codex --trust capture-only
+agent-kernel agent show codex --json
 ```
 
-Read:
+Unknown agents are not silently granted write access.
 
-- `AGENT_WRITE_MODES.md`
-- `AGENT_PROPOSALS.md`
+### Global memory write mode
 
-## Core proposal workflow
+```bash
+agent-kernel-mode show
+agent-kernel-mode set approval
+agent-kernel-mode set trusted
+agent-kernel-mode set bypass
+```
 
-An agent creates a pending proposal:
+- `approval`: agent writes become pending proposals
+- `trusted`: low-risk project-scoped memory may be accepted
+- `bypass`: approved memory may be written directly
+
+Use `approval` by default. `trusted` and `bypass` require deliberate user acceptance.
+
+## Proposal workflow
+
+Agent proposal:
 
 ```bash
 agent-kernel-agent-propose \
@@ -102,7 +109,7 @@ agent-kernel-agent-propose \
   --text "Use pnpm in this repository."
 ```
 
-The user reviews and decides:
+User review:
 
 ```bash
 agent-kernel inbox
@@ -111,15 +118,14 @@ agent-kernel approve <proposal-id> --publish
 agent-kernel reject <proposal-id>
 ```
 
-The restricted proposal helper never approves or publishes memory. It rejects unsupported trust levels, ambiguous text sources, duplicate or unknown options, unsafe values, and invalid enums before calling the core runtime.
+The proposal helper never approves or publishes memory.
 
 ## Safe project setup
 
-Use dry-run before writing into an existing project:
+For an existing repository:
 
 ```bash
-cd ~/Projects/YourProject
-
+cd /path/to/project
 agent-kernel compile
 agent-kernel-safe-link . --dry-run
 agent-kernel-safe-link .
@@ -128,27 +134,53 @@ agent-kernel-safe-git-hook .
 agent-kernel doctor
 ```
 
-This flow preserves existing project instructions and existing `pre-commit` hook logic.
-
 The safe-link installer:
 
-- updates only Agent Kernel managed blocks
-- rejects ambiguous or corrupt marker layouts unless repair is requested explicitly
+- changes only Agent Kernel managed blocks
+- preserves user content outside markers
+- refuses ambiguous marker layouts unless `--force` repair is explicit
 - refuses unsafe symbolic targets
-- plans project writes before applying them
-- rolls back partial project writes when an update fails
+- plans writes and rolls back partial application
 
 The safe Git hook installer:
 
-- resolves the effective hooks path through Git
-- supports normal repositories, linked worktrees, and `core.hooksPath`
-- preserves user-owned hook code outside the managed block
+- resolves normal repositories, linked worktrees, and `core.hooksPath`
+- preserves non-Agent-Kernel hook logic
 - refuses symbolic hook targets and hook directories
-- writes atomically and preserves executable permissions
+- writes atomically and preserves executable permissions where meaningful
 
-Read `SAFE_LINKING.md` and `SAFE_GIT_HOOKS.md` before using `--force` repair options.
+Read `SAFE_LINKING.md` and `SAFE_GIT_HOOKS.md` before using `--force`.
 
-## Typical generated project surfaces
+## Project Context Broker setup
+
+Use Project Context Broker when a repository needs global memory with local project isolation:
+
+```bash
+agent-kernel project connect --dry-run
+agent-kernel project connect --yes
+agent-kernel project status --json
+agent-kernel project doctor
+```
+
+Connection creates managed project files such as:
+
+```text
+.agent-kernel/project.toml
+.agent-kernel/policy.toml
+```
+
+Global connection state remains under:
+
+```text
+~/.agent-kernel/connections/
+~/.agent-kernel/logs/project-audit.jsonl
+```
+
+Project manifests may contain identifiers, capability flags, environments, provider profile names, and target metadata. They must not contain raw credentials.
+
+## Generated project surfaces
+
+Typical outputs include:
 
 ```text
 AGENTS.md
@@ -162,151 +194,125 @@ GEMINI.md
 .git/hooks/pre-commit
 ```
 
-Generated Agent Kernel blocks are reviewable execution surfaces. Keep credentials and private connection details in user-level configuration, not in generated repository files.
+Generated files are delivery surfaces. Fix source memory or compiler behavior, then regenerate.
 
-## Agent-specific setup
-
-### Claude Code
+## Claude Code
 
 ```bash
 agent-kernel enforce install
 agent-kernel mcp install claude
+agent-kernel mcp test
 ```
 
-Claude Code can use:
+Claude can use:
 
-- `CLAUDE.md`
-- SessionStart context injection
-- UserPromptSubmit memory capture
-- PreToolUse command and path guards
-- PostToolUse file scanning
-- Failure Lessons hooks
+- `CLAUDE.md` and `AGENTS.md`
+- local stdio MCP
+- narrow `PreToolUse` guards
+- `PostToolUseFailure` Failure Lessons capture
 - Architecture Guardian scope hooks
-- MCP tools
 
-Read `integrations/CLAUDE_CODE_LIVE_CONTEXT.md` and `hooks/CLAUDE_HOOKS_BEST_PRACTICES.md` before changing hook configuration.
+Read `integrations/CLAUDE_CODE_LIVE_CONTEXT.md` and `hooks/CLAUDE_HOOKS_BEST_PRACTICES.md` before changing hooks.
 
-### Codex
+## Codex
+
+```bash
+agent-kernel sync
+agent-kernel-safe-link .
+codex mcp add agent-kernel-memory -- agent-kernel mcp serve
+codex mcp list
+```
+
+Codex should read `AGENTS.md`, `.codex/AGENTS.md`, and the AGENTS-compatible skill. Agent Kernel does not claim native Codex blocking hooks.
+
+## Cursor
+
+```bash
+agent-kernel-safe-link .
+```
+
+Cursor reads `.cursor/rules/00-agent-kernel.mdc` and can start the local MCP server through `.cursor/mcp.json`. Agent Kernel does not currently ship a native Cursor hook adapter.
+
+## OpenCode
+
+OpenCode reads `AGENTS.md` and can configure `agent-kernel mcp serve` as a local MCP process. Agent Kernel does not currently ship a native OpenCode hook adapter.
+
+## Gemini CLI
 
 ```bash
 agent-kernel sync
 agent-kernel-safe-link .
 ```
 
-Codex should read `AGENTS.md` and `.codex/AGENTS.md` when present.
+Gemini reads `GEMINI.md`. Use the client-specific MCP configuration described in `INTEGRATIONS.md`.
 
-Grant proposal access explicitly before asking Codex to save durable guidance:
+## Antigravity and file-based agents
 
-```bash
-agent-kernel-agent-write mode set codex propose-only
-agent-kernel-agent-propose --from codex --reason "<reason>" --text "<memory>"
-```
+Antigravity reads `.agents/agents.md` and `.agents/skills/`. Other AGENTS-compatible tools use `AGENTS.md` and `.agents/skills/agent-kernel/SKILL.md`.
 
-To wire the local MCP server into Codex, add the documented `[mcp_servers.agent-kernel-memory]` block to `~/.codex/config.toml`. The repository bootstrap script is idempotent:
+## MCP setup and trust
 
-```bash
-./examples/scripts/install-agent-mcp.sh
-```
-
-Read `integrations/CODEX_LIVE_CONTEXT.md` for exact configuration and rollback.
-
-### Cursor
+Inspect the default core surface:
 
 ```bash
-agent-kernel-safe-link .
+agent-kernel mcp test
 ```
 
-Cursor should read `.cursor/rules/00-agent-kernel.mdc`.
-
-Grant proposal or runtime capture access explicitly:
+Core mode exposes ten bounded tools. Extended mode is explicit:
 
 ```bash
-agent-kernel-agent-write mode set cursor propose-only
-agent-kernel-agent-propose --from cursor --reason "<reason>" --text "<memory>"
+AGENT_KERNEL_MCP_TOOLS=extended agent-kernel mcp test
 ```
 
-Read `integrations/CURSOR_LIVE_CONTEXT.md` for MCP and rollback details.
+Do not enable MCP approval as part of normal installation. It requires extended mode plus `AGENT_KERNEL_MCP_ALLOW_APPROVE=1`. MCP publish and delete tools are never exposed.
 
-### OpenCode
+## Optional daemon
+
+The daemon is not required for generated guidance or MCP.
 
 ```bash
-agent-kernel-safe-link .
+agent-kernel daemon start
+agent-kernel daemon status --json
+agent-kernel daemon stop
 ```
 
-OpenCode should read `AGENTS.md` and can create pending proposals after its identity is granted `propose-only` or `trusted-local` access:
+Remote binding is rejected unless both controls are present:
 
 ```bash
-agent-kernel-agent-write mode set opencode propose-only
-agent-kernel-agent-propose --from opencode --reason "<reason>" --text "<memory>"
+export AGENT_KERNEL_DAEMON_ALLOW_REMOTE=1
+export AGENT_KERNEL_DAEMON_TOKEN="$(openssl rand -hex 32)"
 ```
 
-Read `integrations/OPENCODE_LIVE_CONTEXT.md`.
+Use private transport. Do not expose the daemon directly to the public internet.
 
-### Gemini CLI
-
-```bash
-agent-kernel sync
-agent-kernel-safe-link .
-```
-
-Gemini CLI should read `GEMINI.md`.
-
-To wire the local MCP server into Gemini CLI, add the documented `mcpServers.agent-kernel-memory` block to `~/.gemini/settings.json`, or run:
-
-```bash
-./examples/scripts/install-agent-mcp.sh
-```
-
-### Antigravity and other file-based agents
-
-```bash
-agent-kernel-safe-link .
-```
-
-Antigravity should read `.agents/agents.md` and `.agents/skills/README.md`. Other AGENTS-compatible tools should read `AGENTS.md`.
-
-The pointer installer can place a short managed reference in supported agent homes:
-
-```bash
-./examples/scripts/install-agent-pointers.sh
-```
-
-The pointer block is idempotent and marked with:
-
-```text
-<!-- agent-kernel:start -->
-<!-- agent-kernel:end -->
-```
-
-## Verify the installation
-
-Run the checks that match the installed surfaces:
+## Verify installation
 
 ```bash
 agent-kernel --version
 agent-kernel doctor
 agent-kernel validate
 agent-kernel status
+agent-kernel mcp test
 ```
 
-For an existing project, preview the installers again. A settled setup should report no unexpected duplicate blocks or unsafe targets:
+For linked projects:
 
 ```bash
 agent-kernel-safe-link . --dry-run
 agent-kernel-safe-git-hook . --dry-run
+agent-kernel project status --json
+agent-kernel project doctor
 ```
 
 For architecture-managed projects:
 
 ```bash
-agent-kernel architecture doctor .
-agent-kernel architecture policy validate .
+agent-kernel architecture doctor . --json
+agent-kernel architecture policy validate . --json
 agent-kernel architecture check . --json
 ```
 
-## Back up and inspect local state
-
-Before destructive cleanup or moving to another machine:
+## Back up and inspect state
 
 ```bash
 agent-kernel retention status --json
@@ -314,29 +320,29 @@ agent-kernel export ./agent-kernel-backup.json --redact --include-observations
 agent-kernel import ./agent-kernel-backup.json --inspect --json
 ```
 
-Normal imports create pending proposals. Replacement import is explicit and creates a local backup before changing managed state:
+Normal import should remain review-first. Replacement import is explicit and creates a backup before applying managed state.
 
-```bash
-agent-kernel import ./agent-kernel-backup.json --replace
+## Discovery surfaces
+
+```text
+SKILL.md
+skills.sh.json
+skills/architecture-guardian/SKILL.md
+.claude/skills/agent-kernel/SKILL.md
+.claude/skills/architecture-guardian/SKILL.md
+.agents/skills/agent-kernel/SKILL.md
+.agents/skills/architecture-guardian/SKILL.md
+.claude-plugin/marketplace.json
+.claude-plugin/plugin.json
 ```
-
-Read `RETENTION_AND_PORTABILITY.md` before pruning, importing, restoring, sharing, or committing exported data.
-
-## Skills.sh discovery
-
-The repository includes `SKILL.md` and `skills.sh.json` so compatible agents can discover Agent Kernel and its Architecture Guardian skill through Skills.sh.
-
-## Claude marketplace
-
-The `.claude-plugin/` folder contains Claude marketplace manifests. Package version, marketplace version, plugin version, and other version surfaces must remain aligned during releases.
 
 ## Next references
 
-- `OPERATING_MODEL.md` for the governance loop
-- `AGENT_WRITE_MODES.md` for runtime capture permissions
-- `AGENT_PROPOSALS.md` for proposal validation and trust rules
-- `SAFE_LINKING.md` for project instruction updates
-- `SAFE_GIT_HOOKS.md` for worktree-safe pre-commit installation
-- `RETENTION_AND_PORTABILITY.md` for cleanup, backup, restore, and reports
-- `INTEGRATIONS.md` for the support matrix
-- `TROUBLESHOOTING.md` for symptom-based diagnosis
+- `COMMAND_REFERENCE.md`
+- `ENVIRONMENT_VARIABLES.md`
+- `OPERATING_MODEL.md`
+- `PROJECT_CONNECTION.md`
+- `MCP_SERVER.md`
+- `ARCHITECTURE_GUARDIAN.md`
+- `SECURE_RUNTIME_AND_RELEASES.md`
+- `TROUBLESHOOTING.md`

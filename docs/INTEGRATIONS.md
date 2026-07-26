@@ -45,9 +45,11 @@ The optional runtime daemon is not required for generated files or MCP:
 
 ```bash
 agent-kernel daemon start
-agent-kernel daemon status
+agent-kernel daemon status --json
 agent-kernel daemon stop
 ```
+
+The daemon is local-only by default. Remote binding requires both `AGENT_KERNEL_DAEMON_ALLOW_REMOTE=1` and a bearer token of at least 32 bytes in `AGENT_KERNEL_DAEMON_TOKEN`. Use private or authenticated transport; do not expose it directly to the public internet.
 
 ---
 
@@ -284,7 +286,9 @@ skills.sh.json
 .claude-plugin/plugin.json
 ```
 
-These files should stay aligned with package version and current capabilities. When adding a major command surface, update all relevant discovery docs.
+These files should stay aligned with package version and current capabilities. The canonical product skill is `SKILL.md`; adapter skills may add platform-specific hook or file guidance but must preserve the shared approval, daemon, MCP, identifier, project-provider, and architecture boundaries defined in `SKILL_CONTRACT.md`.
+
+When adding a major command surface, update the command reference, canonical skill, both agent-kernel adapters, and any affected Architecture Guardian skill.
 
 ---
 
@@ -318,6 +322,8 @@ Treat these as workflow acceleration assets. Do not store secrets in them.
 5. MCP approval remains disabled unless the user explicitly enables it.
 6. Repo-local configs are reviewable execution surfaces. Keep them minimal and auditable.
 7. Existing project instructions are user-owned. Use safe-link first unless replacement is intentional.
-8. The daemon is optional and local-only by default.
-9. Do not claim native hooks for a client unless Agent Kernel ships and tests that adapter.
-10. Keep secrets out of repository-local integration configuration.
+8. The daemon is optional and local-only by default; remote mode requires explicit bearer authentication.
+9. Project provider targets come from reviewed manifests, not caller overrides.
+10. Adapter skills may differ by platform but must preserve the shared skill contract.
+11. Do not claim native hooks for a client unless Agent Kernel ships and tests that adapter.
+12. Keep secrets out of repository-local integration configuration.

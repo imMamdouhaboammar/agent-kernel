@@ -1,178 +1,124 @@
-# Agent write modes and runtime capture
+# Agent identity trust and memory write modes
 
-`agent-kernel-agent-write` is the restricted entry point for agent-authored runtime sessions and observations.
+Agent Kernel separates three controls that older documentation sometimes combined:
 
-It controls ephemeral runtime capture only. It does not approve or publish durable memory.
+1. agent identity trust
+2. global memory write mode
+3. runtime session capture
 
-## Trust modes
+They solve different problems and use different commands.
 
-Agent identities use four write modes:
+## Agent identity trust
 
-| Trust level | Read | Capture sessions | Propose memory | Direct approved memory |
+Agent identities determine whether a named agent may read, capture evidence, or create pending proposals.
+
+| Trust level | Read | Capture evidence | Propose memory | Direct approved memory |
 |---|---:|---:|---:|---:|
 | `read-only` | yes | no | no | no |
 | `capture-only` | yes | yes | no | no |
 | `propose-only` | yes | yes | yes | no |
-| `trusted-local` | yes | yes | yes | limited governed actions only |
+| `trusted-local` | yes | yes | yes | governed only |
 
-Unknown agents receive a transient `read-only` identity. A denied unknown agent is not added to the persistent registry.
+Unknown identities are treated as transient `read-only`. A denied lookup does not silently register the agent.
 
-## Inspect and change modes
+Manage identities through the routed registry commands:
 
 ```bash
-agent-kernel-agent-write mode list
-agent-kernel-agent-write mode get cursor
-agent-kernel-agent-write mode set cursor capture-only
+agent-kernel agent list --json
+agent-kernel agent add cursor --trust capture-only --surface cli
+agent-kernel agent set cursor --trust propose-only
+agent-kernel agent show cursor --json
+agent-kernel agent remove cursor
 ```
 
-Mode changes are explicit administrative actions. Looking up an unknown agent does not register it.
+## Global memory write mode
 
-Structured mode output is available with `--json`:
+The global mode controls what `agent-kernel-agent-write` does with a memory request.
 
 ```bash
-agent-kernel-agent-write mode list --json
-agent-kernel-agent-write mode get cursor --json
-agent-kernel-agent-write mode set cursor propose-only --json
+agent-kernel-mode show
+agent-kernel-mode set approval
+agent-kernel-mode set trusted
+agent-kernel-mode set bypass
 ```
 
-## Start a session
+| Mode | `agent-kernel-agent-write` behavior |
+|---|---|
+| `approval` | Create a pending proposal. |
+| `trusted` | Directly publish only low-risk or project-scoped memory; keep critical/global requests pending. |
+| `bypass` | Write approved memory directly. Use only after explicit user selection. |
+
+Default to `approval`. Agent identity trust does not automatically change the global write mode.
+
+Mode-aware memory request:
 
 ```bash
-agent-kernel-agent-write session-start \
-  --agent cursor \
-  --project agent-kernel
+agent-kernel-agent-write \
+  --from cursor \
+  --reason "The user corrected this workflow." \
+  --text "Use pnpm in this repository." \
+  --scope project
 ```
 
-A capture-capable identity is required. The optional project ID is limited to 200 characters and cannot contain control characters.
+Supported fields include `--from`, `--reason`, `--text`, `--type`, `--scope`, `--level`, `--targets`, and `--tags`. Text may also come from one positional value or stdin.
 
-## Capture an observation
+## Pending proposal helper
+
+When an agent should always stop at pending state, use the restricted helper instead:
 
 ```bash
-agent-kernel-agent-write observe \
-  --agent cursor \
-  --session <session-id> \
-  --type command \
-  --files src/cli.mjs,test/smoke.mjs \
+agent-kernel-agent-propose \
+  --from cursor \
+  --reason "Captured from an explicit user correction." \
+  --text "Use pnpm in this repository."
+```
+
+`agent-kernel-agent-propose` never approves or publishes. It validates identity trust, input shape, proposal ID safety, and the resulting pending record.
+
+## Runtime sessions and observations
+
+Runtime evidence does not use `agent-kernel-agent-write`.
+
+Use the session commands:
+
+```bash
+agent-kernel session start --agent cursor --project . --json
+agent-kernel session observe <session-id> \
+  --type test-failure \
   --command "npm test" \
   --exit-code 1 \
-  --text "The smoke suite failed during command routing."
+  --text "The smoke suite failed during command routing." \
+  --file test/smoke.mjs
+agent-kernel session end <session-id>
 ```
 
-Observation text may come from exactly one source:
+Session IDs are validated before file access. Runtime evidence remains separate from approved memory.
 
-- `--text`
-- one positional text value
-- stdin
+## Decision matrix
 
-Example with stdin:
+| Intent | Command |
+|---|---|
+| Register or change an agent's trust | `agent-kernel agent` with `add`, `set`, `show`, or `remove` |
+| Select the global memory write policy | `agent-kernel-mode` with `show` or `set` |
+| Always create a pending proposal | `agent-kernel-agent-propose` |
+| Apply the selected global memory mode | `agent-kernel-agent-write` |
+| Capture a session or observation | `agent-kernel session ...` |
+| Capture a reusable failure | `agent-kernel failure capture` |
+| Review and approve durable memory | `agent-kernel inbox`, `approve`, `reject` |
 
-```bash
-printf '%s\n' "The smoke suite failed during command routing." | \
-  agent-kernel-agent-write observe \
-    --agent cursor \
-    --session <session-id> \
-    --type test_failure
-```
+## Governance rules
 
-## End a session
+- Keep global mode at `approval` unless the user deliberately selects broader behavior.
+- Do not treat `trusted-local` identity as blanket approval for provider, architecture, daemon, MCP, import, or release operations.
+- Do not let hooks or MCP silently enable bypass mode.
+- Do not store secrets in memory requests or runtime evidence.
+- Keep runtime capture, Failure Lessons, pending proposals, and approved memory distinguishable.
+- Use `--json` on routed registry and session commands when automation needs structured output.
 
-```bash
-agent-kernel-agent-write session-end \
-  --agent cursor \
-  --session <session-id>
-```
+## Related docs
 
-The helper validates the session ID before invoking the runtime command.
-
-## Input validation
-
-The helper rejects:
-
-- unknown options
-- duplicate options
-- missing or empty option values
-- options used with the wrong subcommand
-- extra positional arguments
-- unsafe session IDs
-- invalid observation types
-- malformed file CSV values
-- non-integer or out-of-range exit codes
-- control characters in project IDs or file references
-- observation text longer than 10000 characters
-- command text longer than 4000 characters
-
-Session IDs must match:
-
-```text
-[A-Za-z0-9][A-Za-z0-9._-]{0,199}
-```
-
-Observation types must match:
-
-```text
-[A-Za-z][A-Za-z0-9._-]{0,63}
-```
-
-File references are trimmed and deduplicated before they reach the runtime command.
-
-## Structured output
-
-Add `--json` to mode, session, and observation commands.
-
-Successful runtime capture returns an envelope such as:
-
-```json
-{
-  "ok": true,
-  "command": "observe",
-  "agentId": "cursor",
-  "trustLevel": "capture-only",
-  "output": "Observation captured: obs_123",
-  "sessionId": "session_123",
-  "type": "command"
-}
-```
-
-Denied or invalid calls write a JSON error envelope to stderr and exit non-zero:
-
-```json
-{
-  "ok": false,
-  "error": "Agent unknown-agent has trust level read-only and cannot start sessions."
-}
-```
-
-Without `--json`, successful commands preserve the underlying human-readable runtime output.
-
-## Subprocess controls
-
-The helper invokes `agent-kernel-identity-command` with:
-
-- a default timeout of 30 seconds
-- a one-megabyte output limit
-- captured stdout and stderr
-- redacted and bounded diagnostics
-
-The timeout can be adjusted in a controlled environment:
-
-```bash
-AGENT_KERNEL_HELPER_TIMEOUT_MS=60000 \
-  agent-kernel-agent-write session-start --agent cursor
-```
-
-Values are clamped between 100 milliseconds and 300000 milliseconds.
-
-## Governance boundary
-
-Runtime capture and durable memory remain separate:
-
-```text
-agent action
-  -> runtime session observation
-  -> later review or Failure Lesson processing
-  -> optional pending memory proposal
-  -> user approval
-  -> publish to approved memory
-```
-
-`agent-kernel-agent-write` cannot approve or publish memory. Use `agent-kernel-agent-propose` for a reviewed pending proposal, then use the normal inbox approval workflow.
+- `AGENT_PROPOSALS.md`
+- `MEMORY_PROTOCOL.md`
+- `OPERATING_MODEL.md`
+- `COMMAND_REFERENCE.md`
+- `ENVIRONMENT_VARIABLES.md`

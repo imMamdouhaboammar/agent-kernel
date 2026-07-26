@@ -14,7 +14,14 @@ Use OpenCode as `propose-only`:
 - Run guard checks
 - Do not approve or publish memory automatically
 
-The planned agent registry will enforce trust profiles later. For now, this is the recommended operating mode.
+Register the identity explicitly when this agent needs capture or proposal access:
+
+```bash
+agent-kernel agent add opencode --trust propose-only --surface cli
+agent-kernel agent show opencode --json
+```
+
+Unknown agents remain transient `read-only`; a denied lookup does not silently register them.
 
 ## 1. Install and initialize
 
@@ -145,10 +152,10 @@ Start the local daemon only when an OpenCode wrapper or custom automation needs 
 
 ```bash
 agent-kernel daemon start
-agent-kernel daemon status
+agent-kernel daemon status --json
 ```
 
-The daemon is local-only by default and is separate from the stdio MCP server.
+The daemon is local-only by default and is separate from the stdio MCP server. A non-loopback bind additionally requires `AGENT_KERNEL_DAEMON_ALLOW_REMOTE=1`, a bearer token of at least 32 bytes in `AGENT_KERNEL_DAEMON_TOKEN`, and private or authenticated transport.
 
 Stop it with:
 
@@ -182,7 +189,7 @@ OpenCode reads AGENTS.md
 - OpenCode hook behavior is not provided by Agent Kernel as a native integration
 - Project-scoped configuration may contain machine-specific paths if `AGENT_KERNEL_HOME` is hardcoded
 - The optional daemon does not replace MCP
-- The current trust recommendation is not yet enforced by the planned agent registry
+- Agent identity trust must be configured explicitly; generated guidance alone does not grant capture or proposal access
 - Static guidance can become stale until Agent Kernel recompiles and safe-links it again
 
 ## Rollback
@@ -244,7 +251,7 @@ Confirm the JSON or JSONC file parses and the command array is exactly:
 ### Context is missing
 
 ```bash
-agent-kernel context --query "current task" --budget 1200 --json
+agent-kernel context "current task" --budget 1200 --json
 agent-kernel file-context src/cli.mjs --budget 1200 --json
 ```
 

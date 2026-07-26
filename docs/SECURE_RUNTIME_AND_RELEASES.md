@@ -1,5 +1,7 @@
 # Secure runtime and release operations
 
+This document is the operational security reference. Use `COMMAND_REFERENCE.md` for exact commands and `ENVIRONMENT_VARIABLES.md` for runtime configuration.
+
 ## Local daemon default
 
 The daemon is disabled until started and binds to `127.0.0.1` by default. Local requests do not require a token because the operating-system user boundary is the trust boundary.
@@ -37,7 +39,7 @@ Only these workflow families are maintained:
 - GitHub Pages deployment for `docs/` only
 - Daily README story-card refresh from a reviewed, commit-pinned source with a managed-block boundary
 
-Actions are pinned to commit SHAs, checkout credentials are not persisted, and workflow permissions are minimized per job.
+Actions are pinned to commit SHAs, checkout credentials are not persisted, and workflow permissions are minimized per job. Workflow edits must pass both the repository CI contract and `actionlint`; YAML parsing alone does not validate GitHub expression syntax.
 
 
 ## Trusted publishing migration

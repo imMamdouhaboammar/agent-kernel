@@ -1,10 +1,32 @@
 # CI and gates
 
-Recommended gates:
+Recommended pull-request sequence:
 
-1. `agent-kernel architecture policy validate .`
-2. `agent-kernel architecture contract validate .` when a contract is required
-3. `agent-kernel architecture check . --base origin/master --strict --json`
-4. project build, tests, lint, and typecheck
+```bash
+agent-kernel architecture policy validate . --json
+agent-kernel architecture contract validate . --json
+agent-kernel architecture check . --base origin/master --strict --json
+npm run build
+npm run lint
+npm run typecheck
+npm test
+```
 
-Use review mode during adoption and local exploration. Use `--strict` for pull request and protected-branch gates. Archive `.agent-kernel/architecture/reports/latest.json` as CI evidence. Do not auto-update the baseline in CI.
+Run contract validation only when project policy or the task requires a contract.
+
+## Adoption stages
+
+1. local review mode
+2. review-mode CI artifact
+3. strict mode on selected blocking rules
+4. protected-branch required check after false-positive review
+
+Do not switch directly from no policy to a strict protected gate.
+
+## Evidence
+
+Archive `.agent-kernel/architecture/reports/latest.json` when CI evidence is needed. The report should identify baseline, contract, mode, findings, suppressions, and status.
+
+Do not update the baseline, create exceptions, or modify policy automatically in CI.
+
+Run project tests after architecture checks; conformance does not prove functional correctness.

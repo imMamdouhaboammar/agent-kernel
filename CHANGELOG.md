@@ -5,6 +5,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Documentation
+
+- Added canonical command, environment-variable, and skill-contract references.
+- Rebuilt Agent Kernel and Architecture Guardian skill docs across Claude and AGENTS-compatible discovery surfaces.
+- Corrected stale install version, agent trust commands, Bun examples, MCP/daemon boundaries, project-provider isolation, and release verification guidance.
+- Added automated documentation contracts for public binaries, runtime variables, skill trust boundaries, and navigation coverage.
+
 ## [1.15.1] - 2026-07-26
 
 ### Security

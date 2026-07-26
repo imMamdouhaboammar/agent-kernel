@@ -344,26 +344,34 @@ Read [`docs/STATIC_MEMORY_DASHBOARD.md`](./docs/STATIC_MEMORY_DASHBOARD.md) for 
 
 ## Trust-aware agent writes
 
-Agent Kernel separates durable memory proposals from ephemeral runtime capture.
+Agent Kernel separates agent identity trust, the global memory write mode, and runtime evidence capture.
 
-| Trust level | Read | Capture sessions | Propose memory | Direct approved memory |
+| Trust level | Read | Capture evidence | Propose memory | Direct approved memory |
 |---|---:|---:|---:|---:|
 | `read-only` | yes | no | no | no |
 | `capture-only` | yes | yes | no | no |
 | `propose-only` | yes | yes | yes | no |
-| `trusted-local` | yes | yes | yes | limited governed actions only |
+| `trusted-local` | yes | yes | yes | governed only |
 
-Unknown agents receive a transient `read-only` identity. A denied lookup does not silently register the agent.
-
-Inspect or set a mode explicitly:
+Unknown agents receive a transient `read-only` identity. Manage persistent identities through the routed registry:
 
 ```bash
-agent-kernel-agent-write mode list
-agent-kernel-agent-write mode get cursor
-agent-kernel-agent-write mode set cursor capture-only
+agent-kernel agent list --json
+agent-kernel agent add cursor --trust capture-only --surface cli
+agent-kernel agent set cursor --trust propose-only
+agent-kernel agent show cursor --json
 ```
 
-Create a pending memory proposal from an allowed agent:
+The global memory write mode is separate:
+
+```bash
+agent-kernel-mode show
+agent-kernel-mode set approval
+agent-kernel-mode set trusted
+agent-kernel-mode set bypass
+```
+
+Keep `approval` as the default. Create a pending proposal from an allowed agent:
 
 ```bash
 agent-kernel-agent-propose \
@@ -372,21 +380,20 @@ agent-kernel-agent-propose \
   --text 'Always run the documented verification command before claiming completion.'
 ```
 
-Capture runtime evidence without publishing durable memory:
+Capture runtime evidence through session commands, not the memory-write helper:
 
 ```bash
-agent-kernel-agent-write session-start --agent cursor --project agent-kernel
-agent-kernel-agent-write observe \
-  --agent cursor \
-  --session <session-id> \
-  --type test_failure \
+agent-kernel session start --agent cursor --project . --json
+agent-kernel session observe <session-id> \
+  --type test-failure \
   --command 'npm test' \
   --exit-code 1 \
-  --text 'The smoke suite failed during command routing.'
-agent-kernel-agent-write session-end --agent cursor --session <session-id>
+  --text 'The smoke suite failed during command routing.' \
+  --file test/smoke.mjs
+agent-kernel session end <session-id>
 ```
 
-Both helpers reject unknown or duplicate options, ambiguous text sources, invalid fields, and unsafe identifiers before invoking the core runtime. Structured output is available with `--json`.
+`agent-kernel-agent-write` applies the selected global mode to a memory request. `agent-kernel-agent-propose` always stops at pending state. Runtime sessions remain evidence, not approved memory.
 
 Read:
 
@@ -699,6 +706,10 @@ Start with [`docs/README.md`](./docs/README.md).
 | Need | Read |
 |---|---|
 | Install and connect agents | [`docs/INSTALL_AND_AGENT_SETUP.md`](./docs/INSTALL_AND_AGENT_SETUP.md) |
+| Complete command reference | [`docs/COMMAND_REFERENCE.md`](./docs/COMMAND_REFERENCE.md) |
+| Environment variables | [`docs/ENVIRONMENT_VARIABLES.md`](./docs/ENVIRONMENT_VARIABLES.md) |
+| Skill contract and synchronization | [`docs/SKILL_CONTRACT.md`](./docs/SKILL_CONTRACT.md) |
+| Secure runtime and release operations | [`docs/SECURE_RUNTIME_AND_RELEASES.md`](./docs/SECURE_RUNTIME_AND_RELEASES.md) |
 | Inspect local memory and runtime state in a browser | [`docs/STATIC_MEMORY_DASHBOARD.md`](./docs/STATIC_MEMORY_DASHBOARD.md) |
 | Configure trusted CLI updates | [`docs/UPDATES.md`](./docs/UPDATES.md) |
 | Understand the operating model | [`docs/OPERATING_MODEL.md`](./docs/OPERATING_MODEL.md) |
@@ -735,16 +746,13 @@ Read [`docs/BUNDLE_KB.md`](./docs/BUNDLE_KB.md).
 git clone https://github.com/imMamdouhaboammar/agent-kernel
 cd agent-kernel
 
-npm install
-npm run build
-npm test
-npm run lint
-npm run typecheck
-npm run size
+npm ci
+npm run verify:release
+npm run docs:check
 npm run publish:dry
 ```
 
-Repository-defined validation includes version alignment, smoke tests, bin and mode linting, documentation link checks, TypeScript checks, and package previews.
+Repository-defined validation includes version alignment, 46 smoke tests, bin and mode linting, documentation links and contracts, privacy and secret checks, TypeScript checks, runtime audit, workflow hardening, and package previews.
 
 Read [`CONTRIBUTING.md`](./CONTRIBUTING.md) and [`AGENTS.md`](./AGENTS.md) before changing runtime behavior.
 

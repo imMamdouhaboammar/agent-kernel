@@ -34,6 +34,23 @@ Focused negative tests reproduce and prevent each validated traversal or authent
 - npm registry precondition: `1.15.1` not previously published
 - trusted-publisher administration: current publish credential returned `403`; OIDC-first workflow retains a temporary one-command token fallback
 
+## Documentation and skill contract evidence
+
+The release documentation was re-audited against the shipped command router, package binary map, environment-variable usage, MCP tool surfaces, project broker behavior, and skill discovery metadata.
+
+- local markdown links: 53 checked across 354 markdown files, 0 broken
+- public binaries documented: 18 of 18
+- public environment variables classified: 16 of 16
+- skill surfaces contract-checked: 6 of 6
+- MCP tools documented exactly: 15 across core, extended, and explicit approval modes
+- skill frontmatter: valid YAML across all six canonical and adapter surfaces
+- stale agent-write, agent-registry, Bun, daemon, and MCP claims: corrected and regression-guarded
+- runtime dependency audit: 0 vulnerabilities
+- package artifact: 475 files, approximately 390 kB compressed
+- clean tarball install: CLI version, init, MCP core count, approval mode, command reference, and discovery metadata verified
+
+The documentation checker now fails when a public binary, public environment variable, MCP tool, skill trust boundary, discovery tag, install version, or key runtime-security claim drifts from the reviewed contract.
+
 ## Residual trust assumptions
 
 Processes running as the same operating-system user can access local Agent Kernel state. Remote daemon security depends on network placement and token confidentiality. External compromises of npm, GitHub, Node.js, the host operating system, or configured providers remain outside the application boundary.

@@ -1,0 +1,6 @@
+---
+# Codacy's repository profile currently treats newly added Node.js ESM scripts as ES5.
+# This checker is executed by repository lint, remains covered by CodeQL, and the
+# exclusion is intentionally limited to this non-runtime documentation contract file.
+exclude_paths:
+  - "scripts/check-doc-contracts.mjs"

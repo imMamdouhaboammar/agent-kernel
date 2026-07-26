@@ -15,7 +15,14 @@ Use Cursor as `propose-only`:
 - Run guard checks
 - Do not approve or publish memory automatically
 
-The planned agent registry will enforce trust profiles later. This document describes the recommended operating boundary for the current release.
+Register the identity explicitly when this agent needs capture or proposal access:
+
+```bash
+agent-kernel agent add cursor --trust propose-only --surface cli
+agent-kernel agent show cursor --json
+```
+
+Unknown agents remain transient `read-only`; a denied lookup does not silently register them.
 
 ## 1. Install and initialize
 
@@ -150,10 +157,10 @@ Start the daemon only when a custom Cursor workflow or local helper needs HTTP c
 
 ```bash
 agent-kernel daemon start
-agent-kernel daemon status
+agent-kernel daemon status --json
 ```
 
-The daemon is local-only by default and does not replace the stdio MCP server.
+The daemon is local-only by default and does not replace the stdio MCP server. A non-loopback bind additionally requires `AGENT_KERNEL_DAEMON_ALLOW_REMOTE=1`, a bearer token of at least 32 bytes in `AGENT_KERNEL_DAEMON_TOKEN`, and private or authenticated transport.
 
 Stop it with:
 
@@ -180,7 +187,7 @@ Cursor reads the generated .mdc rule
 - Agent Kernel does not install Cursor MCP configuration automatically
 - Agent Kernel does not claim native Cursor hook support
 - The optional daemon is independent from MCP
-- The trust recommendation is not yet enforced by the planned agent registry
+- Agent identity trust must be configured explicitly; generated guidance alone does not grant capture or proposal access
 - Static Cursor rules can become stale until compile and safe-link run again
 - MCP approval remains disabled by default inside Agent Kernel
 
@@ -239,7 +246,7 @@ ls -la .cursor/rules/00-agent-kernel.mdc
 ### Context is empty
 
 ```bash
-agent-kernel context --query "current task" --budget 1200 --json
+agent-kernel context "current task" --budget 1200 --json
 agent-kernel file-context src/cli.mjs --budget 1200 --json
 ```
 
