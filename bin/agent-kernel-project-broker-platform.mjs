@@ -63,11 +63,20 @@ export function installWindowsPathCompatibility(platform = process.platform) {
   process.env.PATH = sanitizeWindowsBrokerPath(process.env.PATH, platform);
 }
 
-function trustedWindowsPathDirectories() {
-  return String(process.env.PATH || '')
-    .split(path.delimiter)
-    .filter(Boolean)
-    .map((entry) => path.resolve(entry));
+function trustedWindowsBatchExecutables() {
+  const trusted = [];
+  const names = ['supabase', 'gcloud'];
+  const extensions = ['.cmd', '.bat'];
+  for (const entry of String(process.env.PATH || '').split(path.delimiter).filter(Boolean)) {
+    const directory = path.resolve(entry);
+    for (const name of names) {
+      for (const extension of extensions) {
+        const candidate = path.join(directory, `${name}${extension}`);
+        if (isRegularFile(candidate)) trusted.push(candidate);
+      }
+    }
+  }
+  return trusted;
 }
 
 async function loadBrokerMain() {
@@ -92,7 +101,7 @@ export async function runBroker(
     ? installChildProcessCompatibility(childProcess, {
         platform,
         allowedBatchNames: ['supabase', 'gcloud'],
-        allowedBatchDirectories: trustedWindowsPathDirectories,
+        allowedBatchExecutables: trustedWindowsBatchExecutables,
         entryPointRedirects: { [brokerModulePath]: modulePath }
       })
     : () => {};
