@@ -24,6 +24,19 @@ function runPublic(env, ...args) {
   });
 }
 
+function runPublicFailure(env, ...args) {
+  try {
+    runPublic(env, ...args);
+    return { status: 0, stdout: '', stderr: '' };
+  } catch (error) {
+    return {
+      status: error.status || 1,
+      stdout: String(error.stdout || ''),
+      stderr: String(error.stderr || '')
+    };
+  }
+}
+
 function runGit(cwd, ...args) {
   return childProcess.execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 }
@@ -38,6 +51,23 @@ export async function run() {
   runCli(env, 'init', '--sync');
 
   const sha = runGit(repo.root, 'rev-parse', 'HEAD');
+  const runtimeConfig = path.join(kernelHome, 'runtime', 'config.json');
+  writeJson(runtimeConfig, { id: '../config', sentinel: 'preserve-me', linkedCommits: [] });
+  const traversalLink = runPublicFailure(
+    env,
+    'commit', 'link',
+    '--sha', sha,
+    '--session', '../config',
+    '--json'
+  );
+  if (traversalLink.status === 0 || !traversalLink.stderr.includes('Invalid session ID')) {
+    throw new Error(`commit link accepted a path-like session ID: ${JSON.stringify(traversalLink)}`);
+  }
+  const preservedConfig = JSON.parse(fs.readFileSync(runtimeConfig, 'utf8'));
+  if (preservedConfig.sentinel !== 'preserve-me' || preservedConfig.linkedCommits.length !== 0) {
+    throw new Error(`commit link wrote outside sessions: ${JSON.stringify(preservedConfig)}`);
+  }
+
   const first = JSON.parse(runPublic(
     env,
     'session', 'start',

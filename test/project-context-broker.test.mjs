@@ -217,6 +217,26 @@ export async function run() {
   process.env.PATH = `${decoyBin}${path.delimiter}${fakeBin}${path.delimiter}${previousPath || ''}`;
   try {
     const providerContext = resolveContext(linkedWorktree);
+    const escapedGcloudConfig = path.resolve(providerHome, 'gcloud', '../escaped-gcloud-config');
+    const maliciousGcloudContext = {
+      ...providerContext,
+      manifest: {
+        ...providerContext.manifest,
+        providers: {
+          ...providerContext.manifest.providers,
+          gcloud: {
+            ...providerContext.manifest.providers.gcloud,
+            profile: '../escaped-gcloud-config'
+          }
+        }
+      }
+    };
+    process.env.AK_TEST_ARGS_FILE = path.join(providerHome, 'malicious-gcloud-args.json');
+    assert.throws(() => {
+      execGcloud(maliciousGcloudContext, ['--', 'version']);
+    }, /Invalid gcloud profile/);
+    assert.ok(!fs.existsSync(escapedGcloudConfig), 'GCloud profile traversal created a directory outside the profile root');
+
     const supabaseArgsFile = path.join(providerHome, 'supabase-args.json');
     process.env.AK_TEST_ARGS_FILE = supabaseArgsFile;
     const fakeSecret = 'ghp_' + 'providerfixture1234567890123456';

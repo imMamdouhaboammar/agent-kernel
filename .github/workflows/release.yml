@@ -2,8 +2,7 @@ name: GitHub Release
 
 on:
   push:
-    tags:
-      - v*
+    tags: ['v*']
 
 permissions:
   contents: write
@@ -12,148 +11,68 @@ concurrency:
   group: github-release-${{ github.ref }}
   cancel-in-progress: false
 
-defaults:
-  run:
-    shell: bash
-
 jobs:
   release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
-      - name: Use Node.js
-        uses: actions/setup-node@v4
+      - name: Use Node.js 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 20.x
+          node-version: 24.x
+          registry-url: https://registry.npmjs.org
 
-      - name: Determine tag and version
-        id: meta
-        run: |
-          tag="${GITHUB_REF_NAME}"
-          version="${tag#v}"
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-
-      - name: Validate tag matches package.json
+      - name: Validate tag matches package version
         run: |
           version=$(node -p "require('./package.json').version")
-          expected="${{ steps.meta.outputs.version }}"
-          echo "package.json.version=$version expected=$expected"
-          if [ "$version" != "$expected" ]; then
-            echo "package.json version does not match release tag"
+          expected="${{ GITHUB_REF_NAME#v }}"
+          test "$version" = "$expected" || {
+            echo "package.json version $version does not match tag $GITHUB_REF_NAME"
             exit 1
-          fi
+          }
 
-      - name: Verify npm package is published
+      - name: Verify npm package is live
         run: |
-          pkg=$(node -p "require('./package.json').name")
-          version="${{ steps.meta.outputs.version }}"
-          echo "waiting for npm package: $pkg@$version"
-          for attempt in 1 2 3 4 5 6 7 8 9 10; do
-            if npm view "$pkg@$version" version 2>/dev/null; then
-              echo "npm package is visible after attempt $attempt"
+          package=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          for attempt in {1..10}; do
+            if test "$(npm view "$package@$version" version 2>/dev/null || true)" = "$version"; then
               exit 0
             fi
-            echo "attempt $attempt: package is not visible yet"
-            sleep 30
+            sleep 15
           done
-          echo "npm package $pkg@$version is not visible; refusing to create GitHub Release"
+          echo "$package@$version is not live; refusing to create a release"
           exit 1
 
-      - name: Determine previous tag
-        id: baseline
+      - name: Build release assets and checksums
         run: |
-          current="${{ steps.meta.outputs.tag }}"
-          previous=$(git tag --sort=-version:refname | grep -E '^v[0-9]' | grep -v "^${current}$" | head -n 1 || true)
-          if [ -n "$previous" ]; then
-            echo "previous_tag=$previous" >> "$GITHUB_OUTPUT"
-            echo "baseline=$previous"
-          else
-            echo "previous_tag=" >> "$GITHUB_OUTPUT"
-            echo "baseline=first release"
-          fi
+          package=$(node -p "require('./package.json').name")
+          version="${{ GITHUB_REF_NAME#v }}"
+          source_archive="/tmp/agent-kernel-v${version}-source.tar.gz"
+          git archive --prefix="agent-kernel-v${version}/" --format=tar.gz -o "$source_archive" "$GITHUB_REF_NAME"
+          npm_tarball=$(npm pack "$package@$version" --pack-destination /tmp --silent)
+          npm_tarball_path="/tmp/$npm_tarball"
+          test -s "$source_archive"
+          test -s "$npm_tarball_path"
+          (cd /tmp && sha256sum "$(basename "$source_archive")" "$npm_tarball" > SHA256SUMS)
+          echo "SOURCE_ARCHIVE=$source_archive" >> "$GITHUB_ENV"
+          echo "NPM_TARBALL=$npm_tarball_path" >> "$GITHUB_ENV"
+          echo "CHECKSUMS=/tmp/SHA256SUMS" >> "$GITHUB_ENV"
 
-      - name: Generate release notes
-        id: notes
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const tag = '${{ steps.meta.outputs.tag }}';
-            const version = '${{ steps.meta.outputs.version }}';
-            const previousTag = '${{ steps.baseline.outputs.previous_tag }}';
-
-            let structured = '';
-            try {
-              const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
-              const escaped = version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-              const versionHeader = changelog.match(new RegExp(`^## \\[?[v]?${escaped}\\]?.*$|^## [v]?${escaped}.*$`, 'm'));
-              if (versionHeader) {
-                const startIdx = changelog.indexOf(versionHeader[0]);
-                const rest = changelog.substring(startIdx + versionHeader[0].length);
-                const nextHeader = rest.match(/^## /m);
-                const endIdx = nextHeader ? rest.indexOf(nextHeader[0]) : rest.length;
-                structured = `${versionHeader[0]}\n${rest.substring(0, endIdx).trim()}`.trim();
-              }
-            } catch (error) {
-              core.warning(`Could not parse CHANGELOG.md: ${error.message}`);
-            }
-
-            let autoNotes = '';
-            try {
-              const args = {
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                tag_name: tag
-              };
-              if (previousTag) args.previous_tag_name = previousTag;
-              const { data: notes } = await github.rest.repos.generateReleaseNotes(args);
-              autoNotes = notes.body || '';
-            } catch (error) {
-              core.warning(`Could not generate GitHub release notes: ${error.message}`);
-            }
-
-            const body = [
-              structured ? `### Changelog\n\n${structured}` : '',
-              autoNotes ? `### Commit summary\n\n${autoNotes}` : ''
-            ].filter(Boolean).join('\n\n');
-
-            fs.writeFileSync('/tmp/release-body.md', body || `Release ${tag}.`);
-            core.info('Release body written to /tmp/release-body.md');
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.meta.outputs.tag }}
-          name: ${{ steps.meta.outputs.tag }}
-          body_path: /tmp/release-body.md
-          draft: false
-          prerelease: ${{ contains(steps.meta.outputs.version, '-') }}
-          generate_release_notes: false
-          fail_on_unmatched_files: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build source tarball
-        run: |
-          version="${{ steps.meta.outputs.version }}"
-          archive="agent-kernel-v${version}.tar.gz"
-          git archive --prefix="agent-kernel-v${version}/" --format=tar.gz -o "/tmp/${archive}" "${{ steps.meta.outputs.tag }}"
-          test -s "/tmp/${archive}" || { echo "tarball missing or empty"; exit 1; }
-          ls -la "/tmp/${archive}"
-
-      - name: Attach source tarball
+      - name: Create or repair release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ steps.meta.outputs.tag }}
-          VERSION: ${{ steps.meta.outputs.version }}
         run: |
-          archive="/tmp/agent-kernel-v${VERSION}.tar.gz"
-          gh release upload "$TAG" "$archive" --clobber
-          gh release view "$TAG" --json assets --jq '.assets[] | "- \(.name) (\(.size) bytes)"'
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "$SOURCE_ARCHIVE" "$NPM_TARBALL" "$CHECKSUMS" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME"               "$SOURCE_ARCHIVE"               "$NPM_TARBALL"               "$CHECKSUMS"               --verify-tag               --title "$GITHUB_REF_NAME"               --generate-notes
+          fi
+          gh release view "$GITHUB_REF_NAME" --json url,assets

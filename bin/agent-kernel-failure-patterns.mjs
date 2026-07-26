@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-const VERSION = '1.15.0';
+const VERSION = '1.15.1';
 const DEFAULT_MIN_COUNT = 2;
 const SIGNAL_WEIGHTS = {
   error_signature: 100,

@@ -11,6 +11,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const distCliPath = path.resolve(here, '..', 'dist', 'cli.mjs');
 const sessionPath = path.join(here, 'agent-kernel-session.mjs');
 const searchPath = path.join(here, 'agent-kernel-search.mjs');
+const FILE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
 
 function kernelHome() {
   return process.env.AGENT_KERNEL_HOME || path.join(os.homedir(), '.agent-kernel');
@@ -108,12 +109,20 @@ function commandPropose(args) {
   process.stdout.write(output);
 }
 
+function requireSafeSessionId(value) {
+  const id = String(value || '').trim();
+  if (!FILE_ID_PATTERN.test(id) || id === '.' || id === '..') {
+    throw new Error(`Invalid session ID: ${id || '(empty)'}`);
+  }
+  return id;
+}
+
 function sessionFile(id) {
-  return path.join(kernelHome(), 'runtime', 'sessions', `${id}.json`);
+  return path.join(kernelHome(), 'runtime', 'sessions', `${requireSafeSessionId(id)}.json`);
 }
 
 function sessionLogFile(id) {
-  return path.join(kernelHome(), 'runtime', 'sessions', `${id}.jsonl`);
+  return path.join(kernelHome(), 'runtime', 'sessions', `${requireSafeSessionId(id)}.jsonl`);
 }
 
 function sessionIdFromOutput(output) {
@@ -170,7 +179,8 @@ function commandSessionList(args) {
 }
 
 function readObservations(id) {
-  const raw = (() => { try { return fs.readFileSync(sessionLogFile(id), 'utf8').trim(); } catch { return ''; } })();
+  const filePath = sessionLogFile(id);
+  const raw = (() => { try { return fs.readFileSync(filePath, 'utf8').trim(); } catch { return ''; } })();
   if (!raw) return [];
   return raw.split(/\r?\n/).map((line) => { try { return JSON.parse(line); } catch { return null; } }).filter(Boolean);
 }

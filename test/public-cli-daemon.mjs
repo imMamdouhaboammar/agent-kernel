@@ -9,12 +9,13 @@
 //   6. `daemon status` reports uptime, active sessions, and last observation.
 //   7. `daemon stop` tears the runtime down.
 
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { assertContains, makeEnv, repo, runCli } from './_lib/helpers.mjs';
 
 const publicCli = join(repo.root, 'bin', 'agent-kernel.mjs');
+const daemonCli = join(repo.root, 'bin', 'agent-kernel-daemon.mjs');
 
 function runPublic(env, ...args) {
   return execFileSync(process.execPath, [publicCli, ...args], {
@@ -25,21 +26,83 @@ function runPublic(env, ...args) {
   });
 }
 
-async function postJson(url, body) {
+function waitForExit(child, timeoutMs = 1200) {
+  return new Promise((resolve) => {
+    let stderr = '';
+    let settled = false;
+    child.stderr?.setEncoding('utf8');
+    child.stderr?.on('data', (chunk) => { stderr += chunk; });
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({ ...result, stderr });
+    };
+    const timer = setTimeout(() => {
+      child.kill('SIGTERM');
+      finish({ exited: false, code: null, signal: 'SIGTERM' });
+    }, timeoutMs);
+    child.once('error', (error) => finish({ exited: true, code: null, signal: null, error }));
+    child.once('exit', (code, signal) => finish({ exited: true, code, signal }));
+  });
+}
+
+async function postJsonResponse(url, body) {
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body)
+    body: typeof body === 'string' ? body : JSON.stringify(body)
   });
   const text = await response.text();
-  const json = JSON.parse(text);
-  if (!response.ok) throw new Error(`${url} failed ${response.status}: ${text}`);
-  return json;
+  return { response, text, json: JSON.parse(text) };
+}
+
+async function postJson(url, body) {
+  const result = await postJsonResponse(url, body);
+  if (!result.response.ok) throw new Error(`${url} failed ${result.response.status}: ${result.text}`);
+  return result.json;
 }
 
 export async function run() {
   const { env, kernelHome } = makeEnv();
   runCli(env, 'init', '--sync');
+
+  const remoteWithoutTokenChild = spawn(process.execPath, [daemonCli, '_serve', '--host', '0.0.0.0', '--port', '0'], {
+    cwd: repo.root,
+    env: { ...env, AGENT_KERNEL_DAEMON_ALLOW_REMOTE: '1', AGENT_KERNEL_DAEMON_TOKEN: '' },
+    stdio: ['ignore', 'ignore', 'pipe']
+  });
+  const remoteWithoutToken = await waitForExit(remoteWithoutTokenChild);
+  if (!remoteWithoutToken.exited || remoteWithoutToken.code === 0 || !remoteWithoutToken.stderr.includes('AGENT_KERNEL_DAEMON_TOKEN')) {
+    throw new Error(`remote daemon did not fail closed without a token: ${remoteWithoutToken.stderr}`);
+  }
+
+  const remoteEnv = {
+    ...env,
+    AGENT_KERNEL_DAEMON_ALLOW_REMOTE: '1',
+    AGENT_KERNEL_DAEMON_TOKEN: 'remote-test-token-0123456789abcdef'
+  };
+  try {
+    runPublic(remoteEnv, 'daemon', 'start', '--host', '0.0.0.0', '--port', '0');
+    const remoteStatus = JSON.parse(runPublic(remoteEnv, 'daemon', 'status', '--json'));
+    if (remoteStatus.authentication !== 'bearer' || 'token' in remoteStatus) {
+      throw new Error(`remote daemon status exposed invalid authentication metadata: ${JSON.stringify(remoteStatus)}`);
+    }
+    const remoteUrl = `http://127.0.0.1:${remoteStatus.port}/ak/health`;
+    const unauthorized = await fetch(remoteUrl);
+    if (unauthorized.status !== 401 || !unauthorized.headers.get('www-authenticate')?.startsWith('Bearer')) {
+      throw new Error(`remote daemon accepted an unauthenticated request: ${unauthorized.status}`);
+    }
+    const authorized = await fetch(remoteUrl, {
+      headers: { authorization: `Bearer ${remoteEnv.AGENT_KERNEL_DAEMON_TOKEN}` }
+    });
+    if (!authorized.ok || !(await authorized.json()).ok) throw new Error('remote daemon rejected its configured bearer token');
+    if (authorized.headers.get('cache-control') !== 'no-store' || authorized.headers.get('x-content-type-options') !== 'nosniff') {
+      throw new Error('remote daemon response omitted security headers');
+    }
+  } finally {
+    try { runPublic(remoteEnv, 'daemon', 'stop'); } catch {}
+  }
 
   const stopped = JSON.parse(runPublic(env, 'daemon', 'status', '--json'));
   if (stopped.running) throw new Error(`daemon should be stopped by default: ${JSON.stringify(stopped)}`);
@@ -80,6 +143,27 @@ export async function run() {
     const sessionJsonl = join(kernelHome, 'runtime', 'sessions', 'session_smoke.jsonl');
     if (!existsSync(sessionJsonl)) throw new Error('observe did not write session JSONL evidence');
     assertContains(readFileSync(sessionJsonl, 'utf8'), 'safe-link duplicated marked block', 'observation text missing from JSONL');
+
+    const escapedConfigPath = join(kernelHome, 'runtime', 'config.json');
+    const traversal = await postJsonResponse(`${baseUrl}/ak/observe`, {
+      sessionId: '../config',
+      agentId: 'test-agent',
+      type: 'command_failure',
+      projectId: 'agent-kernel',
+      cwd: repo.root,
+      text: 'must not escape session storage'
+    });
+    if (traversal.response.status !== 400 || traversal.json.error !== 'invalid sessionId') {
+      throw new Error(`daemon accepted a path-like session id: ${traversal.text}`);
+    }
+    if (existsSync(escapedConfigPath)) throw new Error('daemon wrote outside the sessions directory');
+
+    const oversized = await postJsonResponse(`${baseUrl}/ak/context`, JSON.stringify({
+      query: 'x'.repeat(1024 * 1024 + 1)
+    }));
+    if (oversized.response.status !== 413 || oversized.json.error !== 'request body too large') {
+      throw new Error(`daemon did not reject an oversized request: ${oversized.text}`);
+    }
 
     const observedStatus = JSON.parse(runPublic(env, 'daemon', 'status', '--json'));
     if (observedStatus.activeSessions !== 1 || observedStatus.sessionCount !== 1 || !observedStatus.lastObservationAt) {

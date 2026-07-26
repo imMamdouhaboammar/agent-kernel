@@ -2,7 +2,7 @@ name: Daily README story card
 
 on:
   schedule:
-    - cron: "11 4 * * *"
+    - cron: '11 4 * * *'
   workflow_dispatch:
 
 permissions:
@@ -10,8 +10,75 @@ permissions:
   issues: read
   pull-requests: read
 
+concurrency:
+  group: readme-story-${{ github.repository }}
+  cancel-in-progress: false
+
 jobs:
   update:
-    uses: imMamdouhaboammar/imMamdouhaboammar/.github/workflows/update-project-story-card.yml@main
-    secrets:
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    name: Refresh managed story card
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out target repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 20
+          persist-credentials: false
+
+      - name: Check out pinned README system
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: imMamdouhaboammar/imMamdouhaboammar
+          ref: 863bb697b2e384b93d5d3d0429719d4bb391a320
+          path: .readme-intelligence-source
+          persist-credentials: false
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.x
+
+      - name: Update managed README block
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_SUMMARY_MODEL: gpt-5-mini
+          TARGET_REPOSITORY: ${{ github.repository }}
+        run: |
+          cp README.md /tmp/README.before.md
+          node .readme-intelligence-source/readme-system/update-project.mjs
+          python3 - <<'PY'
+          from pathlib import Path
+
+          start = '<!-- project-story:start -->'
+          end = '<!-- project-story:end -->'
+          before = Path('/tmp/README.before.md').read_text()
+          after = Path('README.md').read_text()
+
+          def outside(text):
+              left, remainder = text.split(start, 1)
+              _, right = remainder.split(end, 1)
+              return left, right
+
+          if outside(before) != outside(after):
+              raise SystemExit('README updater changed content outside the managed story block')
+          PY
+
+      - name: Commit changed README
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if git diff --quiet -- README.md; then
+            echo 'README is already current.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add README.md
+          git commit -m 'docs: refresh daily project summary'
+          auth=$(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0)
+          git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $auth" \
+            push origin "HEAD:${{ github.event.repository.default_branch }}"

@@ -5,6 +5,28 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.15.1] - 2026-07-26
+
+### Security
+
+- Rejected path-like session, proposal, episode, commit-link, file-record, and provider profile identifiers before filesystem access.
+- Required explicit remote-daemon opt-in plus a bearer token of at least 32 bytes for non-loopback binding.
+- Limited daemon request bodies to 1 MiB, rejected malformed request URLs, and disabled response caching.
+- Removed shell interpolation from the agent start path.
+
+### Fixed
+
+- Consolidated GitHub Actions into seven maintained, least-privilege workflows with commit-SHA-pinned actions.
+- Replaced the obsolete Java-incompatible CodeScan workflow with the maintained CodeQL security workflow.
+- Made npmjs the canonical package registry and removed incompatible GitHub Packages publication workflows.
+- Added regression tests for every validated traversal and remote-authentication boundary.
+- Normalized npm binary paths without weakening the Windows credential boundary test.
+
+### Documentation
+
+- Documented secure daemon operation, release provenance, checksum verification, CI ownership, and package-registry recovery.
+- Added the 2026-07-26 repository hardening review.
+
 ## [1.15.0] - 2026-07-26
 
 ### Fixed

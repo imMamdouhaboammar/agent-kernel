@@ -7,7 +7,7 @@
 //   4. `list`, `show`, and `end` expose the session state.
 
 import { execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { makeEnv, repo, runCli } from './_lib/helpers.mjs';
 
@@ -22,9 +22,29 @@ function runPublic(env, ...args) {
   });
 }
 
+function runPublicFailure(env, ...args) {
+  try {
+    runPublic(env, ...args);
+    return { status: 0, stderr: '' };
+  } catch (error) {
+    return { status: error.status || 1, stderr: String(error.stderr || '') };
+  }
+}
+
 export async function run() {
   const { env, kernelHome } = makeEnv();
   runCli(env, 'init', '--sync');
+
+  const runtimeConfig = join(kernelHome, 'runtime', 'config.json');
+  mkdirSync(join(kernelHome, 'runtime'), { recursive: true });
+  writeFileSync(runtimeConfig, JSON.stringify({ sentinel: 'preserve-me' }, null, 2) + '\n');
+  const traversal = runPublicFailure(env, 'session', 'end', '../config', '--json');
+  if (traversal.status === 0 || !traversal.stderr.includes('Invalid session ID')) {
+    throw new Error(`session command accepted a path-like ID: ${JSON.stringify(traversal)}`);
+  }
+  if (!readFileSync(runtimeConfig, 'utf8').includes('preserve-me')) {
+    throw new Error('session command wrote outside the sessions directory');
+  }
 
   const started = JSON.parse(runPublic(env, 'session', 'start', '--agent', 'custom-agent', '--project', repo.root, '--json'));
   if (!started.id || started.status !== 'active' || started.agentId !== 'custom-agent') {

@@ -2,9 +2,9 @@ name: Windows CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [master]
   pull_request:
-    branches: [main, master]
+    branches: [master]
   workflow_dispatch:
 
 permissions:
@@ -15,52 +15,37 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  windows-validation:
-    name: Windows validation (Node 22)
+  validate:
+    name: Windows validation (Node ${{ matrix.node-version }})
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18.x, 20.x, 22.x]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
 
-      - name: Use Node.js 22
-        uses: actions/setup-node@v4
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22.x
+          node-version: ${{ matrix.node-version }}
           cache: npm
 
-      - name: Install dependencies from lockfile
+      - name: Install dependencies
         run: npm ci
 
       - name: Build
         run: npm run build
 
-      - name: Smoke test
-        id: smoke
-        shell: pwsh
-        continue-on-error: true
-        run: |
-          npm test 2>&1 | Tee-Object -FilePath windows-smoke.log
-          exit $LASTEXITCODE
-
-      - name: Upload failed smoke log
-        if: steps.smoke.outcome == 'failure'
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-smoke-log
-          path: windows-smoke.log
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: Enforce smoke result
-        if: steps.smoke.outcome == 'failure'
-        shell: pwsh
-        run: exit 1
+      - name: Test
+        run: npm test
 
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Package dry-run
-        run: npm run size
+      - name: Package preflight
+        run: npm run publish:dry

@@ -4,7 +4,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-const VERSION = '1.15.0';
+const VERSION = '1.15.1';
+const FILE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
 const INDEX_VERSION = 1;
 const DEFAULT_BUDGET = 2400;
 const MAX_BUDGET = 20000;
@@ -145,12 +146,20 @@ function writeIndex(index) {
   writeJsonAtomic(storePaths().index, index);
 }
 
+function requireSafeSessionId(value) {
+  const id = String(value || '').trim();
+  if (!FILE_ID_PATTERN.test(id) || id === '.' || id === '..') {
+    throw new Error(`Invalid session ID: ${id || '(empty)'}`);
+  }
+  return id;
+}
+
 function sessionFile(id) {
-  return path.join(storePaths().sessions, `${id}.json`);
+  return path.join(storePaths().sessions, `${requireSafeSessionId(id)}.json`);
 }
 
 function sessionLogFile(id) {
-  return path.join(storePaths().sessions, `${id}.jsonl`);
+  return path.join(storePaths().sessions, `${requireSafeSessionId(id)}.jsonl`);
 }
 
 function readSession(id) {

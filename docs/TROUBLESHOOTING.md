@@ -265,33 +265,54 @@ Roadmap docs are not proof that behavior ships. Do not document planned features
 
 ---
 
-## Release issues
+## Daemon authentication issues
 
-Before tagging a release:
+The default daemon is local-only. A non-loopback host must have both remote opt-in and a strong token:
 
 ```bash
-npm install
-npm run build
-npm run lint
-npm run typecheck
-npm test
-npm run size
+export AGENT_KERNEL_DAEMON_HOST=0.0.0.0
+export AGENT_KERNEL_DAEMON_ALLOW_REMOTE=1
+export AGENT_KERNEL_DAEMON_TOKEN="$(openssl rand -hex 32)"
+agent-kernel daemon start
+```
+
+A remote request without `Authorization: Bearer <token>` returns `401`. A token shorter than 32 bytes or a remote host without explicit opt-in prevents startup. If a request returns `413`, reduce its body below 1 MiB.
+
+Do not put the token in command history, committed files, issue reports, or screenshots. Stop the daemon and rotate the token after temporary remote access.
+
+---
+
+## Release issues
+
+Run the canonical gate before tagging:
+
+```bash
+npm ci
+npm run verify:release
 npm run publish:dry
 ```
+
+`publish:dry` uses `npm pack --dry-run`; it does not query the registry for an unpublished version. The tag must exactly match `package.json`, for example package version `1.15.1` requires tag `v1.15.1`.
+
+The canonical npm registry is npmjs. GitHub Packages workflows are intentionally absent because `@mamdouh-aboammar` does not match the repository owner `imMamdouhaboammar`.
+
+If an old CodeScan job reports Java class-file incompatibility, remove or disable that obsolete workflow. The product does not require Java; CodeQL is the maintained static-analysis workflow.
 
 Check these files stay aligned:
 
 ```text
 package.json
+package-lock.json
 CHANGELOG.md
 README.md
-SKILL.md
-skills.sh.json
+src/cli.mjs
+dist/cli.mjs
+bin/* version constants
 .claude-plugin/marketplace.json
 .claude-plugin/plugin.json
 ```
 
-If a tag-driven publish fails, use `CONTRIBUTING.md` for manual recovery.
+Use [`SECURE_RUNTIME_AND_RELEASES.md`](./SECURE_RUNTIME_AND_RELEASES.md) for tag, provenance, checksum, and recovery requirements.
 
 ---
 

@@ -26,6 +26,19 @@ function runPublic(env, cwd, ...args) {
   });
 }
 
+function runPublicFailure(env, cwd, ...args) {
+  try {
+    runPublic(env, cwd, ...args);
+    return { status: 0, stdout: '', stderr: '' };
+  } catch (error) {
+    return {
+      status: error.status || 1,
+      stdout: String(error.stdout || ''),
+      stderr: String(error.stderr || '')
+    };
+  }
+}
+
 function json(filePath) {
   return JSON.parse(readFileSync(filePath, 'utf8'));
 }
@@ -44,6 +57,27 @@ export async function run() {
   writeFileSync(join(project, 'src', 'cli.mjs'), '// fixture\n');
   writeFileSync(join(project, 'test', 'smoke.mjs'), '// fixture\n');
   execFileSync('git', ['init'], { cwd: project, env, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+
+  const escapedObservations = join(kernelHome, 'runtime', 'sensitive.jsonl');
+  mkdirSync(join(kernelHome, 'runtime'), { recursive: true });
+  writeFileSync(escapedObservations, JSON.stringify({
+    id: 'outside-session-observation',
+    timestamp: '2026-01-01T00:00:00.000Z',
+    type: 'file_read',
+    agentId: 'codex',
+    files: ['src/cli.mjs'],
+    text: 'must not be readable through --files'
+  }) + '\n');
+  const traversalRead = runPublicFailure(
+    env,
+    project,
+    'session', 'observations', '../sensitive',
+    '--files', 'src/cli.mjs',
+    '--json'
+  );
+  if (traversalRead.status === 0 || !traversalRead.stderr.includes('Invalid session ID')) {
+    throw new Error(`file-record session view accepted a path-like ID: ${JSON.stringify(traversalRead)}`);
+  }
 
   const absoluteCli = join(project, 'src', 'cli.mjs');
   const rememberOut = runPublic(

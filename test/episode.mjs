@@ -8,13 +8,24 @@
 //   5. `episode reindex` rebuilds episodes/index.json from episodes/archive/.
 //   6. `episode stats` reports at least the count.
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { assertContains, makeEnv, runCli } from './_lib/helpers.mjs';
+import { assertContains, makeEnv, runCli, runCliTolerateFailure } from './_lib/helpers.mjs';
 
 export async function run() {
   const { env, kernelHome } = makeEnv();
   runCli(env, 'init', '--sync');
+
+  const sentinelConfig = join(kernelHome, 'config.json');
+  writeFileSync(sentinelConfig, JSON.stringify({
+    id: 'not-an-episode',
+    title: 'Sensitive configuration fixture',
+    text: 'must not be readable through episode show'
+  }, null, 2) + '\n');
+  const traversalRead = runCliTolerateFailure(env, 'episode', 'show', '../../config', '--json');
+  if (traversalRead.status === 0 || !traversalRead.stderr.includes('Invalid episode ID')) {
+    throw new Error(`episode show accepted a path-like ID: ${JSON.stringify(traversalRead)}`);
+  }
 
   // 1. add an episode.
   const title = `Smoke decision ${Date.now()}`;
