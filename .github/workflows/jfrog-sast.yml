@@ -37,18 +37,36 @@ jobs:
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Check secrets availability
+      id: check_secrets
+      run: |
+        if [ -z "$JF_URL" ] || [ -z "$JF_TOKEN" ]; then
+          echo "::warning::JFrog credentials (JF_URL or JF_ACCESS_TOKEN) are missing. Skipping JFrog SAST scan."
+          echo "available=false" >> $GITHUB_OUTPUT
+        else
+          echo "available=true" >> $GITHUB_OUTPUT
+        fi
 
     - name: Install and configure JFrog CLI
+      if: steps.check_secrets.outputs.available == 'true'
       run: |
         npm install -g jfrog-cli-v2-jf
-        echo $JF_TOKEN | jf c add --interactive=false --url=$JF_URL --access-token-stdin
+        echo "$JF_TOKEN" | jf c add --interactive=false --url="$JF_URL" --access-token-stdin
 
     - name: Run JFrog SAST
+      if: steps.check_secrets.outputs.available == 'true'
       run: |
         jf audit --sast --format=sarif > jfrog_sast.sarif
-
+        if [ ! -s jfrog_sast.sarif ] || ! jq empty jfrog_sast.sarif 2>/dev/null; then
+          echo "::error::JFrog SAST produced empty or invalid SARIF output"
+          exit 1
+        fi
 
     - name: Upload output to generate autofix
       uses: github/codeql-action/upload-sarif@v3
+      if: steps.check_secrets.outputs.available == 'true' && success()
       with:
         sarif_file: jfrog_sast.sarif
