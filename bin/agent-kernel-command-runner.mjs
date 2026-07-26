@@ -29,6 +29,7 @@ function createBatchEnvironmentInvocation(executable, args) {
   const cleanup = () => {
     if (cleaned) return;
     cleaned = true;
+    process.off('exit', cleanup);
     fs.rmSync(temporaryDirectory, { recursive: true, force: true });
   };
   process.once('exit', cleanup);
