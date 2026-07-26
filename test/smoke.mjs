@@ -38,6 +38,8 @@ import { run as runPublicCliDashboardSafety } from './public-cli-dashboard-safet
 import { run as runPublicCliUpdate } from './public-cli-update.mjs';
 import { run as runWindowsUpdateRunner } from './windows-update-runner.mjs';
 import { run as runWindowsCredentialBoundary } from './windows-credential-boundary.mjs';
+import { run as runWindowsEmptyLauncherAllowlist } from './windows-empty-launcher-allowlist.mjs';
+import { run as runProjectBrokerSymlink } from './project-broker-symlink.mjs';
 import { run as runFileContext } from './file-context.mjs';
 import { run as runFileReferences } from './file-references.mjs';
 import { run as runStructuredSearch } from './structured-search.mjs';
@@ -172,6 +174,8 @@ const tests = [
   ['public-cli-update', runPublicCliUpdate],
   ['windows-update-runner', runWindowsUpdateRunner],
   ['windows-credential-boundary', runWindowsCredentialBoundary],
+  ['windows-empty-launcher-allowlist', runWindowsEmptyLauncherAllowlist],
+  ['project-broker-symlink', runProjectBrokerSymlink],
   ['file-context', runFileContext],
   ['file-references', runFileReferences],
   ['structured-search', runStructuredSearch],
