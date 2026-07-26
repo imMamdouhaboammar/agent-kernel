@@ -17,7 +17,7 @@ function createBatchEnvironmentInvocation(executable, args) {
     return `"%${name}%"`;
   });
   return {
-    commandLine: `"${references.join(' ')}"`,
+    commandLine: references.join(' '),
     environment
   };
 }
