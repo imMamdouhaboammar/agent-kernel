@@ -1,11 +1,16 @@
 import fs from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
+import os from 'node:os';
 import path from 'node:path';
 
 let batchEnvironmentSequence = 0;
 
-function escapeBatchEnvironmentValue(value) {
-  return String(value).replace(/"/g, '""');
+function batchEnvironmentValue(value) {
+  const text = String(value);
+  if (/[\0\r\n]/.test(text)) {
+    throw new Error('Windows batch arguments must not contain NUL or line breaks');
+  }
+  return text.replace(/"/g, '""');
 }
 
 function createBatchEnvironmentInvocation(executable, args) {
@@ -13,13 +18,21 @@ function createBatchEnvironmentInvocation(executable, args) {
   const environment = {};
   const references = [executable, ...args].map((value, index) => {
     const name = `${prefix}_${index}`;
-    environment[name] = escapeBatchEnvironmentValue(value);
+    environment[name] = batchEnvironmentValue(value);
     return `"%${name}%"`;
   });
-  return {
-    commandLine: references.join(' '),
-    environment
+  const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-kernel-cmd-'));
+  const scriptPath = path.join(temporaryDirectory, 'invoke.cmd');
+  const source = `@echo off\r\n${references.join(' ')}\r\nexit /b %errorlevel%\r\n`;
+  fs.writeFileSync(scriptPath, source, { encoding: 'utf8', mode: 0o600 });
+  let cleaned = false;
+  const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
+    fs.rmSync(temporaryDirectory, { recursive: true, force: true });
   };
+  process.once('exit', cleanup);
+  return { scriptPath, environment, cleanup };
 }
 
 function resolvedWindowsPath(filePath) {
@@ -125,9 +138,11 @@ export function normalizeChildCommand(command, args = [], runtime = {}) {
     const invocation = createBatchEnvironmentInvocation(trustedExecutable, commandArgs);
     return {
       command: resolveWindowsCommandProcessor(runtime),
-      args: ['/d', '/v:off', '/c', invocation.commandLine],
+      args: ['/d', '/v:off', '/c', invocation.scriptPath],
       environment: invocation.environment,
-      windowsVerbatimArguments: true
+      cleanup: invocation.cleanup,
+      shell: false,
+      windowsVerbatimArguments: false
     };
   }
 
@@ -153,14 +168,16 @@ function normalizeSyncCall(command, argsOrOptions, maybeOptions, runtime) {
   return {
     command: normalized.command,
     args: normalized.args,
+    cleanup: normalized.cleanup,
     options: {
       ...options,
       ...(normalized.environment === undefined
         ? {}
         : { env: { ...process.env, ...(options.env || {}), ...normalized.environment } }),
+      ...(normalized.shell === undefined ? {} : { shell: normalized.shell }),
       ...(normalized.windowsVerbatimArguments === undefined
         ? {}
-        : { shell: false, windowsVerbatimArguments: normalized.windowsVerbatimArguments })
+        : { windowsVerbatimArguments: normalized.windowsVerbatimArguments })
     }
   };
 }
@@ -171,11 +188,19 @@ export function installChildProcessCompatibility(childProcessModule, runtime = {
 
   childProcessModule.execFileSync = function compatibleExecFileSync(command, argsOrOptions, maybeOptions) {
     const call = normalizeSyncCall(command, argsOrOptions, maybeOptions, runtime);
-    return originalExecFileSync.call(childProcessModule, call.command, call.args, call.options);
+    try {
+      return originalExecFileSync.call(childProcessModule, call.command, call.args, call.options);
+    } finally {
+      call.cleanup?.();
+    }
   };
   childProcessModule.spawnSync = function compatibleSpawnSync(command, argsOrOptions, maybeOptions) {
     const call = normalizeSyncCall(command, argsOrOptions, maybeOptions, runtime);
-    return originalSpawnSync.call(childProcessModule, call.command, call.args, call.options);
+    try {
+      return originalSpawnSync.call(childProcessModule, call.command, call.args, call.options);
+    } finally {
+      call.cleanup?.();
+    }
   };
   syncBuiltinESMExports();
 
