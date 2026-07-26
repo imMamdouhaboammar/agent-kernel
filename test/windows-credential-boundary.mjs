@@ -266,7 +266,7 @@ export async function run() {
     let invocation;
     try {
       const percentLauncher = path.join(percentRoot, 'supabase.cmd');
-      fs.writeFileSync(percentLauncher, '@echo off\r\n<nul set /p "=%~1"\r\n', 'utf8');
+      fs.writeFileSync(percentLauncher, '@echo off\r\n<nul set /p "=%~1"\r\nexit /b 0\r\n', 'utf8');
       invocation = normalizeChildCommand(
         percentLauncher,
         ['100% literal %PATH%'],
