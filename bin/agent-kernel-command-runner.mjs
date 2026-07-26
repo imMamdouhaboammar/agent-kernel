@@ -14,7 +14,7 @@ function createBatchEnvironmentInvocation(executable, args) {
   const references = [executable, ...args].map((value, index) => {
     const name = `${prefix}_${index}`;
     environment[name] = escapeBatchEnvironmentValue(value);
-    return `"%${name}%"`;
+    return `"!${name}!"`;
   });
   return {
     commandLine: `"${references.join(' ')}"`,
@@ -125,7 +125,7 @@ export function normalizeChildCommand(command, args = [], runtime = {}) {
     const invocation = createBatchEnvironmentInvocation(trustedExecutable, commandArgs);
     return {
       command: resolveWindowsCommandProcessor(runtime),
-      args: ['/d', '/v:off', '/s', '/c', invocation.commandLine],
+      args: ['/d', '/v:on', '/s', '/c', invocation.commandLine],
       environment: invocation.environment,
       windowsVerbatimArguments: true
     };
