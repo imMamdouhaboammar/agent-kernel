@@ -10,7 +10,8 @@ const distCliPath = path.resolve(here, '..', 'dist', 'cli.mjs');
 const failurePath = path.resolve(here, 'agent-kernel-failure.mjs');
 const sessionPath = path.resolve(here, 'agent-kernel-session.mjs');
 const fileContextPath = path.resolve(here, 'agent-kernel-file-context.mjs');
-const VERSION = '1.15.0';
+const VERSION = '1.15.1';
+const FILE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
 
 function kernelHome() {
   return process.env.AGENT_KERNEL_HOME || path.join(os.homedir(), '.agent-kernel');
@@ -22,6 +23,14 @@ function ensureDir(dir) {
 
 function exists(filePath) {
   try { fs.accessSync(filePath); return true; } catch { return false; }
+}
+
+function requireSafeFileId(value, label) {
+  const id = String(value || '').trim();
+  if (!FILE_ID_PATTERN.test(id) || id === '.' || id === '..') {
+    throw new Error(`Invalid ${label}: ${id || '(empty)'}`);
+  }
+  return id;
 }
 
 function readText(filePath, fallback = '') {
@@ -282,7 +291,8 @@ function updateMemoryRecord(id, files) {
 }
 
 function updatePendingProposal(id, files) {
-  const filePath = path.join(recordPaths().pending, `${id}.json`);
+  const safeId = requireSafeFileId(id, 'proposal ID');
+  const filePath = path.join(recordPaths().pending, `${safeId}.json`);
   if (!exists(filePath)) return false;
   const proposal = readJson(filePath, null);
   if (!proposal) return false;
@@ -301,14 +311,15 @@ function updateFailureLesson(id, files) {
 
 function updateEpisode(id, files) {
   const paths = recordPaths();
-  const archivePath = path.join(paths.episodeArchive, `${id}.json`);
+  const safeId = requireSafeFileId(id, 'episode ID');
+  const archivePath = path.join(paths.episodeArchive, `${safeId}.json`);
   if (!exists(archivePath)) return false;
   const episode = readJson(archivePath, null);
   if (!episode) return false;
   writeJson(archivePath, addFilesToRecord(episode, files));
   const index = readJson(paths.episodeIndex, { version: 1, episodes: [] });
   if (Array.isArray(index?.episodes)) {
-    const position = index.episodes.findIndex((item) => item?.id === id);
+    const position = index.episodes.findIndex((item) => item?.id === safeId);
     if (position >= 0) index.episodes[position] = addFilesToRecord(index.episodes[position], files);
     writeJson(paths.episodeIndex, index);
   }
@@ -320,7 +331,8 @@ function hydrateEpisodeIndexFiles() {
   const index = readJson(paths.episodeIndex, { version: 1, episodes: [] });
   if (!Array.isArray(index?.episodes)) return;
   index.episodes = index.episodes.map((item) => {
-    const archived = readJson(path.join(paths.episodeArchive, `${item.id}.json`), null);
+    const episodeId = requireSafeFileId(item?.id, 'episode ID');
+    const archived = readJson(path.join(paths.episodeArchive, `${episodeId}.json`), null);
     return archived?.files?.length ? addFilesToRecord(item, archived.files) : item;
   });
   writeJson(paths.episodeIndex, index);
@@ -510,7 +522,8 @@ function handleSession(args) {
   if (action === 'observations' && files.length) {
     const sessionId = positionalArgs(rest)[0];
     if (!sessionId) throw new Error('Usage: agent-kernel session observations <session-id> --files <path>');
-    const sessionFile = path.join(kernelHome(), 'runtime', 'sessions', `${sessionId}.jsonl`);
+    const safeSessionId = requireSafeFileId(sessionId, 'session ID');
+    const sessionFile = path.join(kernelHome(), 'runtime', 'sessions', `${safeSessionId}.jsonl`);
     const raw = readText(sessionFile, '').trim();
     const records = raw ? raw.split(/\r?\n/).map((line) => { try { return JSON.parse(line); } catch { return null; } }).filter(Boolean) : [];
     const query = parseValueFlag(rest, '--query', '');

@@ -2,15 +2,8 @@ name: npm publish
 
 on:
   push:
-    tags:
-      - v*
+    tags: ['v*']
   workflow_dispatch:
-    inputs:
-      dry-run:
-        description: Run a publish dry-run only
-        required: false
-        type: boolean
-        default: true
 
 permissions:
   contents: read
@@ -20,91 +13,96 @@ concurrency:
   group: npm-publish-${{ github.ref }}
   cancel-in-progress: false
 
-defaults:
-  run:
-    shell: bash
-
 jobs:
   publish:
     name: Publish to npm
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
-      - name: Use Node.js
-        uses: actions/setup-node@v4
+      - name: Use Node.js 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 20.x
-          cache: npm
+          node-version: 24.x
           registry-url: https://registry.npmjs.org
 
-      - name: Install dependencies from lockfile
+      - name: Verify trusted-publishing runtime
+        run: |
+          node --version
+          npm --version
+          npm_version=$(npm --version)
+          node -e "const [major, minor] = process.argv[1].split('.').map(Number); if (major < 11 || (major === 11 && minor < 5)) process.exit(1)" "$npm_version"
+
+      - name: Install dependencies
         run: npm ci
 
-      - name: Audit runtime dependencies
-        run: npm audit --audit-level=high --omit=dev
+      - name: Run release gates
+        run: npm run verify:release
 
-      - name: Build
-        run: npm run build
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Smoke test
-        run: npm test
-
-      - name: Verify package version matches tag
+      - name: Validate tag matches package version
         if: github.event_name == 'push'
         run: |
-          tag="${GITHUB_REF_NAME}"
           version=$(node -p "require('./package.json').version")
-          expected="${tag#v}"
-          echo "tag=$tag package.json.version=$version expected=$expected"
-          if [ "$version" != "$expected" ]; then
-            echo "package.json version ($version) does not match tag ($tag)"
+          expected="${{ GITHUB_REF_NAME#v }}"
+          test "$version" = "$expected" || {
+            echo "package.json version $version does not match tag $GITHUB_REF_NAME"
             exit 1
-          fi
+          }
 
-      - name: Package dry-run
-        run: npm pack --dry-run --ignore-scripts
+      - name: Package preflight
+        run: npm run publish:dry
 
-      - name: Publish dry-run
+      - name: Stop after manual dry run
         if: github.event_name == 'workflow_dispatch'
-        run: npm publish --dry-run --access public --ignore-scripts
+        run: echo 'Manual dispatch completed as a dry run; no package was published.'
 
-      - name: Check npm token
+      - name: Publish package
         if: github.event_name == 'push'
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
-            echo "NPM_TOKEN secret is missing"
-            exit 1
+          package=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+
+          set +e
+          npm publish --access public
+          oidc_status=$?
+          set -e
+
+          if test "$oidc_status" -eq 0; then
+            echo 'Published with npm trusted publishing.'
+            exit 0
           fi
 
-      - name: Publish real package
-        if: github.event_name == 'push'
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --provenance --access public
+          if test "$(npm view "$package@$version" version 2>/dev/null || true)" = "$version"; then
+            echo "$package@$version is already live after the publish attempt."
+            exit 0
+          fi
+
+          test -n "${NPM_TOKEN:-}" || {
+            echo 'Trusted publishing failed and the temporary NPM_TOKEN fallback is unavailable.'
+            exit "$oidc_status"
+          }
+
+          echo 'Trusted publishing is not configured; using the temporary token fallback.'
+          NODE_AUTH_TOKEN="$NPM_TOKEN" npm publish --access public --provenance
 
       - name: Verify published package
         if: github.event_name == 'push'
         run: |
-          pkg=$(node -p "require('./package.json').name")
+          package=$(node -p "require('./package.json').name")
           version=$(node -p "require('./package.json').version")
-          echo "verifying: $pkg@$version on registry.npmjs.org"
-          for attempt in 1 2 3 4 5 6 7 8 9 10; do
-            if npm view "$pkg@$version" version 2>/dev/null; then
-              echo "npm view confirms $pkg@$version is live after attempt $attempt"
+          for attempt in {1..10}; do
+            if test "$(npm view "$package@$version" version 2>/dev/null || true)" = "$version"; then
+              echo "$package@$version is live on npm"
               exit 0
             fi
-            echo "attempt $attempt: not visible yet"
-            sleep 30
+            sleep 15
           done
-          echo "npm view still cannot find $pkg@$version after retry window"
+          echo "$package@$version was not visible after 10 checks"
           exit 1

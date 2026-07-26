@@ -4,8 +4,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-const VERSION = '1.15.0';
+const VERSION = '1.15.1';
 const COMPACT_WIDTH = 120;
+const SESSION_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
 const OBSERVATION_TYPES = new Set([
   'user_prompt',
   'assistant_plan',
@@ -97,12 +98,22 @@ function projectIdFrom(projectPath) {
   return path.basename(path.resolve(projectPath || '.')) || 'project';
 }
 
+function requireSafeSessionId(value) {
+  const id = String(value || '').trim();
+  if (!SESSION_ID_PATTERN.test(id) || id === '.' || id === '..') {
+    throw new Error(`Invalid session ID: ${id || '(empty)'}`);
+  }
+  return id;
+}
+
 function sessionFile(id) {
-  return path.join(sessionPaths().sessions, `${id}.json`);
+  const safeId = requireSafeSessionId(id);
+  return path.join(sessionPaths().sessions, `${safeId}.json`);
 }
 
 function sessionLogFile(id) {
-  return path.join(sessionPaths().sessions, `${id}.jsonl`);
+  const safeId = requireSafeSessionId(id);
+  return path.join(sessionPaths().sessions, `${safeId}.jsonl`);
 }
 
 function readSession(id) {

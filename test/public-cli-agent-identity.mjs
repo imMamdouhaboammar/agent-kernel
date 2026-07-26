@@ -46,6 +46,24 @@ export async function run() {
   const { env, kernelHome } = makeEnv();
   runCli(env, 'init', '--sync');
 
+  const escapedObservations = path.join(kernelHome, 'runtime', 'sensitive.jsonl');
+  fs.mkdirSync(path.dirname(escapedObservations), { recursive: true });
+  fs.writeFileSync(escapedObservations, JSON.stringify({
+    timestamp: '2026-01-01T00:00:00.000Z',
+    type: 'manual_note',
+    agentId: 'codex',
+    text: 'must not be readable outside sessions'
+  }) + '\n');
+  const traversalRead = runPublicFailure(
+    env,
+    'session', 'observations', '../sensitive',
+    '--agent', 'codex',
+    '--json'
+  );
+  if (traversalRead.status === 0 || !traversalRead.stderr.includes('Invalid session ID')) {
+    throw new Error(`identity session view accepted a path-like ID: ${JSON.stringify(traversalRead)}`);
+  }
+
   const custom = JSON.parse(runPublic(
     env,
     'session', 'start',

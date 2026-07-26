@@ -23,7 +23,7 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
 </p>
 
 <p>
-  <strong>Current stable release: <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'>v1.15.0</a></strong><br />
+  <strong>Current stable release: <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'>v1.15.1</a></strong><br />
   Trust-aware agent proposals and runtime capture, transaction-safe project linking, worktree-safe Git hooks, retention and portability, trusted CLI updates, Architecture Guardian, and local reporting.
 </p>
 
@@ -538,13 +538,26 @@ Read [`docs/RETENTION_AND_PORTABILITY.md`](./docs/RETENTION_AND_PORTABILITY.md).
 
 ## Optional live runtime
 
-Agent Kernel can run a small local daemon when you explicitly need live session evidence and context calls. It is stopped by default and binds to `127.0.0.1` unless you override it.
+Agent Kernel can run a small daemon when you explicitly need live session evidence and context calls. It is stopped by default and binds to `127.0.0.1`, where it accepts local requests without a bearer token.
 
 ```bash
 agent-kernel daemon start
 agent-kernel daemon status
 agent-kernel daemon stop
 ```
+
+Remote binding is disabled unless all of these controls are present:
+
+```bash
+export AGENT_KERNEL_DAEMON_HOST=0.0.0.0
+export AGENT_KERNEL_DAEMON_ALLOW_REMOTE=1
+export AGENT_KERNEL_DAEMON_TOKEN="$(openssl rand -hex 32)"
+agent-kernel daemon start
+```
+
+Remote clients must send `Authorization: Bearer <token>`. Tokens shorter than 32 bytes are rejected, request bodies are capped at 1 MiB, and daemon responses disable caching. Do not expose the daemon directly to the public internet; use a private network or authenticated tunnel and rotate the token after use.
+
+Read [`docs/SECURE_RUNTIME_AND_RELEASES.md`](./docs/SECURE_RUNTIME_AND_RELEASES.md) for the runtime trust boundary and release controls.
 
 Runtime sessions can also be managed directly:
 

@@ -7,7 +7,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const VERSION = '1.15.0';
+const VERSION = '1.15.1';
+const MAX_REQUEST_BODY_BYTES = 1024 * 1024;
+const MIN_REMOTE_TOKEN_BYTES = 32;
+const SESSION_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
+const REQUEST_BODY_TOO_LARGE = Symbol('request-body-too-large');
 const here = path.dirname(fileURLToPath(import.meta.url));
 const selfPath = path.join(here, 'agent-kernel-daemon.mjs');
 
@@ -121,11 +125,14 @@ function readDaemonStatus() {
   return withRuntimeMetrics({ running: true, statusPath: p.status, ...status });
 }
 
-function sendJson(res, statusCode, body) {
+function sendJson(res, statusCode, body, headers = {}) {
   const text = JSON.stringify(body, null, 2) + '\n';
   res.writeHead(statusCode, {
+    'cache-control': 'no-store',
     'content-type': 'application/json; charset=utf-8',
-    'content-length': Buffer.byteLength(text)
+    'content-length': Buffer.byteLength(text),
+    'x-content-type-options': 'nosniff',
+    ...headers
   });
   res.end(text);
 }
@@ -133,9 +140,21 @@ function sendJson(res, statusCode, body) {
 function readRequestJson(req) {
   return new Promise((resolve) => {
     let body = '';
+    let bytes = 0;
+    let tooLarge = false;
     req.setEncoding('utf8');
-    req.on('data', (chunk) => { body += chunk; });
+    req.on('data', (chunk) => {
+      if (tooLarge) return;
+      bytes += Buffer.byteLength(chunk);
+      if (bytes > MAX_REQUEST_BODY_BYTES) {
+        tooLarge = true;
+        body = '';
+        return;
+      }
+      body += chunk;
+    });
     req.on('end', () => {
+      if (tooLarge) return resolve(REQUEST_BODY_TOO_LARGE);
       if (!body.trim()) return resolve({});
       try { resolve(JSON.parse(body)); } catch { resolve(null); }
     });
@@ -145,6 +164,36 @@ function readRequestJson(req) {
 
 function normalizeString(value) {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function validSessionId(value) {
+  return SESSION_ID_PATTERN.test(value);
+}
+
+function isLocalHost(host) {
+  const normalized = String(host || '').trim().toLowerCase();
+  return normalized === '127.0.0.1' || normalized === 'localhost' || normalized === '::1';
+}
+
+function daemonSecurity(host) {
+  if (isLocalHost(host)) return { authentication: 'local-only', token: '' };
+  if (process.env.AGENT_KERNEL_DAEMON_ALLOW_REMOTE !== '1') {
+    return { error: 'Refusing non-local daemon host. Set AGENT_KERNEL_DAEMON_ALLOW_REMOTE=1 to override.' };
+  }
+  const token = String(process.env.AGENT_KERNEL_DAEMON_TOKEN || '');
+  if (Buffer.byteLength(token, 'utf8') < MIN_REMOTE_TOKEN_BYTES) {
+    return { error: `Remote daemon access requires AGENT_KERNEL_DAEMON_TOKEN with at least ${MIN_REMOTE_TOKEN_BYTES} bytes.` };
+  }
+  return { authentication: 'bearer', token };
+}
+
+function requestAuthorized(req, expectedToken) {
+  if (!expectedToken) return true;
+  const authorization = typeof req.headers.authorization === 'string' ? req.headers.authorization : '';
+  if (!authorization.startsWith('Bearer ')) return false;
+  const provided = Buffer.from(authorization.slice('Bearer '.length), 'utf8');
+  const expected = Buffer.from(expectedToken, 'utf8');
+  return provided.length === expected.length && crypto.timingSafeEqual(provided, expected);
 }
 
 function normalizeStringArray(value) {
@@ -164,6 +213,7 @@ function observationFromBody(body) {
   const projectId = normalizeString(body.projectId);
   const cwd = normalizeString(body.cwd);
   const text = normalizeString(body.text);
+  if (sessionId && !validSessionId(sessionId)) return { error: 'invalid sessionId' };
   if (!sessionId || !agentId || !type || !projectId || !cwd || !text) {
     return { error: 'sessionId, agentId, type, projectId, cwd, and text are required strings' };
   }
@@ -301,7 +351,10 @@ function readSession(sessionId) {
   return { session, observations };
 }
 
-async function requestHandler(req, res) {
+async function requestHandler(req, res, expectedToken = '') {
+  if (!requestAuthorized(req, expectedToken)) {
+    return sendJson(res, 401, { error: 'unauthorized' }, { 'www-authenticate': 'Bearer realm="agent-kernel-daemon"' });
+  }
   const url = new URL(req.url || '/', 'http://127.0.0.1');
   if (req.method === 'GET' && (url.pathname === '/ak/health' || url.pathname === '/ak/status')) {
     return sendJson(res, 200, { ok: true, service: 'agent-kernel-daemon', version: VERSION, status: readDaemonStatus() });
@@ -310,12 +363,16 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { sessions: listSessions() });
   }
   if (req.method === 'GET' && url.pathname.startsWith('/ak/sessions/')) {
-    const sessionId = decodeURIComponent(url.pathname.slice('/ak/sessions/'.length));
+    let sessionId;
+    try { sessionId = decodeURIComponent(url.pathname.slice('/ak/sessions/'.length)); }
+    catch { return sendJson(res, 400, { error: 'invalid sessionId' }); }
+    if (!validSessionId(sessionId)) return sendJson(res, 400, { error: 'invalid sessionId' });
     const result = readSession(sessionId);
     return result ? sendJson(res, 200, result) : sendJson(res, 404, { error: 'session not found' });
   }
   if (req.method === 'POST' && url.pathname === '/ak/observe') {
     const body = await readRequestJson(req);
+    if (body === REQUEST_BODY_TOO_LARGE) return sendJson(res, 413, { error: 'request body too large' });
     if (!body) return sendJson(res, 400, { error: 'invalid json body' });
     const parsed = observationFromBody(body);
     if (parsed.error) return sendJson(res, 400, { error: parsed.error });
@@ -326,6 +383,7 @@ async function requestHandler(req, res) {
   }
   if (req.method === 'POST' && url.pathname === '/ak/context') {
     const body = await readRequestJson(req);
+    if (body === REQUEST_BODY_TOO_LARGE) return sendJson(res, 413, { error: 'request body too large' });
     if (!body) return sendJson(res, 400, { error: 'invalid json body' });
     return sendJson(res, 200, buildContext(body));
   }
@@ -334,19 +392,31 @@ async function requestHandler(req, res) {
 
 function commandServe(flags) {
   const p = runtimePaths();
-  ensureDir(p.sessions);
-  ensureDir(p.logs);
   const host = String(flags.host || process.env.AGENT_KERNEL_DAEMON_HOST || '127.0.0.1');
   const port = Number(flags.port ?? process.env.AGENT_KERNEL_DAEMON_PORT ?? 3999);
-  if (host !== '127.0.0.1' && host !== 'localhost' && !process.env.AGENT_KERNEL_DAEMON_ALLOW_REMOTE) {
-    process.stderr.write('Refusing non-local daemon host. Set AGENT_KERNEL_DAEMON_ALLOW_REMOTE=1 to override.\n');
-    process.exit(1);
+  const security = daemonSecurity(host);
+  if (security.error) {
+    process.stderr.write(`${security.error}\n`);
+    process.exitCode = 1;
+    return;
   }
-  const server = http.createServer((req, res) => { requestHandler(req, res).catch((err) => sendJson(res, 500, { error: err.message })); });
+  ensureDir(p.sessions);
+  ensureDir(p.logs);
+  const server = http.createServer((req, res) => {
+    requestHandler(req, res, security.token).catch((err) => sendJson(res, 500, { error: err.message }));
+  });
   server.listen(Number.isFinite(port) ? port : 3999, host, () => {
     const address = server.address();
     const actualPort = typeof address === 'object' && address ? address.port : port;
-    writeJson(p.status, { pid: process.pid, host, port: actualPort, startedAt: nowIso(), version: VERSION, runtime: p.runtime });
+    writeJson(p.status, {
+      pid: process.pid,
+      host,
+      port: actualPort,
+      startedAt: nowIso(),
+      version: VERSION,
+      runtime: p.runtime,
+      authentication: security.authentication
+    });
   });
   const shutdown = () => {
     try { fs.rmSync(p.status, { force: true }); } catch {}
@@ -361,6 +431,13 @@ function commandStart(flags) {
   const current = readDaemonStatus();
   if (current.running) {
     process.stdout.write(`Agent Kernel daemon already running on ${current.host}:${current.port} (pid ${current.pid})\n`);
+    return;
+  }
+  const host = String(flags.host || process.env.AGENT_KERNEL_DAEMON_HOST || '127.0.0.1');
+  const security = daemonSecurity(host);
+  if (security.error) {
+    process.stderr.write(`${security.error}\n`);
+    process.exitCode = 1;
     return;
   }
   const args = [selfPath, '_serve'];
@@ -427,10 +504,11 @@ function commandStatus(flags) {
   process.stdout.write(`Sessions: ${status.sessionCount}\n`);
   process.stdout.write(`Active sessions: ${status.activeSessions}\n`);
   process.stdout.write(`Last observation: ${status.lastObservationAt || 'none'}\n`);
+  process.stdout.write(`Authentication: ${status.authentication || 'local-only'}\n`);
 }
 
 function usage() {
-  process.stdout.write(`agent-kernel-daemon ${VERSION}\n\nUsage:\n  agent-kernel-daemon start [--host 127.0.0.1] [--port 3999]\n  agent-kernel-daemon stop\n  agent-kernel-daemon restart [--host 127.0.0.1] [--port 3999]\n  agent-kernel-daemon status [--json]\n\nThe daemon is optional and local-only by default.\n`);
+  process.stdout.write(`agent-kernel-daemon ${VERSION}\n\nUsage:\n  agent-kernel-daemon start [--host 127.0.0.1] [--port 3999]\n  agent-kernel-daemon stop\n  agent-kernel-daemon restart [--host 127.0.0.1] [--port 3999]\n  agent-kernel-daemon status [--json]\n\nThe daemon is optional and local-only by default. Remote binds require AGENT_KERNEL_DAEMON_ALLOW_REMOTE=1 and a 32-byte AGENT_KERNEL_DAEMON_TOKEN.\n`);
 }
 
 function main() {

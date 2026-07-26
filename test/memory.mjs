@@ -11,13 +11,23 @@
 //   7. `approve <id> --publish` moves it to source/memories/.
 //   8. `reject <id>` removes it from inbox/pending/.
 
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { assertContains, assertNotContains, makeEnv, runCli } from './_lib/helpers.mjs';
+import { assertContains, assertNotContains, makeEnv, runCli, runCliTolerateFailure } from './_lib/helpers.mjs';
 
 export async function run() {
   const { env, kernelHome } = makeEnv();
   runCli(env, 'init', '--sync');
+
+  const sentinelConfig = join(kernelHome, 'config.json');
+  writeFileSync(sentinelConfig, JSON.stringify({ sentinel: 'preserve-me' }, null, 2) + '\n');
+  const traversalReject = runCliTolerateFailure(env, 'reject', '../../config');
+  if (traversalReject.status === 0 || !traversalReject.stderr.includes('Invalid proposal ID')) {
+    throw new Error(`reject accepted a path-like proposal ID: ${JSON.stringify(traversalReject)}`);
+  }
+  if (!existsSync(sentinelConfig) || !readFileSync(sentinelConfig, 'utf8').includes('preserve-me')) {
+    throw new Error('reject moved a JSON file outside inbox/pending');
+  }
 
   // 1. remember --publish saves to rules.json.
   const ruleText = `Always run pnpm typecheck before finalizing TypeScript edits. [${Date.now()}]`;

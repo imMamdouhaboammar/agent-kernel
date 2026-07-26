@@ -27,8 +27,8 @@ export async function run() {
   const packageJsonPath = fileURLToPath(new URL('../package.json', import.meta.url));
   const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
   assert.equal(
-    packageJson.bin['agent-kernel-project-broker'],
-    './bin/agent-kernel-project-broker-platform.mjs',
+    String(packageJson.bin['agent-kernel-project-broker'] || '').replace(/^\.\//, ''),
+    'bin/agent-kernel-project-broker-platform.mjs',
     'The published broker binary must enter through the platform security boundary'
   );
   const brokerSource = fs.readFileSync(

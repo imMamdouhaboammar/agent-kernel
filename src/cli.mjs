@@ -6,9 +6,10 @@ import crypto from 'node:crypto';
 import childProcess from 'node:child_process';
 import readline from 'node:readline';
 
-const VERSION = '1.15.0';
+const VERSION = '1.15.1';
 const MARKER_START = '<!-- agent-kernel:start -->';
 const MARKER_END = '<!-- agent-kernel:end -->';
+const FILE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
 const DEFAULT_AGENTS = ['claude', 'codex', 'cursor', 'antigravity', 'gemini'];
 const DEFAULT_DENY_COMMANDS = [
   { id: 'dangerous-rm', pattern: '(^|\\s)(sudo\\s+)?rm\\s+-rf\\s+(/|~|\\$HOME)(\\s|$)', message: 'Blocked: dangerous rm -rf target.' },
@@ -512,14 +513,23 @@ function writeEpisodeIndex(idx) {
   writeJson(p.episodeIndex, idx);
 }
 
+function requireSafeEpisodeId(value) {
+  const idValue = String(value || '').trim();
+  if (!FILE_ID_PATTERN.test(idValue) || idValue === '.' || idValue === '..') {
+    throw new Error(`Invalid episode ID: ${idValue || '(empty)'}`);
+  }
+  return idValue;
+}
+
 function episodePathFor(idValue) {
-  return path.join(kernelPaths().episodeArchive, `${idValue}.json`);
+  const safeId = requireSafeEpisodeId(idValue);
+  return path.join(kernelPaths().episodeArchive, `${safeId}.json`);
 }
 
 function normalizeEpisode(input) {
   const text = redactEpisodeText(input.text || '').slice(0, EPISODE_TEXT_LIMIT);
   const sourceHash = input.sourceHash || sha256(`${input.sourcePath || ''}\n${text}`);
-  const episodeId = input.id || `episode_${sourceHash.slice(0, 16)}`;
+  const episodeId = requireSafeEpisodeId(input.id || `episode_${sourceHash.slice(0, 16)}`);
   const createdAt = input.createdAt || nowIso();
   return {
     id: episodeId,
@@ -568,11 +578,15 @@ function saveEpisode(episode) {
 }
 
 function loadEpisode(idOrPath) {
-  if (!idOrPath) return null;
-  const direct = path.isAbsolute(idOrPath) ? idOrPath : episodePathFor(idOrPath.endsWith('.json') ? idOrPath.slice(0, -5) : idOrPath);
-  if (exists(direct)) return readJson(direct, null);
+  const wanted = String(idOrPath || '').trim();
+  if (!wanted) return null;
   const idx = readEpisodeIndex();
-  const hit = idx.episodes.find(e => e.id === idOrPath || e.id.includes(idOrPath) || e.sourcePath === idOrPath);
+  const sourceHit = idx.episodes.find((episode) => episode.sourcePath === wanted);
+  if (sourceHit) return readJson(episodePathFor(sourceHit.id), null);
+  const directId = requireSafeEpisodeId(wanted.endsWith('.json') ? wanted.slice(0, -5) : wanted);
+  const direct = episodePathFor(directId);
+  if (exists(direct)) return readJson(direct, null);
+  const hit = idx.episodes.find((episode) => episode.id === directId || episode.id.includes(directId));
   if (hit) return readJson(episodePathFor(hit.id), null);
   return null;
 }
@@ -1068,6 +1082,7 @@ function normalizeProposal(input) {
 
 function validateProposal(proposal) {
   const errors = [];
+  if (!FILE_ID_PATTERN.test(String(proposal.id || '')) || proposal.id === '.' || proposal.id === '..') errors.push(`Invalid proposal ID: ${proposal.id || '(empty)'}`);
   if (!proposal.text || proposal.text.trim().length < 8) errors.push('Proposal text is too short.');
   if (proposal.text.length > 2000) errors.push('Proposal text is too long.');
   const secretRe = new RegExp(DEFAULT_SECRET_PATTERNS.join('|'), 'i');
@@ -1164,10 +1179,14 @@ function commandInbox(flags = {}) {
 }
 
 function findPending(proposalId) {
+  const idValue = String(proposalId || '').trim();
+  if (!FILE_ID_PATTERN.test(idValue) || idValue === '.' || idValue === '..') {
+    throw new Error(`Invalid proposal ID: ${idValue || '(empty)'}`);
+  }
   const p = kernelPaths();
-  const full = path.join(p.pending, `${proposalId}.json`);
+  const full = path.join(p.pending, `${idValue}.json`);
   if (exists(full)) return { full, proposal: readJson(full, null) };
-  const matches = fs.readdirSync(p.pending).filter(f => f.includes(proposalId) && f.endsWith('.json'));
+  const matches = fs.readdirSync(p.pending).filter(f => f.includes(idValue) && f.endsWith('.json'));
   if (matches.length === 1) {
     const f = path.join(p.pending, matches[0]);
     return { full: f, proposal: readJson(f, null) };
@@ -1603,7 +1622,7 @@ function commandStart(flags = {}) {
   if (!bin) { error(`Unsupported agent: ${agent}`); process.exitCode = 1; return; }
   const args = agent === 'cursor' || agent === 'antigravity' ? [project] : [];
   print(`Starting ${agent} in ${project}`);
-  const child = childProcess.spawn(bin, args, { cwd: project, stdio: 'inherit', shell: true });
+  const child = childProcess.spawn(bin, args, { cwd: project, stdio: 'inherit' });
   child.on('exit', code => process.exit(code ?? 0));
 }
 

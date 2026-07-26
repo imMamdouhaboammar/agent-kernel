@@ -1,55 +1,53 @@
 # Security policy
 
+## Supported versions
+
+Security fixes are released on the current npm `latest` line. Older versions may not receive backports. Upgrade before reporting a problem that is already fixed in the current release.
+
 ## Reporting a vulnerability
 
-Please email **mamdouhfces1997@gmail.com** (PGP key TBD) instead of opening a
-public GitHub issue. I will respond within 48 hours and aim to ship a fix or
-mitigation within 7 days for critical issues.
+Email **mamdouhfces1997@gmail.com** instead of opening a public issue. Include the affected version, operating system, command surface, impact, and a minimal reproduction that does not contain real credentials or private data.
 
-## Security primitives in this repo
+Expected handling targets:
 
-agent-kernel ships a deterministic policy guard (`agent-kernel guard`). It
-detects and blocks:
+- acknowledgement within 48 hours
+- initial severity and scope assessment within 5 business days
+- mitigation or release plan for validated critical issues within 7 days
 
-| Pattern | Risk |
-|---|---|
-| `rm -rf /` / `rm -rf ~` / `rm -rf $HOME` | Data loss |
-| `curl ... \| sh` / `wget ... \| sh` | RCE via download |
-| `chmod -R 777` | Privilege escalation |
-| `git push --force` to `main`/`master` | History rewrite |
-| `rm -rf .git` | Repo destruction |
-| Leaked `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, Google API keys, `sk-...`, `ghp_...` | Secret exposure |
+Do not publish exploit details until a fixed version is available and users have had a reasonable upgrade window.
 
-The guard runs:
+## Runtime trust boundaries
 
-- Manually via `agent-kernel guard`
-- On every `git commit` via the pre-commit hook (`agent-kernel git-hook install`)
-- Optionally in CI via `examples/github-agent-kernel-guard.yml`
+Agent Kernel is local-first, but local input is not automatically trusted.
+
+- Session, proposal, episode, commit-link, and file-record identifiers are validated before they become filenames.
+- Remote daemon binding is opt-in and requires both `AGENT_KERNEL_DAEMON_ALLOW_REMOTE=1` and a bearer token of at least 32 bytes.
+- The default daemon host is `127.0.0.1`. Local shell access remains equivalent to local user access.
+- Daemon request bodies are capped at 1 MiB and malformed URLs fail closed.
+- Provider profiles are validated before they are used in credential references or GCloud configuration paths.
+- Agents may propose memory, but only the user approval workflow can publish it.
+
+See [`docs/SECURE_RUNTIME_AND_RELEASES.md`](./docs/SECURE_RUNTIME_AND_RELEASES.md).
+
+## Security primitives
+
+`agent-kernel guard` blocks destructive commands, unsafe download-to-shell pipelines, dangerous permissions, protected-branch force pushes, repository deletion, and recognized secret patterns. Safe-link and safe-git-hook commands preserve unmanaged content and use bounded managed blocks.
+
+The public CLI avoids shell interpolation for child processes. Provider execution removes caller-controlled identity and target overrides before invoking Supabase or GCloud CLIs.
+
+## CI and release integrity
+
+The repository uses a small allowlisted workflow set with least-privilege permissions and commit-SHA-pinned actions. Pull requests run build, lint, typecheck, tests, audit, package validation, CodeQL, Windows checks, and platform smoke tests.
+
+Tags matching `v*` must equal `package.json`. npm publishing requests GitHub Actions OIDC and provenance. A temporary, single-command token fallback remains until a package administrator completes the trusted-publisher migration. GitHub Releases attach the canonical npm tarball, source archive, and SHA-256 checksums. GitHub Packages is not used because the npm package scope differs from the repository owner.
+
+## Out of scope
+
+- malicious processes already running as the same local operating-system user
+- compromise of the operating system, Node.js runtime, npm registry, GitHub, or configured cloud providers
+- side-channel attacks against local JSON or JSONL storage
+- denial of service against a daemon deliberately exposed beyond a trusted private network
 
 ## Bypass reporting
 
-If you find a way to bypass the guard, please report it. Bypass = security
-issue, period.
-
-## Threat model
-
-agent-kernel assumes:
-
-- The user's local machine is **trusted** (anyone with shell access can read
-  `~/.agent-kernel/source/memories/*.json`).
-- Network endpoints (Claude, OpenAI, etc.) are **untrusted** — secret
-  scanning protects against accidental leak in committed files.
-- Agents proposing rules are **semi-trusted** — they can propose, but cannot
-  publish. The user must approve via `agent-kernel approve <id>`.
-
-Out of scope:
-
-- Memory file tampering by other local processes
-- Side-channel attacks against the JSONL logs
-- Compromised npm registry (we pin via lockfile + CI)
-
-## Updates
-
-Security fixes follow the standard release process — bumped version + CHANGELOG
-entry + tag push triggers npm-publish + GitHub release. Critical fixes may
-ship out-of-band via direct commit + manual publish.
+A reproducible bypass of an identifier boundary, approval boundary, provider target restriction, guard rule, safe-link boundary, authentication requirement, or release verification is a security issue and should be reported privately.

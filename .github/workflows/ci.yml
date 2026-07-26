@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [master]
   pull_request:
-    branches: [main, master]
+    branches: [master]
   workflow_dispatch:
 
 permissions:
@@ -14,206 +14,63 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-defaults:
-  run:
-    shell: bash
-
 jobs:
-  build-and-test:
-    name: Build + smoke (Node ${{ matrix.node-version }})
+  runtime:
+    name: Runtime (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        node-version: [18.x, 20.x, 22.x]
+        node-version: [18.x, 20.x, 22.x, 24.x]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
 
-      - name: Install dependencies from lockfile
+      - name: Install dependencies
         run: npm ci
 
       - name: Build
         run: npm run build
 
-      - name: Lint
-        run: npm run lint
+      - name: Test
+        run: npm test
 
-      - name: Smoke test
-        id: smoke
-        run: |
-          set +e
-          npm test > smoke.log 2>&1
-          exit_code=$?
-          cat smoke.log
-          echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
-          exit 0
-
-      - name: Upload failed smoke log
-        if: steps.smoke.outputs.exit_code != '0'
-        uses: actions/upload-artifact@v4
-        with:
-          name: smoke-log-node-${{ matrix.node-version }}
-          path: smoke.log
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: Enforce smoke result
-        if: steps.smoke.outputs.exit_code != '0'
-        run: exit "${{ steps.smoke.outputs.exit_code }}"
-
-  typecheck:
-    name: TypeScript typecheck
+  quality:
+    name: Quality and package gates
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Use Node.js
-        uses: actions/setup-node@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          node-version: 20.x
+          persist-credentials: false
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.x
           cache: npm
 
-      - name: Install dependencies from lockfile
+      - name: Install dependencies
         run: npm ci
+
+      - name: Lint and repository policy checks
+        run: npm run lint
 
       - name: Typecheck
         run: npm run typecheck
 
-  dependency-audit:
-    name: Dependency audit
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20.x
-          cache: npm
-
-      - name: Install dependencies from lockfile
-        run: npm ci
-
       - name: Audit runtime dependencies
         run: npm audit --audit-level=high --omit=dev
 
-  manifest-validate:
-    name: Manifest discipline
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20.x
-          cache: npm
-
-      - name: Install dependencies from lockfile
-        run: npm ci
-
-      - name: Root SKILL.md frontmatter check
-        run: |
-          test -f SKILL.md || { echo "root SKILL.md missing"; exit 1; }
-          head -1 SKILL.md | grep -q '^---$' || { echo "no frontmatter"; exit 1; }
-          grep -q '^name: agent-kernel' SKILL.md || { echo "name not agent-kernel"; exit 1; }
-          grep -q '^description:' SKILL.md || { echo "no description"; exit 1; }
-          echo "SKILL.md frontmatter present"
-
-      - name: Claude plugin manifests
-        run: |
-          test -f .claude-plugin/marketplace.json || { echo "missing marketplace.json"; exit 1; }
-          test -f .claude-plugin/plugin.json || { echo "missing plugin.json"; exit 1; }
-          python3 -m json.tool < .claude-plugin/marketplace.json > /dev/null
-          python3 -m json.tool < .claude-plugin/plugin.json > /dev/null
-          python3 - <<'PY'
-          import json
-          data = json.load(open('.claude-plugin/marketplace.json', encoding='utf-8'))
-          plugins = data.get('plugins', [])
-          assert any(plugin.get('name') == 'agent-kernel' for plugin in plugins), 'agent-kernel plugin missing'
-          print('Claude plugin manifests valid')
-          PY
-
-      - name: Skills.sh manifest
-        run: |
-          test -f skills.sh.json || { echo "missing skills.sh.json"; exit 1; }
-          python3 - <<'PY'
-          import json
-          data = json.load(open('skills.sh.json', encoding='utf-8'))
-          assert 'groupings' in data, 'no groupings'
-          all_skills = [skill for group in data['groupings'] for skill in group.get('skills', [])]
-          assert 'agent-kernel' in all_skills, 'agent-kernel not in any grouping'
-          print('skills.sh.json includes agent-kernel')
-          PY
-
-      - name: Package metadata and lockfile versions
-        run: |
-          python3 - <<'PY'
-          import json
-          pkg = json.load(open('package.json', encoding='utf-8'))
-          lock = json.load(open('package-lock.json', encoding='utf-8'))
-          root = lock.get('packages', {}).get('', {})
-          assert lock.get('name') == pkg['name'], 'package-lock root name drift'
-          assert lock.get('version') == pkg['version'], 'package-lock root version drift'
-          assert root.get('name') == pkg['name'], 'package-lock packages[""] name drift'
-          assert root.get('version') == pkg['version'], 'package-lock packages[""] version drift'
-          print(f"package metadata aligned: {pkg['name']}@{pkg['version']}")
-          PY
-
-      - name: Package dry-run
-        run: |
-          npm run build
-          npm pack --dry-run --ignore-scripts
-
-  docs:
-    name: Docs sanity
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: README.md exists and is substantial
-        run: |
-          test -s README.md || { echo "README.md missing or empty"; exit 1; }
-          size=$(stat -c%s README.md 2>/dev/null || stat -f%z README.md)
-          if [ "$size" -lt 1000 ]; then
-            echo "README.md too small: $size bytes"
-            exit 1
-          fi
-          echo "README.md present ($size bytes)"
-
-      - name: CHANGELOG.md exists
-        run: |
-          test -s CHANGELOG.md || { echo "CHANGELOG.md missing"; exit 1; }
-          head -1 CHANGELOG.md | grep -qi 'changelog' || { echo "missing # Changelog header"; exit 1; }
-          echo "CHANGELOG.md present"
-
-      - name: LICENSE exists
-        run: |
-          test -s LICENSE || { echo "LICENSE missing"; exit 1; }
-          head -3 LICENSE | grep -qi 'mit' || { echo "not MIT license"; exit 1; }
-          echo "MIT license present"
-
-      - name: docs/*.md count
-        run: |
-          count=$(find docs -name '*.md' | wc -l | tr -d ' ')
-          if [ "$count" -lt 5 ]; then
-            echo "docs/ has only $count files, expected >= 5"
-            exit 1
-          fi
-          echo "docs/ has $count markdown files"
+      - name: Package preflight
+        run: npm run publish:dry

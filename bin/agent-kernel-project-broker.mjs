@@ -6,7 +6,8 @@ import os from 'node:os';
 import path from 'node:path';
 import readline from 'node:readline';
 
-const VERSION = '1.15.0';
+const VERSION = '1.15.1';
+const PROFILE_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
 
 // ==========================================
 // 1. UTILS & HELPERS
@@ -22,6 +23,14 @@ function ensureDir(dir) {
 
 function exists(p) {
   try { fs.accessSync(p); return true; } catch { return false; }
+}
+
+function requireSafeProfileName(value, provider = 'provider') {
+  const profile = String(value || '').trim();
+  if (!PROFILE_NAME_PATTERN.test(profile) || profile === '.' || profile === '..') {
+    throw new Error(`Invalid ${provider} profile: ${profile || '(empty)'}`);
+  }
+  return profile;
 }
 
 function readText(filePath, fallback = '') {
@@ -599,7 +608,7 @@ function classifyGcloudOperation(args) {
 }
 
 export function execSupabase(ctx, args) {
-  const profileName = ctx.manifest?.providers?.supabase?.profile;
+  const profileName = requireSafeProfileName(ctx.manifest?.providers?.supabase?.profile, 'supabase');
   const projectRef = ctx.manifest?.providers?.supabase?.project_ref;
   if (!profileName || !projectRef) {
     throw new Error('Supabase adapter is not fully configured in project.toml');
@@ -658,7 +667,7 @@ export function execSupabase(ctx, args) {
 }
 
 export function execGcloud(ctx, args) {
-  const profileName = ctx.manifest?.providers?.gcloud?.profile;
+  const profileName = requireSafeProfileName(ctx.manifest?.providers?.gcloud?.profile, 'gcloud');
   const projectID = ctx.manifest?.providers?.gcloud?.project_id;
   const region = ctx.manifest?.providers?.gcloud?.region;
   if (!profileName || !projectID) {
@@ -907,6 +916,7 @@ function runAuthAdd(provider, profile) {
   if (!provider || !profile) {
     throw new Error('Usage: agent-kernel auth add <provider> --profile <name>');
   }
+  profile = requireSafeProfileName(profile, provider);
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
@@ -944,6 +954,7 @@ function runAuthRemove(provider, profile) {
   if (!provider || !profile) {
     throw new Error('Usage: agent-kernel auth remove <provider> <profile>');
   }
+  profile = requireSafeProfileName(profile, provider);
   const reg = loadRegistry();
   delete reg.profiles?.[`${provider}.${profile}`];
   saveRegistry(reg);
