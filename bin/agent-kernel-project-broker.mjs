@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import readline from 'node:readline';
 
-const VERSION = '1.14.0';
+const VERSION = '1.15.0';
 
 // ==========================================
 // 1. UTILS & HELPERS

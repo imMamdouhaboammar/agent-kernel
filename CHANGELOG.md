@@ -5,6 +5,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.15.0] - 2026-07-26
+
+### Fixed
+
+- Hardened Project Context Broker entrypoint and Windows command execution boundaries.
+- Dereferenced executable and module paths before platform wrapper checks.
+- Bound Windows provider execution to exact trusted launcher files (`.cmd`, `.bat`).
+- Implemented ephemeral trampoline scripts for safe batch argument passing.
+- Synchronized Node builtin ESM child-process exports with the compatibility boundary.
+
 ## [1.14.0] - 2026-07-24
 
 ### Added
