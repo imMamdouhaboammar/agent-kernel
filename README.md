@@ -23,7 +23,7 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
 </p>
 
 <p>
-  <strong>Current stable release: <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'>v1.14.0</a></strong><br />
+  <strong>Current stable release: <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'>v1.15.0</a></strong><br />
   Trust-aware agent proposals and runtime capture, transaction-safe project linking, worktree-safe Git hooks, retention and portability, trusted CLI updates, Architecture Guardian, and local reporting.
 </p>
 
