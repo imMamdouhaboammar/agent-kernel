@@ -107,9 +107,9 @@ export async function run() {
     }
   );
   assert.equal(normalizedBatch.command, 'C:\\Windows\\System32\\cmd.exe');
-  assert.deepEqual(normalizedBatch.args.slice(0, 4), ['/d', '/v:off', '/s', '/c']);
+  assert.deepEqual(normalizedBatch.args.slice(0, 4), ['/d', '/v:on', '/s', '/c']);
   assert.equal(normalizedBatch.windowsVerbatimArguments, true);
-  assert.match(normalizedBatch.args[4], /%AGENT_KERNEL_CMD_/);
+  assert.match(normalizedBatch.args[4], /!AGENT_KERNEL_CMD_/);
   assert.doesNotMatch(normalizedBatch.args[4], /supabase\.cmd|project with spaces|100% literal/);
   assert.deepEqual(Object.values(normalizedBatch.environment), [
     'C:\\Program Files\\Supabase\\supabase.cmd',
@@ -215,9 +215,10 @@ export async function run() {
   } finally {
     restoreCompatibility();
   }
-  assert.deepEqual(calls[0].args.slice(0, 4), ['/d', '/v:off', '/s', '/c']);
+  assert.deepEqual(calls[0].args.slice(0, 4), ['/d', '/v:on', '/s', '/c']);
   assert.equal(calls[0].options.encoding, 'utf8', 'execFileSync(file, options) must preserve its overload options');
   assert.equal(calls[0].options.windowsVerbatimArguments, true);
+  assert.equal(calls[0].options.shell, false);
   assert.ok(Object.keys(calls[0].options.env).some((name) => name.startsWith('AGENT_KERNEL_CMD_')));
   assert.equal(calls[1].options.cwd, 'C:\\workspace');
   assert.equal(calls[1].options.windowsVerbatimArguments, true);
