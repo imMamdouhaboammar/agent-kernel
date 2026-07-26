@@ -31,6 +31,36 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
 
 </div>
 
+<!-- project-story:start -->
+<details open>
+  <summary><strong>Why I built Agent Kernel</strong></summary>
+  <br />
+  <table>
+    <tr>
+      <td width="118" align="center" valign="top">
+        <img src="./docs/brand/agent-kernel-logo.svg" width="88" alt="Agent Kernel repository mark" />
+      </td>
+      <td valign="top">
+        <p><strong>What is Agent Kernel?</strong> A local memory and governance layer for the AI coding agents developers already use.</p>
+        <p><strong>Built from a recurring problem:</strong> Coding agents repeatedly lose repository context, repeat rejected mistakes, and weaken architecture boundaries across sessions.</p>
+        <p><strong>Practical goal:</strong> Keep durable local memory, reviewed rules, failure lessons, and architecture controls around existing coding agents without replacing them.</p>
+        <p><strong>Who it is for:</strong> Developers and teams using Claude Code, Codex, Cursor, Gemini CLI, OpenCode, or AGENTS.md-compatible tools.</p>
+        <p><strong>Topics:</strong> AI coding agent memory · local agent governance · architecture guardrails · coding agent context</p>
+      </td>
+    </tr>
+  </table>
+  <p><strong>Daily development summary</strong></p>
+  <ul>
+      <li>Published v1.15.0.</li>
+      <li>55 commits landed: Add OSSAR workflow for static analysis; ci: add id-token write permission to gpr-publish workflow.</li>
+      <li>3 pull requests updated, led by #98: fix(broker): complete post-merge entrypoint hardening.</li>
+      <li>5 issues changed, including #99: [CodeRabbit AI] Action Required on PR #98: fix(broker): complete post-merge entrypoint hard….</li>
+      <li>Daily summary covers 64 public activity items from the last 1 day.</li>
+  </ul>
+  <p><sub>Updated 2026-07-26T06:35:03.072Z · Deterministic public-activity summary</sub></p>
+</details>
+<!-- project-story:end -->
+
 ---
 
 ## Why install Agent Kernel
