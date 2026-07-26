@@ -71,6 +71,11 @@ function configuredBatchDirectories(runtime) {
   return String(process.env.PATH || '').split(path.delimiter).filter(Boolean);
 }
 
+function hasConfiguredBatchExecutables(runtime) {
+  return typeof runtime.allowedBatchExecutables === 'function' ||
+    Array.isArray(runtime.allowedBatchExecutables);
+}
+
 function configuredBatchExecutables(runtime) {
   if (typeof runtime.allowedBatchExecutables === 'function') return runtime.allowedBatchExecutables();
   if (Array.isArray(runtime.allowedBatchExecutables)) return runtime.allowedBatchExecutables;
@@ -88,11 +93,15 @@ function validateBatchLauncher(executable, runtime) {
     throw new Error(`Windows batch launcher is not allowlisted: ${basename}`);
   }
   if (runtime.validateFiles !== false) {
+    const exactPolicyConfigured = hasConfiguredBatchExecutables(runtime);
     const exactLaunchers = new Set(configuredBatchExecutables(runtime).map(normalizeWindowsPath));
-    if (exactLaunchers.size > 0 && !exactLaunchers.has(normalizeWindowsPath(resolvedExecutable))) {
+    if (exactPolicyConfigured && exactLaunchers.size === 0) {
+      throw new Error('Windows batch launcher exact allowlist is configured but empty');
+    }
+    if (exactPolicyConfigured && !exactLaunchers.has(normalizeWindowsPath(resolvedExecutable))) {
       throw new Error(`Windows batch launcher path is not trusted: ${resolvedExecutable}`);
     }
-    if (exactLaunchers.size === 0) {
+    if (!exactPolicyConfigured) {
       const directory = normalizeWindowsPath(path.win32.dirname(resolvedExecutable));
       const allowedDirectories = new Set(configuredBatchDirectories(runtime).map(normalizeWindowsPath));
       if (!allowedDirectories.has(directory)) {
