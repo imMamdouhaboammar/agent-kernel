@@ -26,6 +26,8 @@ for (const workflowFile of workflowFiles) {
   const content = await readFile(resolve(workflowDir, workflowFile), 'utf8');
   assert.match(content, /^permissions:\n/mu, `${workflowFile} needs top-level permissions`);
   assert.doesNotMatch(content, /pull_request_target:|repository_dispatch:|workflow_run:/u);
+  assert.doesNotMatch(content, /\$\{\{\s*GITHUB_REF_NAME#/u,
+    `${workflowFile} must use shell parameter expansion outside GitHub expressions`);
   assert.doesNotMatch(content, /uses:\s+[^\s]+@(?![a-f0-9]{40}(?:\s|$))/u,
     `${workflowFile} contains a mutable action reference`);
   if (content.includes('actions/checkout')) {
