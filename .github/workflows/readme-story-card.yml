@@ -1,6 +1,11 @@
 name: Daily README story card
 
 on:
+  push:
+    branches:
+      - master
+    paths:
+      - ".github/workflows/readme-story-card.yml"
   schedule:
     - cron: '11 4 * * *'
   workflow_dispatch:
@@ -31,7 +36,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: imMamdouhaboammar/imMamdouhaboammar
-          ref: 863bb697b2e384b93d5d3d0429719d4bb391a320
+          ref: 53960631b9a5675e7e4851945d63076b10062a7b
           path: .readme-intelligence-source
           persist-credentials: false
 
