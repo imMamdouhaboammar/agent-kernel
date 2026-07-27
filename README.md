@@ -54,11 +54,9 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
   </table>
   <p><strong>Daily build pulse</strong></p>
   <ul>
-      <li>Published v1.15.0.</li>
-      <li>46 commits landed: ci: pin minimal README renderer and refresh immediately; fix(ci): validate release tag expressions.</li>
-      <li>11 pull requests updated, led by #108: fix(ci): validate release tag expressions.</li>
-      <li>5 issues changed, including #99: [CodeRabbit AI] Action Required on PR #98: fix(broker): complete post-merge entrypoint hard….</li>
-      <li>Daily summary covers 63 public activity items from the last 1 day.</li>
+      <li>1 commit landed: docs: rebuild command and skill contracts.</li>
+      <li>3 pull requests updated, led by #105: chore(deps): bump actions/configure-pages from 5.0.0 to 6.0.0.</li>
+      <li>Daily summary covers 4 public activity items from the last 1 day.</li>
   </ul>
 </details>
 <!-- project-story:end -->
