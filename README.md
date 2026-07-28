@@ -54,9 +54,9 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
   </table>
   <p><strong>Daily build pulse</strong></p>
   <ul>
-      <li>1 commit landed: docs: rebuild command and skill contracts.</li>
-      <li>3 pull requests updated, led by #105: chore(deps): bump actions/configure-pages from 5.0.0 to 6.0.0.</li>
-      <li>Daily summary covers 4 public activity items from the last 1 day.</li>
+      <li>2 pull requests updated, led by #106: chore(deps-dev): bump typescript from 5.9.3 to 7.0.2 in the development-dependencies group….</li>
+      <li>Daily summary covers 2 public activity items from the last 1 day.</li>
+      <li>Documentation and project status remain aligned with the repository’s current public state.</li>
   </ul>
 </details>
 <!-- project-story:end -->
