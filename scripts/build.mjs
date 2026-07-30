@@ -120,6 +120,10 @@ const envVaultSrc = join(root, 'src', 'env-vault.mjs');
 const envVaultDist = join(root, 'dist', 'env-vault.mjs');
 copyFileSync(envVaultSrc, envVaultDist);
 
+const skillsEngineSrc = join(root, 'src', 'skills-engine.mjs');
+const skillsEngineDist = join(root, 'dist', 'skills-engine.mjs');
+copyFileSync(skillsEngineSrc, skillsEngineDist);
+
 const currentMode = statSync(distPath).mode;
 if (!(currentMode & 0o111)) {
   chmodSync(distPath, 0o755);

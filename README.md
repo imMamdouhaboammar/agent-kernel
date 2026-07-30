@@ -766,6 +766,24 @@ agent-kernel env unlink
 - **Auto-Sync:** Modifying any `.env` file automatically updates the mirror in `~/.agent-kernel/vault/env-mirrors/` via `PostToolUse` hooks.
 - **Auto-Restore:** Starting a session (`SessionStart`) in a fresh clone with a missing `.env` automatically restores the exact environment keys with `0600` permissions.
 
+## Universal Agent Skills (`agent-kernel skills`)
+
+Agent Kernel packages operational skill modules so any AI Agent (Claude, Antigravity, Cursor, Codex, Gemini, OpenCode) can discover, operate, and control Agent Kernel capabilities natively.
+
+```bash
+# List all registered Skill Modules
+agent-kernel skills list
+
+# Inspect detailed SKILL.md for a specific skill module
+agent-kernel skills inspect agent-kernel-ops
+
+# Synchronize Skill Modules across all AI Agent environments
+agent-kernel skills sync
+```
+
+- **Multi-Agent Sync:** Syncs operational skills automatically into `~/.claude/skills/`, `~/.codex/skills/`, `~/.gemini/config/skills/`, and `~/.agents/skills/`.
+- **Universal `SKILL.md` Specs:** Standardized YAML frontmatter + trigger definitions so agents know when and how to invoke Agent Kernel commands.
+
 ---
 
 ## Development

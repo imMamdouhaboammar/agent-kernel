@@ -13,6 +13,10 @@ import {
   vaultListProjects,
   vaultUnlinkProject
 } from './env-vault.mjs';
+import {
+  listRegisteredSkills,
+  syncSkillsToAllAgents
+} from './skills-engine.mjs';
 
 const VERSION = '1.15.1';
 const MARKER_START = '<!-- agent-kernel:start -->';
@@ -2326,15 +2330,63 @@ function commandEnv(flags = {}) {
   process.exitCode = 1;
 }
 
+function commandSkills(flags = {}) {
+  const sub = flags._ ? flags._[0] : 'list';
+  const repoRoot = gitRoot(process.cwd());
+
+  if (sub === 'list') {
+    const skills = listRegisteredSkills(repoRoot);
+    print(`Registered Agent Kernel Skill Modules (${skills.length}):`);
+    skills.forEach(s => {
+      print(`- [${s.id}] ${s.name}`);
+      print(`    Description: ${s.description}`);
+      print(`    Path: ${s.path}`);
+    });
+    return;
+  }
+
+  if (sub === 'inspect') {
+    const id = flags._ ? flags._[1] : null;
+    if (!id) {
+      error('Usage: agent-kernel skills inspect <skill-id>');
+      process.exitCode = 1;
+      return;
+    }
+    const skills = listRegisteredSkills(repoRoot);
+    const hit = skills.find(s => s.id === id);
+    if (!hit) {
+      error(`Skill not found: ${id}`);
+      process.exitCode = 1;
+      return;
+    }
+    const content = readText(hit.path);
+    print(`# Skill Inspect: ${hit.name} (${hit.id})`);
+    print(`Path: ${hit.path}\n`);
+    print('--- SKILL.md Content ---');
+    print(content);
+    return;
+  }
+
+  if (sub === 'sync' || sub === 'install') {
+    const res = syncSkillsToAllAgents(repoRoot);
+    print(`Successfully synchronized ${res.skillCount} Agent Kernel Skill Modules across all AI Agent environments.`);
+    print(`- Installed targets count: ${res.installedPaths.length}`);
+    return;
+  }
+
+  error('Unknown skills subcommand. Usage: agent-kernel skills <list|inspect|sync|install>');
+  process.exitCode = 1;
+}
+
 function usage() {
-  print(`agent-kernel ${VERSION}\n\nUsage:\n  agent-kernel init [--sync] [--enforce]\n  agent-kernel doctor\n  agent-kernel compile\n  agent-kernel sync\n  agent-kernel link [project] [--hooks]\n  agent-kernel env <link|push|pull|status|list|unlink>\n  agent-kernel remember "rule text" [--type rule] [--level critical] [--publish]\n  agent-kernel propose --from claude --text "rule text" --reason "..."\n  agent-kernel inbox\n  agent-kernel approve <id> [--publish]\n  agent-kernel reject <id>\n  agent-kernel publish\n  agent-kernel enforce install\n  agent-kernel guard [--staged|--file path|--command "shell command"] [--json]\n  agent-kernel git-hook install [project]\n  agent-kernel start <claude|codex|cursor|antigravity|gemini> [project]\n  agent-kernel policy <check|sync> <policyId>\n  agent-kernel status\n`);
+  print(`agent-kernel ${VERSION}\n\nUsage:\n  agent-kernel init [--sync] [--enforce]\n  agent-kernel doctor\n  agent-kernel compile\n  agent-kernel sync\n  agent-kernel link [project] [--hooks]\n  agent-kernel env <link|push|pull|status|list|unlink>\n  agent-kernel skills <list|inspect|sync|install>\n  agent-kernel remember "rule text" [--type rule] [--level critical] [--publish]\n  agent-kernel propose --from claude --text "rule text" --reason "..."\n  agent-kernel inbox\n  agent-kernel approve <id> [--publish]\n  agent-kernel reject <id>\n  agent-kernel publish\n  agent-kernel enforce install\n  agent-kernel guard [--staged|--file path|--command "shell command"] [--json]\n  agent-kernel git-hook install [project]\n  agent-kernel start <claude|codex|cursor|antigravity|gemini> [project]\n  agent-kernel policy <check|sync> <policyId>\n  agent-kernel status\n`);
 }
 
 async function main() {
   const argv = process.argv.slice(2);
   const cmd = argv[0];
   const sub = argv[1];
-  const subcommandFamilies = new Set(['enforce', 'git-hook', 'migrate', 'memory', 'mcp', 'episode', 'policy', 'env']);
+  const subcommandFamilies = new Set(['enforce', 'git-hook', 'migrate', 'memory', 'mcp', 'episode', 'policy', 'env', 'skills']);
   const flags = parseFlags(argv.slice(subcommandFamilies.has(cmd) ? 2 : 1));
   if (subcommandFamilies.has(cmd)) flags._ = [sub, ...(flags._ || [])].filter(Boolean);
   if (!cmd || cmd === '-h' || cmd === '--help' || cmd === 'help') return usage();
@@ -2345,6 +2397,7 @@ async function main() {
   if (cmd === 'sync') return commandSync(flags);
   if (cmd === 'link') return commandLink(flags);
   if (cmd === 'env') return commandEnv(flags);
+  if (cmd === 'skills') return commandSkills(flags);
   if (cmd === 'remember') return commandRemember(flags);
   if (cmd === 'propose') return commandPropose(flags);
   if (cmd === 'inbox') return commandInbox(flags);
