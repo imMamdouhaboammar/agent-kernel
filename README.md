@@ -23,7 +23,7 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
 </p>
 
 <p>
-  <strong>Current stable release: <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'>v1.15.1</a></strong><br />
+  <strong>Current stable release: <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'>v1.16.0</a></strong><br />
   Trust-aware agent proposals and runtime capture, transaction-safe project linking, worktree-safe Git hooks, retention and portability, trusted CLI updates, Architecture Guardian, and local reporting.
 </p>
 
@@ -150,12 +150,29 @@ It is not:
 
 ## Install
 
+### ⚡ 1 God Command (Complete Auto-Installer)
+
+Install Agent Kernel, Environment Vault, 18 Skill Modules, and Universal Hooks across Claude, Antigravity, Cursor, Codex, Gemini, and OpenCode in **1 single command**:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/imMamdouhaboammar/agent-kernel/master/install.sh | bash
+```
+
+Or if installed globally:
+
+```bash
+agent-kernel setup
+```
+
+---
+
+### Standard Installation
+
 With npm:
 
 ```bash
 npm install -g @mamdouh-aboammar/agent-kernel
-agent-kernel --version
-agent-kernel doctor
+agent-kernel setup
 ```
 
 With Bun:

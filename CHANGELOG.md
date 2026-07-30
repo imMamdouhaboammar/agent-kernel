@@ -5,7 +5,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.16.0] - 2026-07-30
+
+### Added
+
+- **Project Environment Vault (`agent-kernel env`)**: Automatic local `.env` backup, mirroring, and restoration using SHA256-based project fingerprinting (Git Remote / commit hash).
+- **Universal Agent Skills System (`agent-kernel skills`)**: Multi-agent skill discovery and auto-synchronization across Claude (`~/.claude/skills`), Codex (`~/.codex/skills`), Gemini (`~/.gemini/config/skills`), Antigravity (`~/.agents/skills`).
+- **Self-Evolve & Self-Learning Engine (`agent-kernel evolve`)**: Autonomous synthesis of repeatable multi-step workflows into versioned Playbooks (`~/.agent-kernel/evolution/playbooks/`) with evolutionary history tracking.
+- **Universal Self-Evolve Hooks**: Automatic hook registration across Antigravity, Claude, Codex, and OpenCode (`agent-kernel hook self-evolve`).
+
 ### Documentation
+
+- Added canonical command, environment-variable, and skill-contract references.
 
 - Added canonical command, environment-variable, and skill-contract references.
 - Rebuilt Agent Kernel and Architecture Guardian skill docs across Claude and AGENTS-compatible discovery surfaces.

@@ -14,7 +14,7 @@ import {
   setProjectId
 } from './agent-kernel-project-model.mjs';
 
-const VERSION = '1.15.1';
+const VERSION = '1.16.0';
 
 function parseFlags(argv) {
   const flags = { _: [] };

@@ -2,7 +2,7 @@
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "agent-kernel",
   "displayName": "Agent Kernel",
-  "version": "1.15.1",
+  "version": "1.16.0",
   "description": "Local-first governance for AI coding agents: approved shared memory, bounded runtime evidence, Failure Lessons, project and provider isolation, architecture contracts, MCP, hooks, and release integrity.",
   "author": {
     "name": "Mamdouh Aboammar",

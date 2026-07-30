@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import readline from 'node:readline';
 
-const VERSION = '1.15.1';
+const VERSION = '1.16.0';
 const PROFILE_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
 
 // ==========================================

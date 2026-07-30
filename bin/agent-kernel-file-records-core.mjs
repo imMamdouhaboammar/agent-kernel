@@ -10,7 +10,7 @@ const distCliPath = path.resolve(here, '..', 'dist', 'cli.mjs');
 const failurePath = path.resolve(here, 'agent-kernel-failure.mjs');
 const sessionPath = path.resolve(here, 'agent-kernel-session.mjs');
 const fileContextPath = path.resolve(here, 'agent-kernel-file-context.mjs');
-const VERSION = '1.15.1';
+const VERSION = '1.16.0';
 const FILE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
 
 function kernelHome() {
