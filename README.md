@@ -1,30 +1,30 @@
 <div align='center'>
 
-<img src='./docs/brand/agent-kernel-wordmark.svg' alt='Agent Kernel wordmark' width='420' />
+<img src='./docs/brand/agent-kernel-wordmark.svg' alt='Agent Kernel wordmark' width='440' />
 
 <h1>Agent Kernel</h1>
 
-<p><strong>Local memory, trust boundaries, and architecture controls for the AI coding agents you already use.</strong></p>
+<p><strong>Local memory, trust boundaries, environment vault, and self-learning architecture controls for AI coding agents.</strong></p>
 
 <p>
-Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity, and AGENTS.md-compatible tools one shared source of truth for repository rules, user preferences, workflows, debugging lessons, architecture policies, and generated agent instructions.
+Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity, Kiro, OpenClaw, and AGENTS.md-compatible tools one shared source of truth for repository rules, user preferences, environment keys, workflows, debugging lessons, architecture policies, and generated agent instructions.
 </p>
 
 <p>
-  <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'><img alt='npm version' src='https://img.shields.io/npm/v/@mamdouh-aboammar/agent-kernel'></a>
-  <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'><img alt='npm downloads' src='https://img.shields.io/npm/dw/@mamdouh-aboammar/agent-kernel'></a>
-  <a href='https://bundlephobia.com/package/@mamdouh-aboammar/agent-kernel'><img alt='bundle size' src='https://img.shields.io/bundlephobia/min/@mamdouh-aboammar/agent-kernel'></a>
+  <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'><img alt='npm version' src='https://img.shields.io/npm/v/@mamdouh-aboammar/agent-kernel?color=F8F46A&labelColor=050505'></a>
+  <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'><img alt='npm downloads' src='https://img.shields.io/npm/dw/@mamdouh-aboammar/agent-kernel?color=10B981&labelColor=050505'></a>
+  <a href='https://bundlephobia.com/package/@mamdouh-aboammar/agent-kernel'><img alt='bundle size' src='https://img.shields.io/bundlephobia/min/@mamdouh-aboammar/agent-kernel?color=38BDF8&labelColor=050505'></a>
   <a href='https://github.com/imMamdouhaboammar/agent-kernel/actions/workflows/ci.yml'><img alt='CI' src='https://github.com/imMamdouhaboammar/agent-kernel/actions/workflows/ci.yml/badge.svg'></a>
   <a href='https://github.com/imMamdouhaboammar/agent-kernel/actions/workflows/codacy.yml'><img alt='Codacy' src='https://img.shields.io/github/actions/workflow/status/imMamdouhaboammar/agent-kernel/codacy.yml?branch=master&label=Codacy&logo=codacy'></a>
   <a href='https://github.com/imMamdouhaboammar/agent-kernel/actions/workflows/coderabbit.yml'><img alt='CodeRabbit AI' src='https://img.shields.io/github/actions/workflow/status/imMamdouhaboammar/agent-kernel/coderabbit.yml?branch=master&label=CodeRabbit%20AI&logo=coderabbit&logoColor=white'></a>
   <img alt='node' src='https://img.shields.io/badge/node-%3E%3D18.18.0-30363d'>
-  <img alt='runtime dependencies' src='https://img.shields.io/badge/runtime_deps-0-30363d'>
+  <img alt='runtime dependencies' src='https://img.shields.io/badge/runtime_deps-0-10B981'>
   <a href='./LICENSE'><img alt='license' src='https://img.shields.io/badge/license-MIT-30363d'></a>
 </p>
 
 <p>
   <strong>Current stable release: <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'>v1.16.0</a></strong><br />
-  Trust-aware agent proposals and runtime capture, transaction-safe project linking, worktree-safe Git hooks, retention and portability, trusted CLI updates, Architecture Guardian, and local reporting.
+  Includes 1-God Setup Installer, Project Environment Vault, Universal Skills Engine, Self-Evolve Engine, Architecture Guardian, and Local Memory Dashboard.
 </p>
 
 <img src='./docs/brand/agent-strip.svg' alt='Agent Kernel supported agent stack' width='900' />
@@ -44,24 +44,58 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
   </table>
   <table>
     <tr>
-      <td width="50%" valign="top"><strong>Recurring problem</strong><br />Coding agents repeatedly lose repository context, repeat rejected mistakes, and weaken architecture boundaries across sessions.</td>
-      <td width="50%" valign="top"><strong>Practical goal</strong><br />Keep durable local memory, reviewed rules, failure lessons, and architecture controls around existing coding agents without replacing them.</td>
+      <td width="50%" valign="top"><strong>Recurring problem</strong><br />Coding agents repeatedly lose repository context, repeat rejected mistakes, misplace environment keys across fresh clones, and weaken architecture boundaries across sessions.</td>
+      <td width="50%" valign="top"><strong>Practical goal</strong><br />Keep durable local memory, encrypted environment mirrors, reviewed rules, failure lessons, and architecture controls around existing coding agents without replacing them.</td>
     </tr>
     <tr>
-      <td width="50%" valign="top"><strong>Built for</strong><br />Developers and teams using Claude Code, Codex, Cursor, Gemini CLI, OpenCode, or AGENTS.md-compatible tools.</td>
-      <td width="50%" valign="top"><strong>Search terms</strong><br />AI coding agent memory · local agent governance · architecture guardrails · coding agent context</td>
+      <td width="50%" valign="top"><strong>Built for</strong><br />Developers and teams using Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity, Kiro, OpenClaw, or AGENTS.md-compatible tools.</td>
+      <td width="50%" valign="top"><strong>Search terms</strong><br />AI coding agent memory · local agent governance · environment vault · self-evolving AI playbooks · architecture guardrails</td>
     </tr>
   </table>
-  <p><strong>Daily build pulse</strong></p>
-  <ul>
-      <li>Published v1.15.0.</li>
-      <li>96 commits landed: docs: rebuild command and skill contracts; ci: pin minimal README renderer and refresh immediately.</li>
-      <li>16 pull requests updated, led by #106: chore(deps-dev): bump typescript from 5.9.3 to 7.0.2 in the development-dependencies group….</li>
-      <li>7 issues changed, including #99: [CodeRabbit AI] Action Required on PR #98: fix(broker): complete post-merge entrypoint hard….</li>
-      <li>Daily summary covers 121 public activity items from the last 7 days.</li>
-  </ul>
 </details>
 <!-- project-story:end -->
+
+---
+
+## 🚀 Key Highlights & New Features in v1.16.0
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│                                    AGENT KERNEL                                         │
+│                      Local Governance, Vault & Self-Evolving Engine                      │
+└───────────────────────────┬─────────────────────────────────┬───────────────────────────┘
+                            │                                 │
+            ┌───────────────┴───────────────┐ ┌───────────────┴───────────────┐
+            │    Project Environment Vault  │ │   Universal Skills Engine     │
+            │   (agent-kernel env link)     │ │  (agent-kernel skills sync)   │
+            │  SHA256 Fingerprint & Auto    │ │   18 Modules across Claude,   │
+            │     0600 .env Restoration     │ │ Cursor, Codex, Antigravity    │
+            └───────────────┬───────────────┘ └───────────────┬───────────────┘
+                            │                                 │
+                            └────────────────┬────────────────┘
+                                             │
+                             ┌───────────────┴───────────────┐
+                             │     Self-Evolve Engine        │
+                             │  (agent-kernel evolve)        │
+                             │ Dynamic Playbook Generation,  │
+                             │  /learn & Universal Hooks     │
+                             └───────────────────────────────┘
+```
+
+### ⚡ 1. The 1-God Command Setup (`install.sh`)
+Install, configure, sync 18 skills, and register hooks across all AI agents in one command:
+```bash
+curl -sSL https://raw.githubusercontent.com/imMamdouhaboammar/agent-kernel/master/install.sh | bash
+```
+
+### 🔐 2. Project Environment Vault (`agent-kernel env`)
+Automatically mirrors and protects local `.env` files with `0600` permissions using SHA256 project fingerprinting (`git remote.origin.url` / commit hash). Auto-syncs on edits and auto-restores on fresh clones upon session start.
+
+### 🧠 3. Universal Skills Engine (`agent-kernel skills`)
+18 pre-packaged Skill Modules automatically deployed across all AI agent environments (`~/.claude/skills`, `~/.codex/skills`, `~/.gemini/config/skills`, `~/.agents/skills`).
+
+### ⚙️ 4. Self-Evolve & Self-Learning Engine (`agent-kernel evolve`)
+Synthesizes session execution traces and user corrections (`/learn`) into versioned **Playbooks**. Installs universal hooks automatically across Antigravity, Claude, Codex, and OpenCode.
 
 ---
 
@@ -69,724 +103,71 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
 
 AI coding agents are useful, but most sessions still begin with missing context. The agent forgets repository rules, repeats old mistakes, runs commands you already rejected, or produces working code that quietly weakens the architecture.
 
-Agent Kernel adds a small local operating layer around those tools.
+Agent Kernel adds a small local operating layer around those tools:
 
-| Recurring problem | What Agent Kernel provides |
+| Recurring Problem | What Agent Kernel Provides |
 |---|---|
 | You repeat the same rules in every prompt | Durable local memory compiled into agent-readable files |
 | Claude, Codex, Cursor, and Gemini drift from each other | One source of truth distributed to each supported surface |
+| Environment `.env` files are lost in fresh clones | Project Environment Vault with SHA256 fingerprinting & auto-restore |
+| Agents lack knowledge of CLI capabilities | 18 Universal Skill Modules automatically synced across all agent tools |
+| Multi-step workflows require manual repetition | Self-Evolve Engine synthesizing successful sessions into executable Playbooks |
 | The same build or test failure returns | Failure Lessons with command, error, root cause, fix, and evidence |
-| AI-generated code creates hidden dependency drift | Architecture Guardian with maps, policies, contracts, baselines, exceptions, and reports |
-| An agent creates a second service or validator that already exists | Reuse-first symbol search before new capabilities are introduced |
-| Agents identify useful rules but should not save them silently | A pending proposal inbox with explicit user approval |
-| Existing AGENTS.md, CLAUDE.md, or Git hooks may be damaged | Dry-run-first, marker-aware, atomic installers |
-| Local runtime evidence grows indefinitely | Retention status, explicit pruning, deterministic compaction, and local reports |
-| You need to move local state safely | Redacted exports, review-first imports, and replacement backups |
-| You need to inspect everything already stored | One adaptive, read-only static HTML dashboard with copy-assisted review commands |
-| Installed agent tooling drifts behind a reviewed release channel | Cached update checks, agent notifications, explicit allowlists, exact-version installation, verification, and rollback |
-| You do not want a hosted platform | A Node CLI, local JSON files, optional hooks, optional MCP, and zero runtime dependencies |
-
-The practical result is simple: keep using your current agents without making every session relearn the same standards, failures, and architecture boundaries.
+| AI-generated code creates hidden dependency drift | Architecture Guardian with maps, policies, contracts, baselines, and reports |
+| An agent creates a second service that already exists | Reuse-first symbol search before new capabilities are introduced |
+| Agents identify useful rules but should not save them silently | Pending proposal inbox with explicit user approval |
+| You do not want a hosted platform | Local Node CLI, JSON storage, optional hooks, MCP, and zero runtime dependencies |
 
 ---
 
-## What Agent Kernel is
+## Quickstart & Fast Setup
 
-Agent Kernel is not another coding agent. It does not replace Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity, or any AGENTS.md-compatible tool.
-
-It sits around them as a local governance layer:
-
-```text
-your rules, preferences, workflows, project notes, policies, failure lessons,
-and reviewed architecture constraints
-  -> local Agent Kernel JSON and project-local architecture state
-  -> compile, safe-link, hooks, MCP, retention, dashboard, updates, and conformance checks
-  -> AGENTS.md, CLAUDE.md, GEMINI.md, Cursor rules, Codex files, dashboards, reports
-  -> agents start with better context and clearer boundaries
-```
-
-The approval boundary stays explicit:
-
-```text
-agent notices a durable lesson
-  -> agent captures evidence or creates a pending proposal
-  -> user reviews the inbox, dashboard, policy, contract, baseline, exception, or updater trust change
-  -> user approves only what should last or which agent may update the CLI
-  -> Agent Kernel publishes guidance or enforces the reviewed boundary
-```
-
-Autopilot here means repeated context and checking work can be automated. Approval remains user-owned.
-
----
-
-## Lightweight by design
-
-Agent Kernel is currently:
-
-- one npm package
-- a local `~/.agent-kernel/` home
-- project-local `.agent-kernel/architecture/` state when Architecture Guardian is used
-- JSON-first storage
-- generated Markdown and config surfaces
-- optional Git and Claude hooks
-- optional local stdio MCP server
-- optional local daemon for live context capture
-- optional static read-only memory dashboard
-- optional agent-approved CLI updater
-- zero runtime npm dependencies
-
-It is not:
-
-- a hosted memory service
-- a database server
-- a cloud account
-- a background daemon by default
-- a browser administration API
-- a silent updater on every command
-- a replacement for tests, CI, code review, or architecture decisions
-- a secret store
-
----
-
-## Install
-
-### ⚡ 1 God Command (Complete Auto-Installer)
-
-Install Agent Kernel, Environment Vault, 18 Skill Modules, and Universal Hooks across Claude, Antigravity, Cursor, Codex, Gemini, and OpenCode in **1 single command**:
-
+### ⚡ Option A: 1 God Command Auto-Installer (Recommended)
 ```bash
 curl -sSL https://raw.githubusercontent.com/imMamdouhaboammar/agent-kernel/master/install.sh | bash
 ```
 
-Or if installed globally:
-
+### Option B: Global Install via Package Managers
 ```bash
-agent-kernel setup
-```
-
----
-
-### Standard Installation
-
-With npm:
-
-```bash
+# Via npm
 npm install -g @mamdouh-aboammar/agent-kernel
 agent-kernel setup
-```
 
-With Bun:
-
-```bash
+# Via Bun
 bun install -g @mamdouh-aboammar/agent-kernel
-agent-kernel --version
+agent-kernel setup
 ```
 
-Run without a global install:
-
+### Option C: Run Directly via npx or bunx
 ```bash
-# Using npx
-npx -y @mamdouh-aboammar/agent-kernel --version
-
-# Using Bunx
-bunx @mamdouh-aboammar/agent-kernel --version
+npx -y @mamdouh-aboammar/agent-kernel setup
 ```
 
-Requires Node.js `>=18.18.0` or Bun `>=1.0.0`.
-
-Read [`docs/INSTALL_AND_AGENT_SETUP.md`](./docs/INSTALL_AND_AGENT_SETUP.md) for the complete setup path.
+Requires Node.js `>=18.18.0` or Bun `>=1.0.0`. Read [`docs/INSTALL_AND_AGENT_SETUP.md`](./docs/INSTALL_AND_AGENT_SETUP.md) for full instructions.
 
 ---
 
-## Fastest safe setup
+## Core Features Breakdown
 
-Use this flow for an existing repository. It previews changes, preserves hand-written instructions, and writes Agent Kernel content only inside managed blocks.
-
+### 🔐 Project Environment Vault (`agent-kernel env`)
 ```bash
-cd ~/Projects/YourProject
-
-agent-kernel init --sync --enforce
-agent-kernel compile
-agent-kernel-safe-link . --dry-run
-agent-kernel-safe-link .
-agent-kernel-safe-git-hook . --dry-run
-agent-kernel-safe-git-hook .
-agent-kernel doctor
-```
-
-Typical project-local outputs:
-
-```text
-AGENTS.md                              # AGENTS-compatible guidance
-CLAUDE.md                              # Claude Code guidance
-.cursor/rules/00-agent-kernel.mdc      # Cursor rule
-.codex/AGENTS.md                       # Codex guidance
-.codex/config.toml                     # Codex config
-.agents/agents.md                      # Antigravity-style guidance
-.agents/skills/README.md               # Antigravity-style skills index
-GEMINI.md                              # Gemini CLI guidance
-.git/hooks/pre-commit                  # Optional staged-file guard
-```
-
-For a clean or controlled project, the direct path is also available:
-
-```bash
-agent-kernel link . --hooks
-```
-
-For an existing repository, prefer the safe installers first:
-
-- [`docs/SAFE_LINKING.md`](./docs/SAFE_LINKING.md)
-- [`docs/SAFE_GIT_HOOKS.md`](./docs/SAFE_GIT_HOOKS.md)
-
-### Connect a project to Agent Kernel
-
-Connect any repository directory securely and idempotently to the global Agent Kernel runtime:
-
-```bash
-cd ~/Projects/YourProject
-
-# Connect project to global kernel
-agent-kernel project connect
-# or direct CLI alias:
-agent-kernel connect
-
-# Check connection status & run diagnostics
-agent-kernel project status
-agent-kernel project doctor [--fix]
-
-# Reconnect or Disconnect
-agent-kernel project reconnect
-agent-kernel project disconnect [--keep-manifest|--remove-manifest]
-```
-
-Run provider CLIs through the connected project context when account and target isolation matters:
-
-```bash
-agent-kernel provider supabase exec -- db pull
-agent-kernel provider gcloud exec -- run deploy my-service
-```
-
-The broker removes caller-supplied identity and target overrides, then applies the Supabase project reference and GCloud profile, project, and region declared by the project manifest. Provider audit records are lock-protected, owner-readable only, and redact recognized secret values.
-
-Production-risk writes require an explicit, short-lived, one-time approval bound to the current project, environment, provider, and operation:
-
-```bash
-agent-kernel approvals request --provider supabase --operation db-push --reason "Reviewed migration"
-agent-kernel approvals list
-agent-kernel approvals approve <approval-id> --ttl-minutes 15
-agent-kernel provider supabase exec -- db push
-```
-
-Use `deny` for pending requests and `revoke` for approved requests. Supabase read-only commands such as `db pull`, `db dump`, `db lint`, and `migration list` do not consume production approval; unclassified commands are treated as sensitive.
-
-Inspect only the current project's provider audit trail and create a validated active context session:
-
-```bash
-agent-kernel audit list --limit 50
-agent-kernel context switch <project-id> production --json
-agent-kernel context current --json
-```
-
-Context switching rejects project IDs that do not match the current manifest and environments that are not declared. Unknown routed broker subcommands return a nonzero error instead of a successful help screen.
-
----
-
-## Trusted CLI updates
-
-Initialize Agent Kernel, then enable agent-approved mode once and define the identities that may apply an update:
-
-```bash
-agent-kernel init
-agent-kernel update enable --agents claude,codex
-```
-
-Check the configured channel, which defaults to npm `latest`:
-
-```bash
-agent-kernel update status
-agent-kernel update check
-```
-
-A trusted agent can then install the exact resolved version:
-
-```bash
-agent-kernel update apply --agent claude
-```
-
-Use another dist-tag or pin an exact semantic version:
-
-```bash
-agent-kernel update channel next
-agent-kernel update channel 2.0.0-beta.1
-```
-
-When agent-approved mode is enabled, `doctor`, `start`, `compile`, `sync`, and `status` opportunistically refresh a stale update cache at most once per configured interval. The refresh never installs a package, is skipped for `--json`, and does not fail the requested lifecycle command when npm is unavailable. Other commands read cached state only.
-
-Existing Claude, Codex, Cursor, Antigravity, and Gemini guidance files receive the cached notice after successful update, init, compile, sync, or link commands. A malformed managed marker causes that file to be skipped rather than truncated.
-
-The apply path authorizes the agent before npm runs, installs an exact version without shell interpolation, verifies the reported CLI version, runs health and compile commands, and attempts one rollback when post-install verification fails. A valid prior cache remains available when a later registry refresh fails. All updater actions write bounded audit records without npm output, environment dumps, or credentials.
-
-Read [`docs/UPDATES.md`](./docs/UPDATES.md) before enabling agent-approved installation.
-
----
-
-## Local memory dashboard
-
-Generate one adaptive HTML snapshot of the Agent Kernel state already stored on the machine and open it in the default browser:
-
-```bash
-agent-kernel dashboard
-```
-
-Generate only, choose another output, or request structured CLI output:
-
-```bash
-agent-kernel dashboard --no-open
-agent-kernel dashboard --out ./agent-kernel-dashboard.html --no-open
-agent-kernel dashboard --json
-agent-kernel dashboard --json --open
-agent-kernel dashboard --project /path/to/repository
-```
-
-The stable default file is `~/.agent-kernel/reports/dashboard.html`. Empty sections are omitted. Available sections include proposal lifecycle history, memories, rules, skill triggers, policies, episodes, Failure Lessons, sessions, agents, projects, commit links, updater status, retention, bounded audit history, and the selected project's Architecture Guardian summary.
-
-Pending cards expose copy-only text for `inbox`, `approve --publish`, and `reject`. The browser cannot execute those commands or mutate Agent Kernel state. The self-contained page uses no remote assets or network requests, HTML-escapes stored content, redacts sensitive values, replaces absolute paths with neutral labels, and applies a restrictive Content Security Policy.
-
-Output is atomic. Symbolic or non-regular targets and symbolic existing parents are rejected. If the operating system browser cannot open, the generated file remains valid.
-
-Read [`docs/STATIC_MEMORY_DASHBOARD.md`](./docs/STATIC_MEMORY_DASHBOARD.md) for the complete privacy and browser boundary.
-
----
-
-## Trust-aware agent writes
-
-Agent Kernel separates agent identity trust, the global memory write mode, and runtime evidence capture.
-
-| Trust level | Read | Capture evidence | Propose memory | Direct approved memory |
-|---|---:|---:|---:|---:|
-| `read-only` | yes | no | no | no |
-| `capture-only` | yes | yes | no | no |
-| `propose-only` | yes | yes | yes | no |
-| `trusted-local` | yes | yes | yes | governed only |
-
-Unknown agents receive a transient `read-only` identity. Manage persistent identities through the routed registry:
-
-```bash
-agent-kernel agent list --json
-agent-kernel agent add cursor --trust capture-only --surface cli
-agent-kernel agent set cursor --trust propose-only
-agent-kernel agent show cursor --json
-```
-
-The global memory write mode is separate:
-
-```bash
-agent-kernel-mode show
-agent-kernel-mode set approval
-agent-kernel-mode set trusted
-agent-kernel-mode set bypass
-```
-
-Keep `approval` as the default. Create a pending proposal from an allowed agent:
-
-```bash
-agent-kernel-agent-propose \
-  --from codex \
-  --reason 'The user corrected this workflow twice.' \
-  --text 'Always run the documented verification command before claiming completion.'
-```
-
-Capture runtime evidence through session commands, not the memory-write helper:
-
-```bash
-agent-kernel session start --agent cursor --project . --json
-agent-kernel session observe <session-id> \
-  --type test-failure \
-  --command 'npm test' \
-  --exit-code 1 \
-  --text 'The smoke suite failed during command routing.' \
-  --file test/smoke.mjs
-agent-kernel session end <session-id>
-```
-
-`agent-kernel-agent-write` applies the selected global mode to a memory request. `agent-kernel-agent-propose` always stops at pending state. Runtime sessions remain evidence, not approved memory.
-
-Read:
-
-- [`docs/AGENT_PROPOSALS.md`](./docs/AGENT_PROPOSALS.md)
-- [`docs/AGENT_WRITE_MODES.md`](./docs/AGENT_WRITE_MODES.md)
-
----
-
-## Architecture Guardian
-
-Architecture Guardian prevents working code from hiding structural regressions. It maps source dependencies, checks reviewed boundaries, searches existing capabilities, distinguishes old debt from new violations, and can block writes outside an active change contract.
-
-Start in review mode:
-
-```bash
-cd ~/Projects/YourProject
-
-agent-kernel architecture init .
-# Review and edit .agent-kernel/architecture/policy.json
-agent-kernel architecture policy validate .
-agent-kernel architecture discover . --json
-agent-kernel architecture baseline . --json
-```
-
-Before a non-trivial change:
-
-```bash
-agent-kernel architecture contract init . \
-  --task 'Add subscription cancellation' \
-  --owner billing \
-  --allow 'src/billing/**,test/billing/**' \
-  --expect 'src/billing/cancel-subscription.ts,test/billing/cancel-subscription.test.ts' \
-  --tests 'cancel active subscription,idempotent cancellation'
-
-agent-kernel architecture reuse 'cancel subscription' . --json
-agent-kernel architecture check . --json
-```
-
-Use strict mode for a blocking local or CI gate:
-
-```bash
-agent-kernel architecture check . --base origin/master --strict --json
-```
-
-Architecture Guardian includes:
-
-- source-root-scoped architecture maps
-- local dependency and circular dependency detection
-- layer and forbidden dependency policies
-- external package evidence and allow or deny policies
-- active change contracts for files, dependencies, and test expectations
-- baseline classification so old debt is not blamed on a new change
-- scoped exceptions with owner, reason, and expiry
-- reuse-first search across existing symbols
-- review and strict modes
-- Claude `PreToolUse` scope enforcement for Write, Edit, and MultiEdit
-- fail-closed handling for malformed governance state
-- iterative graph traversal for large dependency graphs
-- standard-library false-positive controls for Node, Python, and Go
-
-Read [`docs/ARCHITECTURE_GUARDIAN.md`](./docs/ARCHITECTURE_GUARDIAN.md) and the canonical [`skills/architecture-guardian/`](./skills/architecture-guardian/) skill.
-
----
-
-## Failure Lessons
-
-Capture the useful parts of a recurring failure:
-
-```bash
-agent-kernel failure capture \
-  --from claude \
-  --type test-failure \
-  --command 'npm test' \
-  --exit-code 1 \
-  --text 'ERR_MODULE_NOT_FOUND' \
-  --root-cause 'A Node ESM import path omitted its explicit extension.' \
-  --fix 'Add the explicit extension to the relative import.'
-```
-
-Search before retrying:
-
-```bash
-agent-kernel failure search ERR_MODULE_NOT_FOUND
-```
-
-Promote a recurring lesson into reviewable memory:
-
-```bash
-agent-kernel failure propose <failure-lesson-id> --as rule
-agent-kernel inbox
-agent-kernel approve <proposal-id> --publish
-```
-
-Promotion creates a pending proposal. It does not approve or publish memory automatically.
-
-Read [`docs/FAILURE_LESSONS_PROTOCOL.md`](./docs/FAILURE_LESSONS_PROTOCOL.md).
-
----
-
-## Retention, backup, and local reporting
-
-Inspect local runtime retention before deleting anything:
-
-```bash
-agent-kernel retention status
-agent-kernel retention status --older-than 30d --json
-```
-
-Preview and then apply raw-observation pruning:
-
-```bash
-agent-kernel retention prune --older-than 30d --dry-run
-agent-kernel retention prune --older-than 30d --force
-```
-
-Compact one session without deleting its raw log:
-
-```bash
-agent-kernel session compact <session-id> --dry-run --json
-agent-kernel session compact <session-id> --json
-```
-
-Create a redacted backup and inspect it before import:
-
-```bash
-agent-kernel export ./agent-kernel-backup.json --redact --include-observations
-agent-kernel import ./agent-kernel-backup.json --inspect --json
-```
-
-Normal imports create pending proposals. Explicit replacement creates a local backup before replacing managed state:
-
-```bash
-agent-kernel import ./agent-kernel-backup.json --to inbox
-agent-kernel import ./agent-kernel-backup.json --replace
-```
-
-Inspect local state, open the adaptive dashboard, or create a script-free report:
-
-```bash
-agent-kernel view
-agent-kernel view failures
-agent-kernel dashboard
-agent-kernel report ./agent-kernel-report.html
-```
-
-Exports, dashboards, and reports remain local files. Review them before sharing or committing them.
-
-Read [`docs/RETENTION_AND_PORTABILITY.md`](./docs/RETENTION_AND_PORTABILITY.md).
-
----
-
-## Optional live runtime
-
-Agent Kernel can run a small daemon when you explicitly need live session evidence and context calls. It is stopped by default and binds to `127.0.0.1`, where it accepts local requests without a bearer token.
-
-```bash
-agent-kernel daemon start
-agent-kernel daemon status
-agent-kernel daemon stop
-```
-
-Remote binding is disabled unless all of these controls are present:
-
-```bash
-export AGENT_KERNEL_DAEMON_HOST=0.0.0.0
-export AGENT_KERNEL_DAEMON_ALLOW_REMOTE=1
-export AGENT_KERNEL_DAEMON_TOKEN="$(openssl rand -hex 32)"
-agent-kernel daemon start
-```
-
-Remote clients must send `Authorization: Bearer <token>`. Tokens shorter than 32 bytes are rejected, request bodies are capped at 1 MiB, and daemon responses disable caching. Do not expose the daemon directly to the public internet; use a private network or authenticated tunnel and rotate the token after use.
-
-Read [`docs/SECURE_RUNTIME_AND_RELEASES.md`](./docs/SECURE_RUNTIME_AND_RELEASES.md) for the runtime trust boundary and release controls.
-
-Runtime sessions can also be managed directly:
-
-```bash
-agent-kernel session start --agent claude-code --project .
-agent-kernel session observe <session-id> --type command_failure --text 'npm test failed' --command 'npm test'
-agent-kernel session observations <session-id> --type command_failure
-agent-kernel session list
-agent-kernel session show <session-id>
-agent-kernel session end <session-id>
-```
-
-Request local context without starting the daemon:
-
-```bash
-agent-kernel context --query 'safe-link duplicate block' --file src/cli.mjs --budget 1200
-agent-kernel context --query 'memory changes' --json
-```
-
-Runtime observations are evidence. They do not become approved memory unless a user promotes them through the normal proposal and approval flow.
-
----
-
-## Core command surface
-
-```text
-agent-kernel init [--sync] [--enforce]
-agent-kernel doctor [--runtime]
-agent-kernel compile
-agent-kernel sync
-agent-kernel link [project] [--hooks]
-agent-kernel remember <text> [--type rule] [--level critical] [--publish]
-agent-kernel propose --from <agent> --text <text> --reason <reason>
-agent-kernel inbox
-agent-kernel approve <id> [--publish]
-agent-kernel reject <id>
-agent-kernel publish
-agent-kernel validate
-agent-kernel migrate json [--publish]
-agent-kernel memory list|search|show
-agent-kernel episode add|sync|search|show|stats|reindex
-agent-kernel failure capture|learn|list|search|show|patterns|propose|propose-pattern|promote|validate
-agent-kernel architecture init|discover|baseline|diff|check|reuse|contract|exception|policy|doctor
-agent-kernel dashboard [--out file.html] [--project path] [--no-open|--open] [--json]
-agent-kernel update status|check|enable|disable|channel|trust|revoke|apply
-agent-kernel retention status|prune
-agent-kernel export <file.json>
-agent-kernel import <file.json>
-agent-kernel view [sessions|failures|inbox|agents]
-agent-kernel report <file.html>
-agent-kernel context [--query text] [--file path] [--budget 1200]
-agent-kernel daemon start|stop|restart|status
-agent-kernel session start|end|list|show|observe|observations|compact
-agent-kernel agent list|add|set|show|remove
-agent-kernel project identify|list|show|set-id
-agent-kernel commit link|list|show|context
-agent-kernel enforce install
-agent-kernel guard [--staged|--file path]
-agent-kernel git-hook install [project]
-agent-kernel mcp serve|config|install
-agent-kernel start <claude|codex|cursor|antigravity|gemini> [project]
-agent-kernel status [--runtime]
-```
-
-Public helper binaries:
-
-```text
-agent-kernel-search
-agent-kernel-claude-context-hook
-agent-kernel-safe-link
-agent-kernel-safe-git-hook
-agent-kernel-agent-propose
-agent-kernel-failure
-agent-kernel-failure-hook
-agent-kernel-daemon
-agent-kernel-runtime-doctor
-agent-kernel-session
-agent-kernel-context
-agent-kernel-mode
-agent-kernel-agent-write
-agent-kernel-architecture
-agent-kernel-architecture-hook
-agent-kernel
-ak
-```
-
----
-
-## Agent integrations
-
-| Agent or surface | Output or integration |
-|---|---|
-| Claude Code | `CLAUDE.md`, context and architecture hooks, MCP config, marketplace plugin metadata, repo-local skills |
-| Codex | `AGENTS.md`, `.codex/AGENTS.md`, `.codex/config.toml`, repo-local skills |
-| Cursor | `.cursor/rules/00-agent-kernel.mdc` |
-| OpenCode and AGENTS-compatible agents | `AGENTS.md` |
-| Antigravity | `.agents/agents.md`, `.agents/skills/*` |
-| Gemini CLI | `GEMINI.md` |
-| Skills.sh | `SKILL.md`, `skills.sh.json`, `skills/architecture-guardian/SKILL.md` |
-
-Keep credentials and private MCP details in user-level configuration, not repo-local generated files.
-
-Read [`docs/INTEGRATIONS.md`](./docs/INTEGRATIONS.md) for the support matrix and client-specific guides.
-
----
-
-## Safety model
-
-- Agents may propose durable memory. Only reviewed user actions should approve and publish it.
-- Unknown agents default to a transient `read-only` identity.
-- Runtime capture and durable proposals use separate restricted helpers.
-- Dashboard generation is local, read-only, adaptive, redacted, HTML-escaped, CSP-restricted, and atomic.
-- Dashboard controls copy text only; the browser cannot execute approval or mutation commands.
-- Dashboard output rejects symbolic and non-regular targets and symbolic existing parent directories.
-- Updater governance changes require initialized state and preserve malformed configuration instead of overwriting it.
-- Updater installation is disabled by default and requires an explicitly allowlisted agent identity.
-- Updater trust and channel changes require terminal confirmation or an explicit reviewed `--yes` command.
-- Selected lifecycle commands may refresh stale update metadata, but never install a package.
-- Exact-version updater installs are verified and may roll back once on post-install failure.
-- Failure Lessons capture evidence first. Promotion creates a pending proposal.
-- Architecture policies, baselines, contracts, and exceptions are review artifacts.
-- Review mode reports candidate blockers. Strict mode enforces reviewed blocking severities.
-- Baseline findings remain visible but do not fail an unrelated change.
-- Exceptions require scope, reason, owner, and expiry.
-- Safe-link and safe Git hook installers preview changes and use managed markers.
-- Portability exports redact known secret patterns and sensitive key names before writing.
-- Critical rules should also be backed by permissions, guard checks, hooks, or CI.
-- Repo-local configs must remain minimal, reviewable, and credential-free.
-- Built-in guards cover dangerous recursive deletion, pipe-to-shell commands, permissive recursive chmod, force-push to protected branches, `.git` deletion, and common secret patterns.
-
----
-
-## Documentation map
-
-Start with [`docs/README.md`](./docs/README.md).
-
-| Need | Read |
-|---|---|
-| Install and connect agents | [`docs/INSTALL_AND_AGENT_SETUP.md`](./docs/INSTALL_AND_AGENT_SETUP.md) |
-| Complete command reference | [`docs/COMMAND_REFERENCE.md`](./docs/COMMAND_REFERENCE.md) |
-| Environment variables | [`docs/ENVIRONMENT_VARIABLES.md`](./docs/ENVIRONMENT_VARIABLES.md) |
-| Skill contract and synchronization | [`docs/SKILL_CONTRACT.md`](./docs/SKILL_CONTRACT.md) |
-| Secure runtime and release operations | [`docs/SECURE_RUNTIME_AND_RELEASES.md`](./docs/SECURE_RUNTIME_AND_RELEASES.md) |
-| Inspect local memory and runtime state in a browser | [`docs/STATIC_MEMORY_DASHBOARD.md`](./docs/STATIC_MEMORY_DASHBOARD.md) |
-| Configure trusted CLI updates | [`docs/UPDATES.md`](./docs/UPDATES.md) |
-| Understand the operating model | [`docs/OPERATING_MODEL.md`](./docs/OPERATING_MODEL.md) |
-| Current repository architecture | [`docs/ARCHITECTURE_NOW.md`](./docs/ARCHITECTURE_NOW.md) |
-| Prevent AI-generated architecture drift | [`docs/ARCHITECTURE_GUARDIAN.md`](./docs/ARCHITECTURE_GUARDIAN.md) |
-| Architecture command reference | [`docs/architecture-guardian/COMMAND_REFERENCE.md`](./docs/architecture-guardian/COMMAND_REFERENCE.md) |
-| Agent proposal trust boundary | [`docs/AGENT_PROPOSALS.md`](./docs/AGENT_PROPOSALS.md) |
-| Agent runtime write modes | [`docs/AGENT_WRITE_MODES.md`](./docs/AGENT_WRITE_MODES.md) |
-| Retention, export, import, and reports | [`docs/RETENTION_AND_PORTABILITY.md`](./docs/RETENTION_AND_PORTABILITY.md) |
-| Safe project linking | [`docs/SAFE_LINKING.md`](./docs/SAFE_LINKING.md) |
-| Safe Git hook installation | [`docs/SAFE_GIT_HOOKS.md`](./docs/SAFE_GIT_HOOKS.md) |
-| Failure Lessons | [`docs/FAILURE_LESSONS_PROTOCOL.md`](./docs/FAILURE_LESSONS_PROTOCOL.md) |
-| MCP server | [`docs/MCP_SERVER.md`](./docs/MCP_SERVER.md) |
-| Agent integrations | [`docs/INTEGRATIONS.md`](./docs/INTEGRATIONS.md) |
-| Troubleshoot setup or runtime issues | [`docs/TROUBLESHOOTING.md`](./docs/TROUBLESHOOTING.md) |
-| AI agent contributor runbook | [`docs/AGENT_RUNBOOK.md`](./docs/AGENT_RUNBOOK.md) |
-| Knowledge Bundle plan | [`docs/BUNDLE_KB.md`](./docs/BUNDLE_KB.md) |
-
----
-
-## Planned: Knowledge Bundle
-
-Knowledge Bundle is a planned sharing layer for approved memory, Failure Lessons, policies, skills, workflows, and selected episodes in a portable `.akb` file.
-
-It is not part of the current command surface. The proposed design remains review-first so a bundle cannot silently overwrite another user's approved memory.
-
-Read [`docs/BUNDLE_KB.md`](./docs/BUNDLE_KB.md).
-
-## Environment Vault (`agent-kernel env`)
-
-Agent Kernel automatically mirrors and protects your local `.env` files across directory deletions, fresh clones, and machine migrations using deterministic project fingerprinting (Git Remote / commit hash).
-
-```bash
-# Link project .env to Vault
+# Link current project .env to Vault
 agent-kernel env link
 
-# Check sync status and project fingerprint
+# Check sync status and fingerprint
 agent-kernel env status
 
 # Force push local .env changes to Vault
 agent-kernel env push
 
-# Restore .env files from Vault (e.g. after fresh clone)
+# Restore .env file from Vault in fresh clone
 agent-kernel env pull
 
-# List all backed-up project environments on this machine
+# List all vaulted project environments
 agent-kernel env list
-
-# Remove project mirror from Vault
-agent-kernel env unlink
 ```
 
-- **Deterministic Fingerprinting:** Uses `git remote.origin.url` (fallback to initial commit hash + folder name) so `.env` is uniquely bound to the project regardless of local path.
-- **Auto-Sync:** Modifying any `.env` file automatically updates the mirror in `~/.agent-kernel/vault/env-mirrors/` via `PostToolUse` hooks.
-- **Auto-Restore:** Starting a session (`SessionStart`) in a fresh clone with a missing `.env` automatically restores the exact environment keys with `0600` permissions.
-
-## Universal Agent Skills (`agent-kernel skills`)
-
-Agent Kernel packages operational skill modules so any AI Agent (Claude, Antigravity, Cursor, Codex, Gemini, OpenCode) can discover, operate, and control Agent Kernel capabilities natively.
-
+### 🧠 Universal Agent Skills (`agent-kernel skills`)
 ```bash
 # List all registered Skill Modules
 agent-kernel skills list
@@ -798,37 +179,126 @@ agent-kernel skills inspect agent-kernel-ops
 agent-kernel skills sync
 ```
 
-- **Multi-Agent Sync:** Syncs operational skills automatically into `~/.claude/skills/`, `~/.codex/skills/`, `~/.gemini/config/skills/`, and `~/.agents/skills/`.
-- **Universal `SKILL.md` Specs:** Standardized YAML frontmatter + trigger definitions so agents know when and how to invoke Agent Kernel commands.
-
-## Self-Evolve & Self-Learning Engine (`agent-kernel evolve`)
-
-Agent Kernel captures session execution traces, user corrections (`/learn`), and successful multi-step task resolutions, synthesizing them into versioned, executable **Playbooks** that continuously improve over time.
-
+### ⚙️ Self-Evolve & Self-Learning Engine (`agent-kernel evolve`)
 ```bash
-# Generate a new Playbook from workflow
-agent-kernel evolve generate --title "Full Next.js Auth Setup" --topic "auth"
+# Generate a Playbook from recent workflow
+agent-kernel evolve generate --title "Full Supabase Setup" --topic "auth"
 
-# List all synthesized Playbooks and evolution statistics
+# List all synthesized Playbooks and metrics
 agent-kernel evolve list
 
-# Inspect Playbook steps, metrics, and evolutionary history
+# Inspect Playbook steps and evolutionary history
 agent-kernel evolve inspect <playbookId>
-
-# Evolve / Repair a Playbook following a fix or improvement
-agent-kernel evolve repair <playbookId> --reason "Optimized Supabase client initialization"
 
 # Install Universal Self-Evolve Hooks across Antigravity, Claude, Codex, OpenCode
 agent-kernel evolve hooks
 ```
 
-- **Automated Playbook Synthesis:** Converts repeated, successful multi-step workflows into reusable Playbooks stored at `~/.agent-kernel/evolution/playbooks/`.
-- **Versioned Evolution:** Tracks `runCount`, `successRate`, and increments Playbook versions (v1.0 -> v1.1) upon repair or evolution.
-- **Universal Hook Auto-Registration:** Installs `agent-kernel hook self-evolve` into Antigravity (`~/.gemini/config/hooks.json`), Claude (`~/.claude/hooks.json`), Codex (`~/.codex/hooks.json`), and OpenCode (`~/.opencode/hooks.json`).
+---
+
+## Local Memory Dashboard
+
+Generate an adaptive HTML snapshot of the Agent Kernel state stored on your machine and open it in your browser:
+
+```bash
+agent-kernel dashboard
+```
+
+Output is atomic and self-contained in `~/.agent-kernel/reports/dashboard.html`. It uses zero network requests, redacts sensitive key patterns, and applies a restrictive Content Security Policy.
+
+Read [`docs/STATIC_MEMORY_DASHBOARD.md`](./docs/STATIC_MEMORY_DASHBOARD.md) for privacy details.
 
 ---
 
-## Development
+## Architecture Guardian
+
+Prevent AI-generated code from introducing structural regressions:
+
+```bash
+cd ~/Projects/YourProject
+
+# Initialize architecture policy & discovery
+agent-kernel architecture init .
+agent-kernel architecture policy validate .
+agent-kernel architecture discover . --json
+agent-kernel architecture baseline . --json
+
+# Before a non-trivial change:
+agent-kernel architecture contract init . \
+  --task 'Add subscription cancellation' \
+  --owner billing \
+  --allow 'src/billing/**,test/billing/**' \
+  --expect 'src/billing/cancel-subscription.ts'
+
+agent-kernel architecture reuse 'cancel subscription' . --json
+agent-kernel architecture check . --json
+```
+
+Read [`docs/ARCHITECTURE_GUARDIAN.md`](./docs/ARCHITECTURE_GUARDIAN.md) and the canonical [`skills/architecture-guardian/`](./skills/architecture-guardian/) skill.
+
+---
+
+## Agent Integrations Matrix
+
+| Agent or Surface | Output or Integration |
+|---|---|
+| **Claude Code** | `CLAUDE.md`, context and architecture hooks, MCP config, marketplace plugin, repo-local skills |
+| **Antigravity** | `.agents/agents.md`, `.agents/skills/*`, hooks |
+| **Cursor** | `.cursor/rules/00-agent-kernel.mdc` |
+| **Codex** | `AGENTS.md`, `.codex/AGENTS.md`, `.codex/config.toml`, repo-local skills |
+| **Gemini CLI** | `GEMINI.md` |
+| **OpenCode / OpenClaw** | `AGENTS.md`, hooks |
+| **Kiro / Skills.sh** | `SKILL.md`, `skills.sh.json` |
+
+---
+
+## Core Command Reference
+
+```text
+agent-kernel setup
+agent-kernel env link|status|push|pull|list|unlink
+agent-kernel skills list|inspect|sync|install
+agent-kernel evolve generate|list|inspect|repair|hooks
+agent-kernel init [--sync] [--enforce]
+agent-kernel doctor [--runtime]
+agent-kernel compile
+agent-kernel sync
+agent-kernel remember <text> [--type rule] [--publish]
+agent-kernel propose --from <agent> --text <text> --reason <reason>
+agent-kernel inbox
+agent-kernel approve <id> [--publish]
+agent-kernel reject <id>
+agent-kernel dashboard [--out file.html] [--json]
+agent-kernel architecture init|discover|baseline|check|reuse|contract
+agent-kernel failure capture|learn|list|search|show|propose
+agent-kernel retention status|prune
+agent-kernel export <file.json>
+agent-kernel import <file.json>
+```
+
+---
+
+## Documentation Map
+
+Start with [`docs/README.md`](./docs/README.md).
+
+| Need | Read |
+|---|---|
+| Install and connect agents | [`docs/INSTALL_AND_AGENT_SETUP.md`](./docs/INSTALL_AND_AGENT_SETUP.md) |
+| Complete command reference | [`docs/COMMAND_REFERENCE.md`](./docs/COMMAND_REFERENCE.md) |
+| Environment variables | [`docs/ENVIRONMENT_VARIABLES.md`](./docs/ENVIRONMENT_VARIABLES.md) |
+| Skill contract and synchronization | [`docs/SKILL_CONTRACT.md`](./docs/SKILL_CONTRACT.md) |
+| Secure runtime and release operations | [`docs/SECURE_RUNTIME_AND_RELEASES.md`](./docs/SECURE_RUNTIME_AND_RELEASES.md) |
+| Failure Lessons protocol | [`docs/FAILURE_LESSONS_PROTOCOL.md`](./docs/FAILURE_LESSONS_PROTOCOL.md) |
+| Prevent AI-generated architecture drift | [`docs/ARCHITECTURE_GUARDIAN.md`](./docs/ARCHITECTURE_GUARDIAN.md) |
+| Inspect local memory in browser | [`docs/STATIC_MEMORY_DASHBOARD.md`](./docs/STATIC_MEMORY_DASHBOARD.md) |
+| Configure trusted CLI updates | [`docs/UPDATES.md`](./docs/UPDATES.md) |
+| Safe project linking | [`docs/SAFE_LINKING.md`](./docs/SAFE_LINKING.md) |
+| Safe Git hook installation | [`docs/SAFE_GIT_HOOKS.md`](./docs/SAFE_GIT_HOOKS.md) |
+
+---
+
+## Development & Verification
 
 ```bash
 git clone https://github.com/imMamdouhaboammar/agent-kernel
@@ -837,32 +307,16 @@ cd agent-kernel
 npm ci
 npm run verify:release
 npm run docs:check
-npm run publish:dry
 ```
 
-Repository-defined validation includes version alignment, 46 smoke tests, bin and mode linting, documentation links and contracts, privacy and secret checks, TypeScript checks, runtime audit, workflow hardening, and package previews.
-
-Read [`CONTRIBUTING.md`](./CONTRIBUTING.md) and [`AGENTS.md`](./AGENTS.md) before changing runtime behavior.
-
 ---
-
-## Links
-
-- npm: https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel
-- Repository: https://github.com/imMamdouhaboammar/agent-kernel
-- Issues: https://github.com/imMamdouhaboammar/agent-kernel/issues
-- Releases: https://github.com/imMamdouhaboammar/agent-kernel/releases
-- Skills.sh: https://skills.sh/imMamdouhaboammar/agent-kernel
-- delegate-team integration: https://github.com/imMamdouhaboammar/delegate-team/blob/master/integrations/agent-kernel.md
 
 ## License
 
-MIT © Mamdouh Aboammar
-
----
+MIT © [Mamdouh Aboammar](https://github.com/imMamdouhaboammar)
 
 <div align='center'>
 
-*Built by [Mamdouh Aboammar](https://github.com/imMamdouhaboammar) for everyone who is tired of explaining the same standards to a new agent every morning.*
+*Built by [Mamdouh Aboammar](https://github.com/imMamdouhaboammar) for everyone tired of explaining the same standards to a new agent every morning.*
 
 </div>
