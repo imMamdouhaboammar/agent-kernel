@@ -55,10 +55,10 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
   <p><strong>Daily build pulse</strong></p>
   <ul>
       <li>Published v1.15.0.</li>
-      <li>97 commits landed: docs: rebuild command and skill contracts; ci: pin minimal README renderer and refresh immediately.</li>
-      <li>18 pull requests updated, led by #106: chore(deps-dev): bump typescript from 5.9.3 to 7.0.2 in the development-dependencies group….</li>
+      <li>96 commits landed: docs: rebuild command and skill contracts; ci: pin minimal README renderer and refresh immediately.</li>
+      <li>16 pull requests updated, led by #106: chore(deps-dev): bump typescript from 5.9.3 to 7.0.2 in the development-dependencies group….</li>
       <li>7 issues changed, including #99: [CodeRabbit AI] Action Required on PR #98: fix(broker): complete post-merge entrypoint hard….</li>
-      <li>Daily summary covers 124 public activity items from the last 7 days.</li>
+      <li>Daily summary covers 121 public activity items from the last 7 days.</li>
   </ul>
 </details>
 <!-- project-story:end -->
