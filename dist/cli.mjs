@@ -1996,15 +1996,88 @@ function commandExport(flags = {}) {
   print(`Exported to ${out}`);
 }
 
+function commandPolicy(flags = {}) {
+  const sub = flags._ ? flags._[0] : null; // 'check' or 'sync'
+  const policyId = flags._ ? flags._[1] : null;
+  
+  if (sub === 'check') {
+    if (policyId !== 'mandatory-bun-package-manager') {
+      error(`Unknown policy ID: ${policyId}`);
+      process.exitCode = 1;
+      return;
+    }
+    const p = kernelPaths();
+    const activeRules = readJson(p.rules, []);
+    const ruleExists = activeRules.some(r => r.id === 'mandatory-bun-package-manager' && r.status === 'approved');
+    const filesToCheck = [
+      path.join(p.dist, 'AGENTS.md'),
+      path.join(p.dist, 'CLAUDE.md'),
+      path.join(p.dist, 'GEMINI.md'),
+      path.join(os.homedir(), '.codex', 'AGENTS.md'),
+      path.join(os.homedir(), '.claude', 'CLAUDE.md'),
+      path.join(os.homedir(), '.gemini', 'GEMINI.md')
+    ];
+    
+    let allSynced = true;
+    const fileStatuses = [];
+    for (const file of filesToCheck) {
+      if (!exists(file)) {
+        allSynced = false;
+        fileStatuses.push({ file, status: 'missing' });
+        continue;
+      }
+      const text = readText(file);
+      const hasPolicy = text.includes('mandatory-bun-package-manager');
+      if (!hasPolicy) {
+        allSynced = false;
+        fileStatuses.push({ file, status: 'out-of-sync' });
+      } else {
+        fileStatuses.push({ file, status: 'in-sync' });
+      }
+    }
+    
+    if (ruleExists && allSynced) {
+      print('Policy mandatory-bun-package-manager is fully compliant and synchronized.');
+      for (const stat of fileStatuses) {
+        print(`  [OK] ${stat.file}`);
+      }
+    } else {
+      error('Policy compliance verification failed.');
+      print(`Rule exists in rules.json: ${ruleExists ? 'Yes' : 'No'}`);
+      for (const stat of fileStatuses) {
+        print(`  [${stat.status.toUpperCase()}] ${stat.file}`);
+      }
+      process.exitCode = 1;
+    }
+    return;
+  }
+  
+  if (sub === 'sync') {
+    if (policyId !== 'mandatory-bun-package-manager') {
+      error(`Unknown policy ID: ${policyId}`);
+      process.exitCode = 1;
+      return;
+    }
+    print('Synchronizing policy mandatory-bun-package-manager...');
+    commandCompile({ quiet: true });
+    commandSync({ quiet: true });
+    print('Policy synchronization complete.');
+    return;
+  }
+  
+  error(`Unknown policy subcommand. Usage:\n  agent-kernel policy check mandatory-bun-package-manager\n  agent-kernel policy sync mandatory-bun-package-manager`);
+  process.exitCode = 1;
+}
+
 function usage() {
-  print(`agent-kernel ${VERSION}\n\nUsage:\n  agent-kernel init [--sync] [--enforce]\n  agent-kernel doctor\n  agent-kernel compile\n  agent-kernel sync\n  agent-kernel link [project] [--hooks]\n  agent-kernel remember "rule text" [--type rule] [--level critical] [--publish]\n  agent-kernel propose --from claude --text "rule text" --reason "..."\n  agent-kernel inbox\n  agent-kernel approve <id> [--publish]\n  agent-kernel reject <id>\n  agent-kernel publish\n  agent-kernel enforce install\n  agent-kernel guard [--staged|--file path|--command "shell command"] [--json]\n  agent-kernel git-hook install [project]\n  agent-kernel start <claude|codex|cursor|antigravity|gemini> [project]\n  agent-kernel status\n`);
+  print(`agent-kernel ${VERSION}\n\nUsage:\n  agent-kernel init [--sync] [--enforce]\n  agent-kernel doctor\n  agent-kernel compile\n  agent-kernel sync\n  agent-kernel link [project] [--hooks]\n  agent-kernel remember "rule text" [--type rule] [--level critical] [--publish]\n  agent-kernel propose --from claude --text "rule text" --reason "..."\n  agent-kernel inbox\n  agent-kernel approve <id> [--publish]\n  agent-kernel reject <id>\n  agent-kernel publish\n  agent-kernel enforce install\n  agent-kernel guard [--staged|--file path|--command "shell command"] [--json]\n  agent-kernel git-hook install [project]\n  agent-kernel start <claude|codex|cursor|antigravity|gemini> [project]\n  agent-kernel policy <check|sync> <policyId>\n  agent-kernel status\n`);
 }
 
 async function main() {
   const argv = process.argv.slice(2);
   const cmd = argv[0];
   const sub = argv[1];
-  const subcommandFamilies = new Set(['enforce', 'git-hook', 'migrate', 'memory', 'mcp', 'episode']);
+  const subcommandFamilies = new Set(['enforce', 'git-hook', 'migrate', 'memory', 'mcp', 'episode', 'policy']);
   const flags = parseFlags(argv.slice(subcommandFamilies.has(cmd) ? 2 : 1));
   if (subcommandFamilies.has(cmd)) flags._ = [sub, ...(flags._ || [])].filter(Boolean);
   if (!cmd || cmd === '-h' || cmd === '--help' || cmd === 'help') return usage();
@@ -2032,6 +2105,7 @@ async function main() {
   if (cmd === 'mcp') return commandMcp(flags);
   if (cmd === 'status') return commandStatus(flags);
   if (cmd === 'export') return commandExport(flags);
+  if (cmd === 'policy') return commandPolicy(flags);
   error(`Unknown command: ${argv.join(' ')}`);
   usage();
   process.exitCode = 1;

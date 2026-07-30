@@ -55,6 +55,7 @@ import { run as runModeConfig } from './mode-config.mjs';
 import { run as runAgentWriteModes } from './agent-write-modes.mjs';
 import { run as runArchitectureGuardian } from './architecture-guardian.mjs';
 import { run as runPackageFiles } from './package-files.mjs';
+import { run as runPolicy } from './policy.mjs';
 import { run as runDocLinks } from './doc-links.mjs';
 import { run as runCliStatusJson } from './cli-status-json.mjs';
 import { run as runProjectContextBroker } from './project-context-broker.test.mjs';
@@ -191,6 +192,7 @@ const tests = [
   ['agent-write-modes', runAgentWriteModes],
   ['architecture-guardian', runArchitectureGuardian],
   ['package-files', runPackageFiles],
+  ['policy', runPolicy],
   ['doc-links', runDocLinks],
   ['cli-status-json', runCliStatusJson],
   ['project-context-broker', runProjectContextBrokerCompat],
