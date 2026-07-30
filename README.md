@@ -54,11 +54,9 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
   </table>
   <p><strong>Daily build pulse</strong></p>
   <ul>
-      <li>Published v1.15.0.</li>
-      <li>96 commits landed: docs: rebuild command and skill contracts; ci: pin minimal README renderer and refresh immediately.</li>
-      <li>16 pull requests updated, led by #106: chore(deps-dev): bump typescript from 5.9.3 to 7.0.2 in the development-dependencies group….</li>
-      <li>7 issues changed, including #99: [CodeRabbit AI] Action Required on PR #98: fix(broker): complete post-merge entrypoint hard….</li>
-      <li>Daily summary covers 121 public activity items from the last 7 days.</li>
+      <li>12 commits landed: docs: overhaul documentation website with modern UI/UX, SVG brand logos, 1-God installe…; release: v1.16.0 — Project Environment Vault, Universal Skills Engine, Self-Evolve Engi….</li>
+      <li>5 pull requests updated, led by #102: chore(deps): bump github/codeql-action/init from adfda868f108ac4222129de456ea554034a27db7 t….</li>
+      <li>Daily summary covers 17 public activity items from the last 1 day.</li>
   </ul>
 </details>
 <!-- project-story:end -->
