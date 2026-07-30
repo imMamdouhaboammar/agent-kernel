@@ -5,6 +5,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.18.0] - 2026-07-30
+
+### Added
+
+- **Mem0-Style Intelligent Memory Engine (`ak memory`)**: Multi-scoped (`user`, `project`, `agent`, `episode`) persistent memory layer with atomic `FactNode` schema, hybrid (semantic + keyword) search, and automatic conflict reconciliation state machine (`ak memory extract/search/reconcile`).
+- **Self-Healing Failure Remediation Loop**: Pre-flight hook (`pre_flight.py`) auto-injection of verified fix recipes and prevention rules prior to command execution when error signatures or traceback patterns match.
+- **Superpowers Workflows Engine Integration**: Full alignment with Superpowers skills (`brainstorming`, `writing-plans`, `subagent-driven-development`, `finishing-a-development-branch`) for agentic process governance.
+
 ## [1.17.0] - 2026-07-30
 
 ### Added

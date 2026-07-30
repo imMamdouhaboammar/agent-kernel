@@ -23,8 +23,8 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
 </p>
 
 <p>
-  <strong>Current stable release: <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'>v1.17.0</a></strong><br />
-  Includes Universal Setup Command, Project Environment Vault, Universal Skills Engine, Self-Evolve Engine, Architecture Guardian, and Local Memory Dashboard.
+  <strong>Current stable release: <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'>v1.18.0</a></strong><br />
+  Includes Mem0 Persistent Memory Engine, Self-Healing Failure Remediation Loop, Superpowers Workflows, Universal Setup Command, Environment Vault, and Architecture Guardian.
 </p>
 
 <img src='./docs/brand/agent-strip.svg' alt='Agent Kernel supported agent stack' width='900' />
@@ -57,7 +57,7 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
 
 ---
 
-## 🚀 Key Highlights & New Features in v1.17.0
+## 🚀 Key Highlights & New Features in v1.18.0
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐

@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const VERSION = '1.17.0';
+const VERSION = '1.18.0';
 const MAX_REQUEST_BODY_BYTES = 1024 * 1024;
 const MIN_REMOTE_TOKEN_BYTES = 32;
 const SESSION_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
