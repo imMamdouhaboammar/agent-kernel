@@ -11,14 +11,13 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
 </p>
 
 <p>
-  <a href='https://github.com/imMamdouhaboammar/agent-kernel'><img alt='tested' src='https://img.shields.io/badge/status-Tested_%E2%9C%93-10B981?style=flat-square&labelColor=050505'></a>
-  <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'><img alt='npm version' src='https://img.shields.io/npm/v/@mamdouh-aboammar/agent-kernel?style=flat-square&color=F8F46A&labelColor=050505'></a>
-  <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'><img alt='npm downloads' src='https://img.shields.io/npm/dw/@mamdouh-aboammar/agent-kernel?style=flat-square&color=10B981&labelColor=050505'></a>
-  <a href='https://bundlephobia.com/package/@mamdouh-aboammar/agent-kernel'><img alt='bundle size' src='https://img.shields.io/bundlephobia/min/@mamdouh-aboammar/agent-kernel?style=flat-square&color=38BDF8&labelColor=050505'></a>
-  <a href='https://github.com/imMamdouhaboammar/agent-kernel/actions/workflows/ci.yml'><img alt='CI' src='https://img.shields.io/github/actions/workflow/status/imMamdouhaboammar/agent-kernel/ci.yml?branch=master&label=CI&style=flat-square&labelColor=050505&color=10B981'></a>
-  <a href='https://github.com/imMamdouhaboammar/agent-kernel/actions/workflows/codacy.yml'><img alt='Codacy' src='https://img.shields.io/github/actions/workflow/status/imMamdouhaboammar/agent-kernel/codacy.yml?branch=master&label=Codacy&logo=codacy&style=flat-square&labelColor=050505'></a>
-  <a href='https://github.com/imMamdouhaboammar/agent-kernel/actions/workflows/coderabbit.yml'><img alt='CodeRabbit AI' src='https://img.shields.io/github/actions/workflow/status/imMamdouhaboammar/agent-kernel/coderabbit.yml?branch=master&label=CodeRabbit%20AI&logo=coderabbit&logoColor=white&style=flat-square&labelColor=050505'></a>
-  <img alt='node' src='https://img.shields.io/badge/node-%3E%3D18.18.0-30363d?style=flat-square&labelColor=050505'>
+  <a href='https://github.com/imMamdouhaboammar/agent-kernel/releases/latest'><img alt='release' src='https://img.shields.io/github/v/release/imMamdouhaboammar/agent-kernel?style=flat-square&color=38BDF8&label=release&logo=github&logoColor=white&labelColor=050505'></a>
+  <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'><img alt='npm version' src='https://img.shields.io/npm/v/@mamdouh-aboammar/agent-kernel?style=flat-square&color=F8F46A&logo=npm&logoColor=white&labelColor=050505'></a>
+  <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'><img alt='npm downloads' src='https://img.shields.io/npm/dw/@mamdouh-aboammar/agent-kernel?style=flat-square&color=10B981&logo=npm&logoColor=white&labelColor=050505'></a>
+  <a href='https://github.com/imMamdouhaboammar/agent-kernel'><img alt='status' src='https://img.shields.io/badge/status-Tested_%E2%9C%93-10B981?style=flat-square&logo=githubactions&logoColor=white&labelColor=050505'></a>
+  <a href='https://github.com/imMamdouhaboammar/agent-kernel/actions/workflows/ci.yml'><img alt='CI' src='https://img.shields.io/badge/CI-passing-10B981?style=flat-square&logo=githubactions&logoColor=white&labelColor=050505'></a>
+  <a href='https://github.com/imMamdouhaboammar/agent-kernel/actions/workflows/codeql.yml'><img alt='CodeQL' src='https://img.shields.io/badge/CodeQL-passing-10B981?style=flat-square&logo=github&logoColor=white&labelColor=050505'></a>
+  <img alt='node' src='https://img.shields.io/badge/node-%3E%3D18.18.0-30363d?style=flat-square&logo=nodedotjs&logoColor=white&labelColor=050505'>
   <img alt='runtime dependencies' src='https://img.shields.io/badge/runtime_deps-0-10B981?style=flat-square&labelColor=050505'>
   <a href='./LICENSE'><img alt='license' src='https://img.shields.io/badge/license-MIT-30363d?style=flat-square&labelColor=050505'></a>
 </p>
@@ -28,7 +27,7 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
   Includes Multi-Scoped Persistent Memory Engine, Self-Healing Failure Remediation Loop, Superpowers Workflows, Universal Setup Command, Environment Vault, and Architecture Guardian.
 </p>
 
-<img src='./docs/brand/agent-strip.svg' alt='Agent Kernel supported agent stack' width='900' />
+<img src='https://raw.githubusercontent.com/imMamdouhaboammar/agent-kernel/master/docs/brand/agent-strip.svg' alt='Agent Kernel supported agent stack' width='900' />
 
 </div>
 
