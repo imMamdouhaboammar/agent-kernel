@@ -31,7 +31,7 @@ agent-kernel init --sync
 agent-kernel doctor
 ```
 
-The stable package version represented by this repository is `1.16.0`.
+The stable package version represented by this repository is `1.17.0`.
 
 One-off inspection:
 

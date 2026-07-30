@@ -5,6 +5,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.17.0] - 2026-07-30
+
+### Added
+
+- **Universal Auto-Installer (`agent-kernel setup` & `install.sh`)**: One-command universal setup script for installing, syncing 18 skills, and registering hooks across all AI agents.
+- **Enhanced Documentation Website**: Complete UI/UX overhaul with SVG brand logos strip, dark mode glassmorphism, terminal output playground, and 1-click clipboard copy.
+- **Readme Narrative Overhaul**: High-impact ASCII architecture flow diagram, feature triad pillars, and full agent integration matrix.
+
+### Changed
+
+- Renamed setup terminology across CLI, scripts, website, and docs to **Universal Setup Command** / **Universal Auto-Installer**.
+
 ## [1.16.0] - 2026-07-30
 
 ### Added

@@ -23,8 +23,8 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
 </p>
 
 <p>
-  <strong>Current stable release: <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'>v1.16.0</a></strong><br />
-  Includes 1-God Setup Installer, Project Environment Vault, Universal Skills Engine, Self-Evolve Engine, Architecture Guardian, and Local Memory Dashboard.
+  <strong>Current stable release: <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'>v1.17.0</a></strong><br />
+  Includes Universal Setup Command, Project Environment Vault, Universal Skills Engine, Self-Evolve Engine, Architecture Guardian, and Local Memory Dashboard.
 </p>
 
 <img src='./docs/brand/agent-strip.svg' alt='Agent Kernel supported agent stack' width='900' />
@@ -57,7 +57,7 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
 
 ---
 
-## 🚀 Key Highlights & New Features in v1.16.0
+## 🚀 Key Highlights & New Features in v1.17.0
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
@@ -82,7 +82,7 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
                              └───────────────────────────────┘
 ```
 
-### ⚡ 1. The 1-God Command Setup (`install.sh`)
+### ⚡ 1. The Universal Setup Command (`install.sh`)
 Install, configure, sync 18 skills, and register hooks across all AI agents in one command:
 ```bash
 curl -sSL https://raw.githubusercontent.com/imMamdouhaboammar/agent-kernel/master/install.sh | bash
@@ -122,7 +122,7 @@ Agent Kernel adds a small local operating layer around those tools:
 
 ## Quickstart & Fast Setup
 
-### ⚡ Option A: 1 God Command Auto-Installer (Recommended)
+### ⚡ Option A: Universal Auto-Installer Command (Recommended)
 ```bash
 curl -sSL https://raw.githubusercontent.com/imMamdouhaboammar/agent-kernel/master/install.sh | bash
 ```

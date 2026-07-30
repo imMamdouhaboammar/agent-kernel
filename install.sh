@@ -1,32 +1,38 @@
 #!/usr/bin/env bash
-# Agent Kernel God Installer — 1 Command to rule them all.
-# Installs Agent Kernel, compiles binaries, deploys all 18 Skills across Claude, Codex, Gemini, Antigravity, OpenCode, and registers universal hooks & env vault.
+# Agent Kernel Universal Auto-Installer — 1 Command to setup all AI agent governance.
+set -euo pipefail
 
-set -e
+BOLD="\031[1m"
+GREEN="\033[32m"
+CYAN="\033[36m"
+YELLOW="\033[33m"
+RESET="\033[0m"
 
-echo "🚀 Starting Agent Kernel 1-God Installation..."
+echo -e "${CYAN}${BOLD}🚀 Starting Agent Kernel Universal Installation...${RESET}\n"
 
-# 1. Ensure Bun or Node is present
+# 1. Check Node.js / Bun
+if command -v node >/dev/null 2>&1; range=$(node -v); echo "Found Node.js $range"; else
+  if command -v bun >/dev/null 2>&1; then echo "Found Bun"; else
+    echo "❌ Node.js (>=18.18.0) or Bun is required to install Agent Kernel."
+    exit 1
+  fi
+fi
+
+# 2. Install global package
+echo -e "\n${BOLD}📦 Installing @mamdouh-aboammar/agent-kernel globally...${RESET}"
 if command -v bun >/dev/null 2>&1; then
-  PKG_MGR="bun"
+  bun install -g @mamdouh-aboammar/agent-kernel
 elif command -v npm >/dev/null 2>&1; then
-  PKG_MGR="npm"
-else
-  echo "❌ Error: Neither Bun nor Node/npm is installed. Please install Bun or Node.js first."
-  exit 1
+  npm install -g @mamdouh-aboammar/agent-kernel
 fi
 
-echo "📦 Installing Agent Kernel globally via $PKG_MGR..."
-if [ "$PKG_MGR" = "bun" ]; then
-  bun install -g @mamdouh-aboammar/agent-kernel@latest || true
-  bun link @mamdouh-aboammar/agent-kernel 2>/dev/null || true
+# 3. Execute setup command
+echo -e "\n${BOLD}⚙️ Running Agent Kernel Universal Setup...${RESET}"
+if command -v agent-kernel >/dev/null 2>&1; then
+  agent-kernel setup
 else
-  npm install -g @mamdouh-aboammar/agent-kernel@latest
+  npx -y @mamdouh-aboammar/agent-kernel setup
 fi
 
-echo "⚙️ Running Agent Kernel Setup Engine..."
-agent-kernel setup
-
-echo ""
-echo "🎉 Agent Kernel 1-God Setup Complete!"
-echo "All 18 Skill Modules, Universal Hooks, Env Vault, and Runtime Doctor are active and synchronized across all AI Agent environments!"
+echo -e "\n${GREEN}${BOLD}🎉 Agent Kernel Universal Setup Complete!${RESET}"
+echo -e "Your AI coding agents now share memory, environment vault, and universal skills.\n"

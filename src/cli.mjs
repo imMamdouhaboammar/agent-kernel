@@ -26,7 +26,7 @@ import {
   installSelfEvolveHooks
 } from './self-evolve-engine.mjs';
 
-const VERSION = '1.16.0';
+const VERSION = '1.17.0';
 const MARKER_START = '<!-- agent-kernel:start -->';
 const MARKER_END = '<!-- agent-kernel:end -->';
 const FILE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
@@ -2465,7 +2465,7 @@ function commandEvolve(flags = {}) {
 
 function commandSetup(flags = {}) {
   const repoRoot = gitRoot(process.cwd());
-  print(`🚀 Running Agent Kernel God Setup (${VERSION})...\n`);
+  print(`🚀 Running Agent Kernel Universal Setup (${VERSION})...\n`);
 
   const p = kernelPaths();
   ensureDir(p.root);
@@ -2488,7 +2488,7 @@ function commandSetup(flags = {}) {
     commandDoctor({});
   } catch {}
 
-  print(`\n🎉 Agent Kernel God Setup Completed Successfully!`);
+  print(`\n🎉 Agent Kernel Universal Setup Completed Successfully!`);
   print(`All 18 Skill Modules, Universal Hooks, Environment Vault, and Runtime Doctor are active across Claude, Antigravity, Cursor, Codex, and OpenCode!`);
 }
 
