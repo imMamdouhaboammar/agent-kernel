@@ -17,6 +17,14 @@ import {
   listRegisteredSkills,
   syncSkillsToAllAgents
 } from './skills-engine.mjs';
+import {
+  generatePlaybook,
+  listPlaybooks,
+  inspectPlaybook,
+  evolvePlaybook,
+  captureLearningMoment,
+  installSelfEvolveHooks
+} from './self-evolve-engine.mjs';
 
 const VERSION = '1.15.1';
 const MARKER_START = '<!-- agent-kernel:start -->';
@@ -1721,6 +1729,14 @@ function commandHook(kind) {
     process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext } }));
     return;
   }
+  if (kind === 'self-evolve') {
+    const prompt = input.prompt || input.user_prompt || '';
+    const toolResult = input.tool_response || input.toolResult || '';
+    const agentName = input.agent_name || input.agentName || 'unknown';
+    captureLearningMoment({ prompt, toolResult, agentName, type: 'auto_observe' });
+    process.stdout.write(JSON.stringify({}));
+    return;
+  }
   if (kind === 'session-end') {
     commandEpisode({ _: ['sync'], limit: 25 });
     return;
@@ -2378,15 +2394,84 @@ function commandSkills(flags = {}) {
   process.exitCode = 1;
 }
 
+function commandEvolve(flags = {}) {
+  const sub = flags._ ? flags._[0] : 'list';
+
+  if (sub === 'list') {
+    const playbooks = listPlaybooks();
+    print(`Agent Kernel Playbooks (${playbooks.length}):`);
+    playbooks.forEach(p => {
+      print(`- [${p.id}] ${p.title} (v${p.version})`);
+      print(`    Topic: ${p.topic} | Success Rate: ${(p.metrics.successRate * 100).toFixed(0)}% (${p.metrics.successCount}/${p.metrics.runCount})`);
+      print(`    Last Evolved: ${p.metadata.lastEvolvedAt}`);
+    });
+    return;
+  }
+
+  if (sub === 'inspect') {
+    const id = flags._ ? flags._[1] : null;
+    if (!id) {
+      error('Usage: agent-kernel evolve inspect <playbook-id>');
+      process.exitCode = 1;
+      return;
+    }
+    const playbook = inspectPlaybook(id);
+    if (!playbook) {
+      error(`Playbook not found: ${id}`);
+      process.exitCode = 1;
+      return;
+    }
+    print(JSON.stringify(playbook, null, 2));
+    return;
+  }
+
+  if (sub === 'generate') {
+    const title = flags.title || 'Auto Generated Playbook';
+    const topic = flags.topic || 'general';
+    const playbook = generatePlaybook({ title, topic });
+    print(`Generated Playbook (${playbook.id}) - ${playbook.title}`);
+    return;
+  }
+
+  if (sub === 'repair' || sub === 'evolve') {
+    const id = flags._ ? flags._[1] : null;
+    if (!id) {
+      error('Usage: agent-kernel evolve repair <playbook-id> [--reason ""]');
+      process.exitCode = 1;
+      return;
+    }
+    const updated = evolvePlaybook(id, { outcome: 'success', reason: flags.reason || 'Manual evolution trigger' });
+    if (!updated) {
+      error(`Failed to evolve playbook: ${id}`);
+      process.exitCode = 1;
+      return;
+    }
+    print(`Evolved Playbook ${updated.id} to v${updated.version}`);
+    return;
+  }
+
+  if (sub === 'hooks') {
+    const installed = installSelfEvolveHooks();
+    print(`Installed Self-Evolve Hooks across AI Agent harnesses (${installed.length}):`);
+    installed.forEach(h => {
+      print(`- ${h.target}: ${h.path} (${h.updated ? 'Updated' : 'Up to date'})`);
+    });
+    return;
+  }
+
+  error('Unknown evolve subcommand. Usage: agent-kernel evolve <list|inspect|generate|repair|hooks>');
+  process.exitCode = 1;
+}
+
 function usage() {
-  print(`agent-kernel ${VERSION}\n\nUsage:\n  agent-kernel init [--sync] [--enforce]\n  agent-kernel doctor\n  agent-kernel compile\n  agent-kernel sync\n  agent-kernel link [project] [--hooks]\n  agent-kernel env <link|push|pull|status|list|unlink>\n  agent-kernel skills <list|inspect|sync|install>\n  agent-kernel remember "rule text" [--type rule] [--level critical] [--publish]\n  agent-kernel propose --from claude --text "rule text" --reason "..."\n  agent-kernel inbox\n  agent-kernel approve <id> [--publish]\n  agent-kernel reject <id>\n  agent-kernel publish\n  agent-kernel enforce install\n  agent-kernel guard [--staged|--file path|--command "shell command"] [--json]\n  agent-kernel git-hook install [project]\n  agent-kernel start <claude|codex|cursor|antigravity|gemini> [project]\n  agent-kernel policy <check|sync> <policyId>\n  agent-kernel status\n`);
+  print(`agent-kernel ${VERSION}\n\nUsage:\n  agent-kernel init [--sync] [--enforce]\n  agent-kernel doctor\n  agent-kernel compile\n  agent-kernel sync\n  agent-kernel link [project] [--hooks]\n  agent-kernel env <link|push|pull|status|list|unlink>\n  agent-kernel skills <list|inspect|sync|install>\n  agent-kernel evolve <list|inspect|generate|repair|hooks>\n  agent-kernel remember "rule text" [--type rule] [--level critical] [--publish]\n  agent-kernel propose --from claude --text "rule text" --reason "..."\n  agent-kernel inbox\n  agent-kernel approve <id> [--publish]\n  agent-kernel reject <id>\n  agent-kernel publish\n  agent-kernel enforce install\n  agent-kernel guard [--staged|--file path|--command "shell command"] [--json]\n  agent-kernel git-hook install [project]\n  agent-kernel start <claude|codex|cursor|antigravity|gemini> [project]\n  agent-kernel policy <check|sync> <policyId>\n  agent-kernel status\n`);
 }
 
 async function main() {
   const argv = process.argv.slice(2);
   const cmd = argv[0];
   const sub = argv[1];
-  const subcommandFamilies = new Set(['enforce', 'git-hook', 'migrate', 'memory', 'mcp', 'episode', 'policy', 'env', 'skills']);
+  const subcommandFamilies = new Set(['enforce', 'git-hook', 'migrate', 'memory', 'mcp', 'episode', 'policy', 'env', 'skills', 'evolve']);
   const flags = parseFlags(argv.slice(subcommandFamilies.has(cmd) ? 2 : 1));
   if (subcommandFamilies.has(cmd)) flags._ = [sub, ...(flags._ || [])].filter(Boolean);
   if (!cmd || cmd === '-h' || cmd === '--help' || cmd === 'help') return usage();
@@ -2398,6 +2483,7 @@ async function main() {
   if (cmd === 'link') return commandLink(flags);
   if (cmd === 'env') return commandEnv(flags);
   if (cmd === 'skills') return commandSkills(flags);
+  if (cmd === 'evolve') return commandEvolve(flags);
   if (cmd === 'remember') return commandRemember(flags);
   if (cmd === 'propose') return commandPropose(flags);
   if (cmd === 'inbox') return commandInbox(flags);

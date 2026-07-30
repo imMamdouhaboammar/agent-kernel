@@ -58,6 +58,7 @@ import { run as runPackageFiles } from './package-files.mjs';
 import { run as runPolicy } from './policy.mjs';
 import { run as runEnvVault } from './env-vault.mjs';
 import { run as runSkillsEngine } from './skills-engine.mjs';
+import { run as runSelfEvolveEngine } from './self-evolve-engine.mjs';
 import { run as runDocLinks } from './doc-links.mjs';
 import { run as runCliStatusJson } from './cli-status-json.mjs';
 import { run as runProjectContextBroker } from './project-context-broker.test.mjs';
@@ -197,6 +198,7 @@ const tests = [
   ['policy', runPolicy],
   ['env-vault', runEnvVault],
   ['skills-engine', runSkillsEngine],
+  ['self-evolve-engine', runSelfEvolveEngine],
   ['doc-links', runDocLinks],
   ['cli-status-json', runCliStatusJson],
   ['project-context-broker', runProjectContextBrokerCompat],

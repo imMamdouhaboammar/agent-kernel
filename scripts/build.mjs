@@ -124,6 +124,10 @@ const skillsEngineSrc = join(root, 'src', 'skills-engine.mjs');
 const skillsEngineDist = join(root, 'dist', 'skills-engine.mjs');
 copyFileSync(skillsEngineSrc, skillsEngineDist);
 
+const selfEvolveSrc = join(root, 'src', 'self-evolve-engine.mjs');
+const selfEvolveDist = join(root, 'dist', 'self-evolve-engine.mjs');
+copyFileSync(selfEvolveSrc, selfEvolveDist);
+
 const currentMode = statSync(distPath).mode;
 if (!(currentMode & 0o111)) {
   chmodSync(distPath, 0o755);

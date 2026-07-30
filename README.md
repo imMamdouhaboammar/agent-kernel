@@ -784,6 +784,31 @@ agent-kernel skills sync
 - **Multi-Agent Sync:** Syncs operational skills automatically into `~/.claude/skills/`, `~/.codex/skills/`, `~/.gemini/config/skills/`, and `~/.agents/skills/`.
 - **Universal `SKILL.md` Specs:** Standardized YAML frontmatter + trigger definitions so agents know when and how to invoke Agent Kernel commands.
 
+## Self-Evolve & Self-Learning Engine (`agent-kernel evolve`)
+
+Agent Kernel captures session execution traces, user corrections (`/learn`), and successful multi-step task resolutions, synthesizing them into versioned, executable **Playbooks** that continuously improve over time.
+
+```bash
+# Generate a new Playbook from workflow
+agent-kernel evolve generate --title "Full Next.js Auth Setup" --topic "auth"
+
+# List all synthesized Playbooks and evolution statistics
+agent-kernel evolve list
+
+# Inspect Playbook steps, metrics, and evolutionary history
+agent-kernel evolve inspect <playbookId>
+
+# Evolve / Repair a Playbook following a fix or improvement
+agent-kernel evolve repair <playbookId> --reason "Optimized Supabase client initialization"
+
+# Install Universal Self-Evolve Hooks across Antigravity, Claude, Codex, OpenCode
+agent-kernel evolve hooks
+```
+
+- **Automated Playbook Synthesis:** Converts repeated, successful multi-step workflows into reusable Playbooks stored at `~/.agent-kernel/evolution/playbooks/`.
+- **Versioned Evolution:** Tracks `runCount`, `successRate`, and increments Playbook versions (v1.0 -> v1.1) upon repair or evolution.
+- **Universal Hook Auto-Registration:** Installs `agent-kernel hook self-evolve` into Antigravity (`~/.gemini/config/hooks.json`), Claude (`~/.claude/hooks.json`), Codex (`~/.codex/hooks.json`), and OpenCode (`~/.opencode/hooks.json`).
+
 ---
 
 ## Development
