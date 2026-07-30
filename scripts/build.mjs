@@ -116,6 +116,10 @@ if (srcText !== readFileSync(srcPath, 'utf8')) {
 
 // Step 4: copy to dist and ensure it is executable.
 copyFileSync(srcPath, distPath);
+const envVaultSrc = join(root, 'src', 'env-vault.mjs');
+const envVaultDist = join(root, 'dist', 'env-vault.mjs');
+copyFileSync(envVaultSrc, envVaultDist);
+
 const currentMode = statSync(distPath).mode;
 if (!(currentMode & 0o111)) {
   chmodSync(distPath, 0o755);

@@ -5,6 +5,14 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import childProcess from 'node:child_process';
 import readline from 'node:readline';
+import {
+  vaultLinkProject,
+  vaultSyncProject,
+  vaultRestoreProject,
+  vaultGetStatus,
+  vaultListProjects,
+  vaultUnlinkProject
+} from './env-vault.mjs';
 
 const VERSION = '1.15.1';
 const MARKER_START = '<!-- agent-kernel:start -->';
@@ -1691,8 +1699,22 @@ function commandHook(kind) {
   if (kind === 'session-start') {
     const p = kernelPaths();
     commandCompile({ quiet: true });
-    const context = readText(path.join(p.dist, 'AGENTS.md')).slice(0, 12000);
-    process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: context } }));
+    let additionalContext = readText(path.join(p.dist, 'AGENTS.md')).slice(0, 12000);
+
+    const status = vaultGetStatus(cwd);
+    if (status.linked) {
+      const missingFiles = status.diffs.filter(d => d.status === 'MISSING_LOCAL');
+      if (missingFiles.length > 0) {
+        const restoreRes = vaultRestoreProject(cwd);
+        if (restoreRes.ok) {
+          additionalContext += `\n\n[Agent Kernel Env Vault] Automatically restored missing environment files from vault: ${restoreRes.restoredFiles.join(', ')} (Fingerprint: ${restoreRes.fingerprint}).`;
+        }
+      } else {
+        vaultSyncProject(cwd);
+      }
+    }
+
+    process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext } }));
     return;
   }
   if (kind === 'session-end') {
@@ -1730,6 +1752,11 @@ function commandHook(kind) {
   if (kind === 'post-tool-use') {
     const toolInput = input.tool_input || input.toolInput || {};
     const filePath = toolInput.file_path || toolInput.path || toolInput.filename;
+
+    if (filePath && (filePath.endsWith('.env') || filePath.includes('.env.'))) {
+      vaultSyncProject(cwd);
+    }
+
     const root = gitRoot(cwd);
     const files = filePath ? [path.resolve(cwd, filePath)] : listFiles(root);
     const violations = scanFiles(root, files);
@@ -2224,15 +2251,90 @@ function commandPolicy(flags = {}) {
   process.exitCode = 1;
 }
 
+function commandEnv(flags = {}) {
+  const sub = flags._ ? flags._[0] : 'status';
+  const targetDir = flags._ ? flags._[1] || '.' : '.';
+
+  if (sub === 'link') {
+    const res = vaultLinkProject(targetDir);
+    print(`Linked project to Env Vault.`);
+    print(`- Fingerprint: ${res.fingerprint}`);
+    print(`- Git Remote: ${res.gitRemote || 'N/A'}`);
+    print(`- Synced files: ${res.syncedFiles.join(', ') || 'None'}`);
+    return;
+  }
+
+  if (sub === 'push' || sub === 'sync') {
+    const res = vaultSyncProject(targetDir);
+    print(`Env Vault synchronized.`);
+    print(`- Synced files: ${res.syncedFiles.join(', ') || 'None'}`);
+    print(`- Changes updated: ${res.updated ? 'YES' : 'NO (Up to date)'}`);
+    return;
+  }
+
+  if (sub === 'pull' || sub === 'restore') {
+    const res = vaultRestoreProject(targetDir);
+    if (!res.ok) {
+      error(res.reason);
+      process.exitCode = 1;
+      return;
+    }
+    print(`Restored .env from Env Vault.`);
+    print(`- Fingerprint: ${res.fingerprint}`);
+    print(`- Restored files: ${res.restoredFiles.join(', ')}`);
+    return;
+  }
+
+  if (sub === 'status') {
+    const status = vaultGetStatus(targetDir);
+    print(`Env Vault Status:`);
+    print(`- Linked: ${status.linked ? 'YES' : 'NO'}`);
+    print(`- Fingerprint: ${status.fingerprint}`);
+    print(`- Git Remote: ${status.gitRemote || 'N/A'}`);
+    if (status.linked) {
+      print(`- Last Synced: ${status.lastSyncedAt}`);
+      print(`- Files:`);
+      status.diffs.forEach(d => print(`    [${d.status}] ${d.file}`));
+    }
+    return;
+  }
+
+  if (sub === 'list') {
+    const projects = vaultListProjects();
+    print(`Env Vault Backed Projects (${projects.length}):`);
+    projects.forEach(p => {
+      print(`- ${p.projectName} [${p.fingerprint}]`);
+      print(`    Remote: ${p.gitRemote || 'N/A'}`);
+      print(`    Path: ${p.lastKnownPath}`);
+      print(`    Files: ${p.files.join(', ')}`);
+    });
+    return;
+  }
+
+  if (sub === 'unlink') {
+    const res = vaultUnlinkProject(targetDir);
+    if (!res.ok) {
+      error(res.reason);
+      process.exitCode = 1;
+      return;
+    }
+    print(`Unlinked project from Env Vault (${res.fingerprint}).`);
+    return;
+  }
+
+  error('Unknown env subcommand. Usage: agent-kernel env <link|push|pull|status|list|unlink>');
+  process.exitCode = 1;
+}
+
 function usage() {
-  print(`agent-kernel ${VERSION}\n\nUsage:\n  agent-kernel init [--sync] [--enforce]\n  agent-kernel doctor\n  agent-kernel compile\n  agent-kernel sync\n  agent-kernel link [project] [--hooks]\n  agent-kernel remember "rule text" [--type rule] [--level critical] [--publish]\n  agent-kernel propose --from claude --text "rule text" --reason "..."\n  agent-kernel inbox\n  agent-kernel approve <id> [--publish]\n  agent-kernel reject <id>\n  agent-kernel publish\n  agent-kernel enforce install\n  agent-kernel guard [--staged|--file path|--command "shell command"] [--json]\n  agent-kernel git-hook install [project]\n  agent-kernel start <claude|codex|cursor|antigravity|gemini> [project]\n  agent-kernel policy <check|sync> <policyId>\n  agent-kernel status\n`);
+  print(`agent-kernel ${VERSION}\n\nUsage:\n  agent-kernel init [--sync] [--enforce]\n  agent-kernel doctor\n  agent-kernel compile\n  agent-kernel sync\n  agent-kernel link [project] [--hooks]\n  agent-kernel env <link|push|pull|status|list|unlink>\n  agent-kernel remember "rule text" [--type rule] [--level critical] [--publish]\n  agent-kernel propose --from claude --text "rule text" --reason "..."\n  agent-kernel inbox\n  agent-kernel approve <id> [--publish]\n  agent-kernel reject <id>\n  agent-kernel publish\n  agent-kernel enforce install\n  agent-kernel guard [--staged|--file path|--command "shell command"] [--json]\n  agent-kernel git-hook install [project]\n  agent-kernel start <claude|codex|cursor|antigravity|gemini> [project]\n  agent-kernel policy <check|sync> <policyId>\n  agent-kernel status\n`);
 }
 
 async function main() {
   const argv = process.argv.slice(2);
   const cmd = argv[0];
   const sub = argv[1];
-  const subcommandFamilies = new Set(['enforce', 'git-hook', 'migrate', 'memory', 'mcp', 'episode', 'policy']);
+  const subcommandFamilies = new Set(['enforce', 'git-hook', 'migrate', 'memory', 'mcp', 'episode', 'policy', 'env']);
   const flags = parseFlags(argv.slice(subcommandFamilies.has(cmd) ? 2 : 1));
   if (subcommandFamilies.has(cmd)) flags._ = [sub, ...(flags._ || [])].filter(Boolean);
   if (!cmd || cmd === '-h' || cmd === '--help' || cmd === 'help') return usage();
@@ -2242,6 +2344,7 @@ async function main() {
   if (cmd === 'compile') return commandCompile(flags);
   if (cmd === 'sync') return commandSync(flags);
   if (cmd === 'link') return commandLink(flags);
+  if (cmd === 'env') return commandEnv(flags);
   if (cmd === 'remember') return commandRemember(flags);
   if (cmd === 'propose') return commandPropose(flags);
   if (cmd === 'inbox') return commandInbox(flags);

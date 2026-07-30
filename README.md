@@ -738,6 +738,34 @@ It is not part of the current command surface. The proposed design remains revie
 
 Read [`docs/BUNDLE_KB.md`](./docs/BUNDLE_KB.md).
 
+## Environment Vault (`agent-kernel env`)
+
+Agent Kernel automatically mirrors and protects your local `.env` files across directory deletions, fresh clones, and machine migrations using deterministic project fingerprinting (Git Remote / commit hash).
+
+```bash
+# Link project .env to Vault
+agent-kernel env link
+
+# Check sync status and project fingerprint
+agent-kernel env status
+
+# Force push local .env changes to Vault
+agent-kernel env push
+
+# Restore .env files from Vault (e.g. after fresh clone)
+agent-kernel env pull
+
+# List all backed-up project environments on this machine
+agent-kernel env list
+
+# Remove project mirror from Vault
+agent-kernel env unlink
+```
+
+- **Deterministic Fingerprinting:** Uses `git remote.origin.url` (fallback to initial commit hash + folder name) so `.env` is uniquely bound to the project regardless of local path.
+- **Auto-Sync:** Modifying any `.env` file automatically updates the mirror in `~/.agent-kernel/vault/env-mirrors/` via `PostToolUse` hooks.
+- **Auto-Restore:** Starting a session (`SessionStart`) in a fresh clone with a missing `.env` automatically restores the exact environment keys with `0600` permissions.
+
 ---
 
 ## Development
