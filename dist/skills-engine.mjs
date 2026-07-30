@@ -56,10 +56,12 @@ export function syncSkillsToAllAgents(repoRoot) {
 
     for (const targetBaseDir of targetDirs) {
       const destSkillDir = path.join(targetBaseDir, skillName);
-      if (path.resolve(skillSrcDir) === path.resolve(destSkillDir)) {
-        installedPaths.push(destSkillDir);
-        continue;
-      }
+      try {
+        if (fs.existsSync(skillSrcDir) && fs.existsSync(destSkillDir) && fs.realpathSync(skillSrcDir) === fs.realpathSync(destSkillDir)) {
+          installedPaths.push(destSkillDir);
+          continue;
+        }
+      } catch {}
       fs.mkdirSync(destSkillDir, { recursive: true });
       fs.cpSync(skillSrcDir, destSkillDir, { recursive: true });
       installedPaths.push(destSkillDir);
