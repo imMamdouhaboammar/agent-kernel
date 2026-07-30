@@ -1490,6 +1490,140 @@ function commandGuard(flags = {}) {
   print('Agent Kernel Guard: OK');
 }
 
+function extractCommands(command) {
+  if (!command) return [];
+  const results = [];
+  let normalized = command.replace(/\\[\s\S]/g, ' ');
+  const shMatches = normalized.matchAll(/(?:sh|bash|zsh|dash|ksh)\s+-c\s+(["'])([\s\S]*?)\1/g);
+  for (const match of shMatches) {
+    if (match[2]) {
+      results.push(match[2]);
+    }
+  }
+  const parts = normalized.split(/;|&&|\|\||\||\n|`|\$\(/);
+  for (const part of parts) {
+    const trimmed = part.trim();
+    if (trimmed) {
+      results.push(trimmed);
+    }
+  }
+  return [...new Set(results)];
+}
+
+function resolveExecutable(tokens) {
+  let idx = 0;
+  while (idx < tokens.length && tokens[idx].includes('=')) {
+    idx++;
+  }
+  if (idx >= tokens.length) return null;
+  let exe = tokens[idx];
+  if (['env', 'command', 'exec', 'sudo'].includes(exe)) {
+    idx++;
+    while (idx < tokens.length && tokens[idx].includes('=')) {
+      idx++;
+    }
+    if (idx < tokens.length) {
+      exe = tokens[idx];
+    } else {
+      return null;
+    }
+  }
+  return { exe, args: tokens.slice(idx + 1), exeIndex: idx };
+}
+
+function validatePnpmException(cwd) {
+  const repoRoot = gitRoot(cwd);
+  const exceptionPath = path.join(repoRoot, '.agent-kernel', 'package-manager-exception.json');
+  if (!exists(exceptionPath)) {
+    return { valid: false, reason: "No pnpm exception file found at .agent-kernel/package-manager-exception.json" };
+  }
+  let json;
+  try {
+    json = JSON.parse(readText(exceptionPath));
+  } catch (e) {
+    return { valid: false, reason: `Malformed exception file: ${e.message}` };
+  }
+  if (json.policy !== "mandatory-bun-package-manager") {
+    return { valid: false, reason: "Invalid policy ID in exception file." };
+  }
+  if (json.packageManager !== "pnpm") {
+    return { valid: false, reason: "Exceptions are only supported for pnpm." };
+  }
+  if (!['verified_bun_failure', 'verified_monorepo_incompatibility'].includes(json.reasonCode)) {
+    return { valid: false, reason: `Unsupported reasonCode: ${json.reasonCode}` };
+  }
+  if (!json.evidence || !Array.isArray(json.evidence) || json.evidence.length === 0) {
+    return { valid: false, reason: "Required evidence is missing from the exception." };
+  }
+  if (!json.reason || json.reason.trim().length < 10) {
+    return { valid: false, reason: "Detailed technical explanation (reason) is missing or too vague." };
+  }
+  if (!json.bunCommand || !json.bunVersion) {
+    return { valid: false, reason: "bunCommand and bunVersion are required to document the investigation." };
+  }
+  if (json.approvedBy !== "user") {
+    return { valid: false, reason: "Exception must be explicitly approved by the user." };
+  }
+  if (json.reviewAfter) {
+    const expiry = new Date(json.reviewAfter);
+    if (!isNaN(expiry.getTime()) && expiry < new Date()) {
+      return { valid: false, reason: `pnpm exception has expired on ${json.reviewAfter}` };
+    }
+  }
+  return { valid: true, exception: json };
+}
+
+function getBunTranslation(command) {
+  const tokens = command.trim().split(/\s+/);
+  const resolved = resolveExecutable(tokens);
+  if (!resolved) return null;
+  const exeBase = path.basename(resolved.exe);
+  const args = resolved.args;
+  if (exeBase === 'npm') {
+    if (args[0] === 'install' || args[0] === 'i') {
+      return `bun install ${args.slice(1).join(' ')}`;
+    }
+    if (args[0] === 'ci') {
+      return `bun install --frozen-lockfile ${args.slice(1).join(' ')}`;
+    }
+    if (args[0] === 'run') {
+      return `bun run ${args.slice(1).join(' ')}`;
+    }
+    if (args[0] === 'test') {
+      return `bun test ${args.slice(1).join(' ')}`;
+    }
+    return `bun ${args.join(' ')}`;
+  }
+  if (exeBase === 'npx') {
+    return `bunx ${args.join(' ')}`;
+  }
+  if (exeBase === 'yarn') {
+    if (args[0] === 'install') {
+      return `bun install ${args.slice(1).join(' ')}`;
+    }
+    if (args[0] === 'dlx') {
+      return `bunx ${args.slice(1).join(' ')}`;
+    }
+    return `bun run ${args.join(' ')}`;
+  }
+  if (exeBase === 'pnpm') {
+    if (args[0] === 'install' || args[0] === 'i') {
+      if (args.includes('--frozen-lockfile')) {
+        return `bun install --frozen-lockfile ${args.filter(x => x !== '--frozen-lockfile' && x !== 'install' && x !== 'i').join(' ')}`;
+      }
+      return `bun install ${args.slice(1).join(' ')}`;
+    }
+    if (args[0] === 'run') {
+      return `bun run ${args.slice(1).join(' ')}`;
+    }
+    if (args[0] === 'exec' || args[0] === 'dlx') {
+      return `bunx ${args.slice(1).join(' ')}`;
+    }
+    return `bun run ${args.join(' ')}`;
+  }
+  return null;
+}
+
 function checkCommandPolicy(command, cwd) {
   const p = kernelPaths();
   const policy = readJson(path.join(p.dist, 'policy.json'), readJson(p.policies, defaultPolicies()));
@@ -1500,6 +1634,27 @@ function checkCommandPolicy(command, cwd) {
   for (const d of policy.forbiddenDependencyPatterns || []) {
     if (d.whenFileExists && !exists(path.join(cwd, d.whenFileExists))) continue;
     if (new RegExp(d.commandPattern, 'i').test(command)) return d.message;
+  }
+  
+  const extracted = extractCommands(command);
+  for (const subCmd of extracted) {
+    const tokens = subCmd.split(/\s+/).filter(Boolean);
+    const resolved = resolveExecutable(tokens);
+    if (!resolved) continue;
+    const exeBase = path.basename(resolved.exe);
+    if (['npm', 'npx', 'yarn', 'yarnpkg', 'corepack'].includes(exeBase)) {
+      const translation = getBunTranslation(subCmd);
+      const suffix = translation ? `\n\nDid you mean:\n  ${translation}` : "";
+      return `Blocked by mandatory-bun-package-manager.\n\nBun is the mandatory package manager for this system. Use of ${exeBase} is prohibited.${suffix}`;
+    }
+    if (['pnpm', 'pnpx'].includes(exeBase)) {
+      const validation = validatePnpmException(cwd);
+      if (!validation.valid) {
+        const translation = getBunTranslation(subCmd);
+        const suffix = translation ? `\n\nDid you mean:\n  ${translation}` : "";
+        return `Blocked by mandatory-bun-package-manager.\n\nBun must be attempted and investigated before pnpm can be used.\n\nValidation issue:\n  ${validation.reason}\n\nAllowed pnpm exception reasons:\n  1. verified_bun_failure\n  2. verified_monorepo_incompatibility\n\nNo valid repository-scoped exception was found.${suffix}`;
+      }
+    }
   }
   return null;
 }
