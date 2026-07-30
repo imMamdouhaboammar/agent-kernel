@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
+  <title id="title">Agent Kernel architecture hero</title>
+  <desc id="desc">A centered local knowledge kernel compiles approved memory into agent guidance files.</desc>
+  <defs>
+    <style>
+      .mono { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    </style>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="12" flood-color="#000000" flood-opacity="0.22"/>
+    </filter>
+  </defs>
+
+  <rect x="4" y="4" width="1192" height="512" rx="18" fill="#050505"/>
+  <rect x="4.5" y="4.5" width="1191" height="511" rx="17.5" fill="none" stroke="#2A2A2A" stroke-width="1"/>
+
+  <g opacity="0.18" stroke="#2A2A2A" stroke-width="1">
+    <path d="M120 112h960M120 188h960M120 264h960M120 340h960M120 416h960"/>
+    <path d="M180 72v376M300 72v376M420 72v376M540 72v376M660 72v376M780 72v376M900 72v376M1020 72v376"/>
+  </g>
+
+  <g filter="url(#softShadow)">
+    <rect x="418" y="86" width="364" height="348" rx="18" fill="#0B0B0B" stroke="#2A2A2A" stroke-width="1.2"/>
+    <rect x="500" y="118" width="200" height="200" rx="16" fill="#050505" stroke="#2A2A2A" stroke-width="2"/>
+
+    <g shape-rendering="crispEdges" transform="translate(546 158) scale(.84)">
+      <rect x="0" y="0" width="18" height="18" fill="#F4F4F1"/><rect x="18" y="0" width="18" height="18" fill="#F4F4F1"/><rect x="92" y="0" width="18" height="18" fill="#F4F4F1"/><rect x="110" y="0" width="18" height="18" fill="#F4F4F1"/>
+      <rect x="0" y="18" width="18" height="18" fill="#F4F4F1"/><rect x="110" y="18" width="18" height="18" fill="#F4F4F1"/>
+      <rect x="0" y="100" width="18" height="18" fill="#F4F4F1"/><rect x="110" y="100" width="18" height="18" fill="#F4F4F1"/>
+      <rect x="0" y="118" width="18" height="18" fill="#F4F4F1"/><rect x="18" y="118" width="18" height="18" fill="#F4F4F1"/><rect x="92" y="118" width="18" height="18" fill="#F4F4F1"/><rect x="110" y="118" width="18" height="18" fill="#F4F4F1"/>
+      <rect x="36" y="36" width="18" height="18" fill="#8E8E88"/><rect x="74" y="36" width="18" height="18" fill="#8E8E88"/><rect x="36" y="82" width="18" height="18" fill="#8E8E88"/><rect x="74" y="82" width="18" height="18" fill="#8E8E88"/>
+      <rect x="55" y="59" width="18" height="18" fill="#F8F46A"/><rect x="55" y="36" width="18" height="18" fill="#F8F46A"/><rect x="55" y="82" width="18" height="18" fill="#F8F46A"/><rect x="32" y="59" width="18" height="18" fill="#F8F46A"/><rect x="78" y="59" width="18" height="18" fill="#F8F46A"/>
+    </g>
+
+    <g class="mono" text-anchor="middle">
+      <text x="600" y="360" font-size="36" font-weight="650" fill="#F4F4F1" letter-spacing="-1">Agent <tspan fill="#F8F46A">Kernel</tspan></text>
+      <text x="600" y="391" font-size="15" font-weight="400" fill="#8E8E88">approved memory · failure lessons · safe links</text>
+    </g>
+  </g>
+
+  <g class="mono" font-size="14">
+    <g transform="translate(108 96)">
+      <rect width="240" height="66" rx="10" fill="#0B0B0B" stroke="#2A2A2A"/>
+      <text x="120" y="29" text-anchor="middle" font-size="16" font-weight="650" fill="#F4F4F1">Approved memory</text>
+      <text x="120" y="51" text-anchor="middle" fill="#8E8E88">rules · preferences · workflows</text>
+    </g>
+    <g transform="translate(108 226)">
+      <rect width="240" height="66" rx="10" fill="#0B0B0B" stroke="#2A2A2A"/>
+      <text x="120" y="29" text-anchor="middle" font-size="16" font-weight="650" fill="#F4F4F1">Failure lessons</text>
+      <text x="120" y="51" text-anchor="middle" fill="#8E8E88">error · root cause · fix path</text>
+    </g>
+    <g transform="translate(108 356)">
+      <rect width="240" height="66" rx="10" fill="#0B0B0B" stroke="#2A2A2A"/>
+      <text x="120" y="29" text-anchor="middle" font-size="16" font-weight="650" fill="#F4F4F1">Proposal inbox</text>
+      <text x="120" y="51" text-anchor="middle" fill="#8E8E88">agent suggests · user approves</text>
+    </g>
+
+    <g transform="translate(852 96)">
+      <rect width="240" height="66" rx="10" fill="#0B0B0B" stroke="#2A2A2A"/>
+      <text x="120" y="29" text-anchor="middle" font-size="16" font-weight="650" fill="#F4F4F1">Agent surfaces</text>
+      <text x="120" y="51" text-anchor="middle" fill="#8E8E88">Claude · Codex · Cursor · Gemini</text>
+    </g>
+    <g transform="translate(852 226)">
+      <rect width="240" height="66" rx="10" fill="#0B0B0B" stroke="#2A2A2A"/>
+      <text x="120" y="29" text-anchor="middle" font-size="16" font-weight="650" fill="#F4F4F1">Safe project link</text>
+      <text x="120" y="51" text-anchor="middle" fill="#8E8E88">marked blocks · dry run · backups</text>
+    </g>
+    <g transform="translate(852 356)">
+      <rect width="240" height="66" rx="10" fill="#0B0B0B" stroke="#2A2A2A"/>
+      <text x="120" y="29" text-anchor="middle" font-size="16" font-weight="650" fill="#F4F4F1">Optional autopilot</text>
+      <text x="120" y="51" text-anchor="middle" fill="#8E8E88">hooks · guards · MCP · bundles</text>
+    </g>
+  </g>
+
+  <g stroke="#F8F46A" stroke-width="2.2" fill="none" stroke-linecap="round" opacity="0.86">
+    <path d="M348 129H418"/>
+    <path d="M348 259H418"/>
+    <path d="M348 389H418"/>
+    <path d="M782 129H852"/>
+    <path d="M782 259H852"/>
+    <path d="M782 389H852"/>
+  </g>
+</svg>
