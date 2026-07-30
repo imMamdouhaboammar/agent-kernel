@@ -41,7 +41,6 @@ const identityAware = command === 'propose' || command === 'session' || searchId
 const brokerCommand = [
   'projects',
   'auth',
-  'env',
   'provider',
   'gates',
   'approvals',

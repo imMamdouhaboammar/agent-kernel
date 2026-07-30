@@ -337,7 +337,7 @@ function main() {
   }
 
   const brokerPath = path.resolve(here, 'agent-kernel-project-broker.mjs');
-  const brokerCommands = ['project', 'projects', 'auth', 'env', 'provider', 'gates', 'approvals', 'audit', 'connect', 'disconnect'];
+  const brokerCommands = ['project', 'projects', 'auth', 'provider', 'gates', 'approvals', 'audit', 'connect', 'disconnect'];
   if (brokerCommands.includes(command)) {
     runNode(brokerPath, args);
   }
