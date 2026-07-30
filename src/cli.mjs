@@ -1493,7 +1493,7 @@ function commandGuard(flags = {}) {
 function extractCommands(command) {
   if (!command) return [];
   const results = [];
-  let normalized = command.replace(/\\[\s\S]/g, ' ');
+  let normalized = command.replace(/\$IFS/g, ' ').replace(/\\[\s\S]/g, ' ');
   const shMatches = normalized.matchAll(/(?:sh|bash|zsh|dash|ksh)\s+-c\s+(["'])([\s\S]*?)\1/g);
   for (const match of shMatches) {
     if (match[2]) {
