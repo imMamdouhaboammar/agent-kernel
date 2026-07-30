@@ -61,10 +61,17 @@ export function syncSkillsToAllAgents(repoRoot) {
           installedPaths.push(destSkillDir);
           continue;
         }
-      } catch {}
-      fs.mkdirSync(destSkillDir, { recursive: true });
-      fs.cpSync(skillSrcDir, destSkillDir, { recursive: true });
-      installedPaths.push(destSkillDir);
+        if (fs.existsSync(destSkillDir) && fs.lstatSync(destSkillDir).isSymbolicLink()) {
+          // Skip replacing pre-existing symlinks from other frameworks
+          installedPaths.push(destSkillDir);
+          continue;
+        }
+        fs.mkdirSync(destSkillDir, { recursive: true });
+        fs.cpSync(skillSrcDir, destSkillDir, { recursive: true });
+        installedPaths.push(destSkillDir);
+      } catch {
+        // Safe fallthrough for restricted or external symlink targets
+      }
     }
   }
 
