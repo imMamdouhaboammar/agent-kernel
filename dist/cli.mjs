@@ -26,7 +26,7 @@ import {
   installSelfEvolveHooks
 } from './self-evolve-engine.mjs';
 
-const VERSION = '1.18.0';
+const VERSION = '1.19.0';
 const MARKER_START = '<!-- agent-kernel:start -->';
 const MARKER_END = '<!-- agent-kernel:end -->';
 const FILE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;

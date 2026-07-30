@@ -11,19 +11,20 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
 </p>
 
 <p>
-  <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'><img alt='npm version' src='https://img.shields.io/npm/v/@mamdouh-aboammar/agent-kernel?color=F8F46A&labelColor=050505'></a>
-  <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'><img alt='npm downloads' src='https://img.shields.io/npm/dw/@mamdouh-aboammar/agent-kernel?color=10B981&labelColor=050505'></a>
-  <a href='https://bundlephobia.com/package/@mamdouh-aboammar/agent-kernel'><img alt='bundle size' src='https://img.shields.io/bundlephobia/min/@mamdouh-aboammar/agent-kernel?color=38BDF8&labelColor=050505'></a>
-  <a href='https://github.com/imMamdouhaboammar/agent-kernel/actions/workflows/ci.yml'><img alt='CI' src='https://github.com/imMamdouhaboammar/agent-kernel/actions/workflows/ci.yml/badge.svg'></a>
-  <a href='https://github.com/imMamdouhaboammar/agent-kernel/actions/workflows/codacy.yml'><img alt='Codacy' src='https://img.shields.io/github/actions/workflow/status/imMamdouhaboammar/agent-kernel/codacy.yml?branch=master&label=Codacy&logo=codacy'></a>
-  <a href='https://github.com/imMamdouhaboammar/agent-kernel/actions/workflows/coderabbit.yml'><img alt='CodeRabbit AI' src='https://img.shields.io/github/actions/workflow/status/imMamdouhaboammar/agent-kernel/coderabbit.yml?branch=master&label=CodeRabbit%20AI&logo=coderabbit&logoColor=white'></a>
-  <img alt='node' src='https://img.shields.io/badge/node-%3E%3D18.18.0-30363d'>
-  <img alt='runtime dependencies' src='https://img.shields.io/badge/runtime_deps-0-10B981'>
-  <a href='./LICENSE'><img alt='license' src='https://img.shields.io/badge/license-MIT-30363d'></a>
+  <a href='https://github.com/imMamdouhaboammar/agent-kernel'><img alt='tested' src='https://img.shields.io/badge/status-Tested_%E2%9C%93-10B981?style=flat-square&labelColor=050505'></a>
+  <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'><img alt='npm version' src='https://img.shields.io/npm/v/@mamdouh-aboammar/agent-kernel?style=flat-square&color=F8F46A&labelColor=050505'></a>
+  <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'><img alt='npm downloads' src='https://img.shields.io/npm/dw/@mamdouh-aboammar/agent-kernel?style=flat-square&color=10B981&labelColor=050505'></a>
+  <a href='https://bundlephobia.com/package/@mamdouh-aboammar/agent-kernel'><img alt='bundle size' src='https://img.shields.io/bundlephobia/min/@mamdouh-aboammar/agent-kernel?style=flat-square&color=38BDF8&labelColor=050505'></a>
+  <a href='https://github.com/imMamdouhaboammar/agent-kernel/actions/workflows/ci.yml'><img alt='CI' src='https://img.shields.io/github/actions/workflow/status/imMamdouhaboammar/agent-kernel/ci.yml?branch=master&label=CI&style=flat-square&labelColor=050505&color=10B981'></a>
+  <a href='https://github.com/imMamdouhaboammar/agent-kernel/actions/workflows/codacy.yml'><img alt='Codacy' src='https://img.shields.io/github/actions/workflow/status/imMamdouhaboammar/agent-kernel/codacy.yml?branch=master&label=Codacy&logo=codacy&style=flat-square&labelColor=050505'></a>
+  <a href='https://github.com/imMamdouhaboammar/agent-kernel/actions/workflows/coderabbit.yml'><img alt='CodeRabbit AI' src='https://img.shields.io/github/actions/workflow/status/imMamdouhaboammar/agent-kernel/coderabbit.yml?branch=master&label=CodeRabbit%20AI&logo=coderabbit&logoColor=white&style=flat-square&labelColor=050505'></a>
+  <img alt='node' src='https://img.shields.io/badge/node-%3E%3D18.18.0-30363d?style=flat-square&labelColor=050505'>
+  <img alt='runtime dependencies' src='https://img.shields.io/badge/runtime_deps-0-10B981?style=flat-square&labelColor=050505'>
+  <a href='./LICENSE'><img alt='license' src='https://img.shields.io/badge/license-MIT-30363d?style=flat-square&labelColor=050505'></a>
 </p>
 
 <p>
-  <strong>Current stable release: <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'>v1.18.0</a></strong><br />
+  <strong>Current stable release: <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'>v1.19.0</a></strong><br />
   Includes Multi-Scoped Persistent Memory Engine, Self-Healing Failure Remediation Loop, Superpowers Workflows, Universal Setup Command, Environment Vault, and Architecture Guardian.
 </p>
 

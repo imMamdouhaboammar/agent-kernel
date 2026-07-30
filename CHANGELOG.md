@@ -5,6 +5,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.19.0] - 2026-07-30
+
+### Added
+
+- **New Premium Minimal `(Tested ✓)` Badge**: Added dark-mode flat-square verified testing badge (`status-Tested_✓-10B981`) across repository header and documentation surfaces.
+- **Upgraded README & Website Badges Overhaul**: Harmonized badge layout with consistent `#050505` dark label styling, flat-square geometry, and direct status links for CI, Codacy, and CodeRabbit AI.
+- **Enhanced Documentation & Skills Governance**: Refined skills documentation, README setup guides, and website interactive playground output.
+
 ## [1.18.0] - 2026-07-30
 
 ### Added

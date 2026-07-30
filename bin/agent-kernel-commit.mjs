@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-const VERSION = '1.18.0';
+const VERSION = '1.19.0';
 const FILE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
 const INDEX_VERSION = 1;
 const DEFAULT_BUDGET = 2400;
