@@ -44,14 +44,21 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
   </table>
   <table>
     <tr>
-      <td width="50%" valign="top"><strong>Recurring problem</strong><br />Coding agents repeatedly lose repository context, repeat rejected mistakes, misplace environment keys across fresh clones, and weaken architecture boundaries across sessions.</td>
-      <td width="50%" valign="top"><strong>Practical goal</strong><br />Keep durable local memory, encrypted environment mirrors, reviewed rules, failure lessons, and architecture controls around existing coding agents without replacing them.</td>
+      <td width="50%" valign="top"><strong>Recurring problem</strong><br />Coding agents repeatedly lose repository context, repeat rejected mistakes, and weaken architecture boundaries across sessions.</td>
+      <td width="50%" valign="top"><strong>Practical goal</strong><br />Keep durable local memory, reviewed rules, failure lessons, and architecture controls around existing coding agents without replacing them.</td>
     </tr>
     <tr>
-      <td width="50%" valign="top"><strong>Built for</strong><br />Developers and teams using Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity, Kiro, OpenClaw, or AGENTS.md-compatible tools.</td>
-      <td width="50%" valign="top"><strong>Search terms</strong><br />AI coding agent memory · local agent governance · environment vault · self-evolving AI playbooks · architecture guardrails</td>
+      <td width="50%" valign="top"><strong>Built for</strong><br />Developers and teams using Claude Code, Codex, Cursor, Gemini CLI, OpenCode, or AGENTS.md-compatible tools.</td>
+      <td width="50%" valign="top"><strong>Search terms</strong><br />AI coding agent memory · local agent governance · architecture guardrails · coding agent context</td>
     </tr>
   </table>
+  <p><strong>Daily build pulse</strong></p>
+  <ul>
+      <li>Published v1.19.0.</li>
+      <li>19 commits landed: docs: fix badges layout, add release &amp; tested badges, fix SVG image link; release: v1.19.0 — premium minimal Tested badge, badges overhaul, docs &amp; skills update.</li>
+      <li>5 pull requests updated, led by #102: chore(deps): bump github/codeql-action/init from adfda868f108ac4222129de456ea554034a27db7 t….</li>
+      <li>Daily summary covers 26 public activity items from the last 1 day.</li>
+  </ul>
 </details>
 <!-- project-story:end -->
 
