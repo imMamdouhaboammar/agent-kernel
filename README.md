@@ -55,10 +55,9 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
   <p><strong>Daily build pulse</strong></p>
   <ul>
       <li>Published v1.19.0.</li>
-      <li>79 commits landed: docs: fix badges layout, add release &amp; tested badges, fix SVG image link; release: v1.19.0 — premium minimal Tested badge, badges overhaul, docs &amp; skills update.</li>
-      <li>14 pull requests updated, led by #102: chore(deps): bump github/codeql-action/init from adfda868f108ac4222129de456ea554034a27db7 t….</li>
-      <li>5 issues changed, including #99: [CodeRabbit AI] Action Required on PR #98: fix(broker): complete post-merge entrypoint hard….</li>
-      <li>Daily summary covers 101 public activity items from the last 7 days.</li>
+      <li>24 commits landed: docs: fix badges layout, add release &amp; tested badges, fix SVG image link; release: v1.19.0 — premium minimal Tested badge, badges overhaul, docs &amp; skills update.</li>
+      <li>11 pull requests updated, led by #102: chore(deps): bump github/codeql-action/init from adfda868f108ac4222129de456ea554034a27db7 t….</li>
+      <li>Daily summary covers 37 public activity items from the last 7 days.</li>
   </ul>
 </details>
 <!-- project-story:end -->
