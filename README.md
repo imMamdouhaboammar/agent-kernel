@@ -54,10 +54,9 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
   </table>
   <p><strong>Daily build pulse</strong></p>
   <ul>
-      <li>Published v1.19.0.</li>
-      <li>24 commits landed: docs: fix badges layout, add release &amp; tested badges, fix SVG image link; release: v1.19.0 — premium minimal Tested badge, badges overhaul, docs &amp; skills update.</li>
-      <li>11 pull requests updated, led by #102: chore(deps): bump github/codeql-action/init from adfda868f108ac4222129de456ea554034a27db7 t….</li>
-      <li>Daily summary covers 37 public activity items from the last 7 days.</li>
+      <li>1 issue changed, including #111: docs: Add examples and troubleshooting guide for agent-kernel CLI setup.</li>
+      <li>Daily summary covers 1 public activity item from the last 1 day.</li>
+      <li>Documentation and project status remain aligned with the repository’s current public state.</li>
   </ul>
 </details>
 <!-- project-story:end -->
