@@ -185,23 +185,32 @@ export async function run() {
     assert.equal(fs.existsSync(path.join(project, '.env')), false, 'failed integrity check must not create a local file');
 
     const router = path.join(repo.root, 'bin', 'agent-kernel-router.mjs');
-    const output = childProcess.execFileSync(
-      process.execPath,
-      [router, 'env', 'status', project, '--json'],
-      {
-        cwd: repo.root,
-        env: {
-          ...process.env,
-          AGENT_KERNEL_HOME: kernelHome,
-          HOME: homeDir,
-          USERPROFILE: homeDir
-        },
-        encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'pipe']
-      }
-    );
+    let output = '';
+    let exitStatus = 0;
+    try {
+      output = childProcess.execFileSync(
+        process.execPath,
+        [router, 'env', 'status', project, '--json'],
+        {
+          cwd: repo.root,
+          env: {
+            ...process.env,
+            AGENT_KERNEL_HOME: kernelHome,
+            HOME: homeDir,
+            USERPROFILE: homeDir
+          },
+          encoding: 'utf8',
+          stdio: ['ignore', 'pipe', 'pipe']
+        }
+      );
+    } catch (error) {
+      exitStatus = error.status ?? 1;
+      output = error.stdout?.toString() ?? '';
+    }
+    assert.equal(exitStatus, 2, 'unhealthy vault status must exit with code 2');
     const status = JSON.parse(output);
     assert.equal(status.linked, true);
+    assert.equal(status.healthy, false);
     assert(!output.includes('alpha'), 'JSON status must never contain secret values');
     assert(!output.includes('nested'), 'JSON status must never contain nested secret values');
   });
