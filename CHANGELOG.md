@@ -5,6 +5,28 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Added Project Environment Vault v2 with a routed `agent-kernel env` command, recursive Monorepo discovery, explicit include and exclude paths, revision history, watcher support, doctor diagnostics, and JSON output
+- Added stable project identity across credential-bearing HTTPS, SSH, SCP-style Git remotes, initial commit fallback, and explicit path identity opt-in
+- Added conflict-aware pull behavior, project-local backups before forced overwrite, separate unlink and purge operations, and legacy Vault migration with retained backups
+
+### Security
+
+- Added full SHA256 project fingerprints, remote credential removal, project-root path containment, regular-file validation, final-component symlink rejection, bounded file sizes, owner-only storage, atomic writes, parent-directory synchronization, and per-vault writer locks
+- Changed automatic restore to missing-only behavior and blocked differing local files unless force is explicit
+- Made corrupt manifests, unsupported versions, invalid hashes, traversal paths, missing stored files, and unsafe file types fail closed
+
+### Changed
+
+- Environment Vault storage now respects `AGENT_KERNEL_HOME` and uses `vault/env/<full-sha256>/`
+- The public router now resolves runtime shims from the configured Agent Kernel home and routes the Environment Vault command through a focused executable
+- The build now copies the Environment Vault facade and modules into `dist` for installed-package execution
+
+### Documentation
+
+- Added `docs/ENVIRONMENT_VAULT.md` and updated README, architecture, troubleshooting, command reference, documentation navigation, operations skill, design spec, and implementation plan
+
 ## [1.19.0] - 2026-07-30
 
 ### Added
