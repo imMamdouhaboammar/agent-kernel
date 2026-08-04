@@ -3,7 +3,7 @@ name: agent-kernel-ops
 description: Operational guide for agents working with Agent Kernel environment files, memory proposals, policies, and diagnostics
 ---
 
-# Agent Kernel Operations Guide
+# Agent Kernel Universal Operations Guide
 
 Use this skill when the user mentions `agent-kernel`, `.env`, Environment Vault, memory proposals, agent rules, policies, or runtime diagnostics
 
