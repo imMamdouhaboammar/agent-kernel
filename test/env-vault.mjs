@@ -56,6 +56,16 @@ function regularFiles(root) {
   return out;
 }
 
+function createDirectorySymlink(target, linkPath) {
+  try {
+    fs.symlinkSync(target, linkPath, process.platform === 'win32' ? 'junction' : 'dir');
+    return true;
+  } catch (error) {
+    if (process.platform === 'win32' && ['EPERM', 'EACCES'].includes(error.code)) return false;
+    throw error;
+  }
+}
+
 export async function run() {
   const homeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-kernel-env-v2-'));
   const kernelHome = path.join(homeDir, 'custom-kernel-home');
@@ -92,6 +102,13 @@ export async function run() {
     const pathIdentity = vault.calculateProjectIdentity(pathOnly, { allowPathIdentity: true });
     assert.equal(pathIdentity.source, 'path');
     assert.equal(pathIdentity.fingerprint.length, 64);
+
+    const unlinked = createGitProject(fixtureRoot, 'unlinked-project', 'git@github.com:Owner/Unlinked.git');
+    fs.writeFileSync(path.join(unlinked, '.env'), 'UNLINKED_SECRET=value\n', 'utf8');
+    const unlinkedSync = vault.vaultSyncProject(unlinked);
+    assert.equal(unlinkedSync.ok, false, 'push must not create a vault before explicit env link');
+    assert.match(unlinkedSync.reason, /not linked|env link/i);
+    assert.equal(vault.vaultGetStatus(unlinked).linked, false, 'failed push must leave project unlinked');
 
     fs.mkdirSync(path.join(project, 'apps', 'api'), { recursive: true });
     fs.writeFileSync(path.join(project, '.env'), 'SECRET_VALUE=alpha\n', { mode: 0o644 });
@@ -143,24 +160,57 @@ export async function run() {
       );
     }
 
-    const router = path.join(repo.root, 'bin', 'agent-kernel-router.mjs');
-    const output = childProcess.execFileSync(
-      process.execPath,
-      [router, 'env', 'status', project, '--json'],
-      {
-        cwd: repo.root,
-        env: {
-          ...process.env,
-          AGENT_KERNEL_HOME: kernelHome,
-          HOME: homeDir,
-          USERPROFILE: homeDir
-        },
-        encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'pipe']
-      }
+    const outsideDirectory = path.join(homeDir, 'outside-directory');
+    const linkedDirectory = path.join(project, 'linked-directory');
+    fs.mkdirSync(outsideDirectory, { recursive: true });
+    fs.writeFileSync(path.join(outsideDirectory, '.env.parent'), 'PARENT_ESCAPE=value\n', 'utf8');
+    if (createDirectorySymlink(outsideDirectory, linkedDirectory)) {
+      assert.throws(
+        () => vault.vaultSyncProject(project, { files: ['linked-directory/.env.parent'] }),
+        /symlink|project root|unsafe path/i,
+        'environment files behind a symlinked parent must be rejected'
+      );
+    }
+
+    const manifest = JSON.parse(fs.readFileSync(path.join(linked.vaultDir, 'manifest.json'), 'utf8'));
+    const envEntry = manifest.files['.env'];
+    const revisionPath = path.join(linked.vaultDir, 'revisions', envEntry.revision, envEntry.storageKey);
+    fs.writeFileSync(revisionPath, 'TAMPERED_REVISION=value\n', 'utf8');
+    fs.rmSync(path.join(project, '.env'));
+    assert.throws(
+      () => vault.vaultRestoreProject(project, { files: ['.env'] }),
+      /integrity|sha256|hash|revision/i,
+      'restore must verify the referenced revision before writing a local file'
     );
+    assert.equal(fs.existsSync(path.join(project, '.env')), false, 'failed integrity check must not create a local file');
+
+    const router = path.join(repo.root, 'bin', 'agent-kernel-router.mjs');
+    let output = '';
+    let exitStatus = 0;
+    try {
+      output = childProcess.execFileSync(
+        process.execPath,
+        [router, 'env', 'status', project, '--json'],
+        {
+          cwd: repo.root,
+          env: {
+            ...process.env,
+            AGENT_KERNEL_HOME: kernelHome,
+            HOME: homeDir,
+            USERPROFILE: homeDir
+          },
+          encoding: 'utf8',
+          stdio: ['ignore', 'pipe', 'pipe']
+        }
+      );
+    } catch (error) {
+      exitStatus = error.status ?? 1;
+      output = error.stdout?.toString() ?? '';
+    }
+    assert.equal(exitStatus, 2, 'unhealthy vault status must exit with code 2');
     const status = JSON.parse(output);
     assert.equal(status.linked, true);
+    assert.equal(status.healthy, false);
     assert(!output.includes('alpha'), 'JSON status must never contain secret values');
     assert(!output.includes('nested'), 'JSON status must never contain nested secret values');
   });

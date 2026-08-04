@@ -20,7 +20,7 @@ export {
   vaultRestoreRevision,
   vaultSyncProject,
   vaultUnlinkProject
-} from './env-vault/engine.mjs';
+} from './env-vault/secure-engine.mjs';
 
 export { watchVaultProject } from './env-vault/watcher.mjs';
 

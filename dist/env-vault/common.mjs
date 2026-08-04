@@ -41,16 +41,43 @@ export function normalizeRelativePath(value) {
   return normalized;
 }
 
+function containedRelativePath(projectRoot, absolutePath, originalValue) {
+  const root = path.resolve(projectRoot);
+  const absolute = path.resolve(absolutePath);
+  const relative = path.relative(root, absolute);
+  if (!relative || relative === '.') throw new Error('Environment file path must identify a file');
+  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    throw new Error(`Environment file path escapes the project root: ${originalValue}`);
+  }
+  return { root, absolute, relative };
+}
+
+export function assertNoSymlinkComponents(projectRoot, absolutePath) {
+  const { root, absolute, relative } = containedRelativePath(projectRoot, absolutePath, absolutePath);
+  let current = root;
+  for (const component of relative.split(path.sep)) {
+    current = path.join(current, component);
+    let stat;
+    try {
+      stat = fs.lstatSync(current);
+    } catch (error) {
+      if (error.code === 'ENOENT') break;
+      throw error;
+    }
+    if (stat.isSymbolicLink()) {
+      throw new Error(`Refusing environment path through symlinked component: ${current}`);
+    }
+  }
+  return absolute;
+}
+
 export function projectRelativePath(projectRoot, value) {
   const root = path.resolve(projectRoot);
   const absolute = path.isAbsolute(String(value || ''))
     ? path.resolve(String(value))
     : path.resolve(root, ...normalizeRelativePath(value).split('/'));
-  const relative = path.relative(root, absolute);
-  if (!relative || relative === '.') throw new Error('Environment file path must identify a file');
-  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
-    throw new Error(`Environment file path escapes the project root: ${value}`);
-  }
+  const { relative } = containedRelativePath(root, absolute, value);
+  assertNoSymlinkComponents(root, absolute);
   return relative.split(path.sep).join('/');
 }
 
@@ -58,11 +85,8 @@ export function projectFilePath(projectRoot, relativePath) {
   const normalized = normalizeRelativePath(relativePath);
   const root = path.resolve(projectRoot);
   const absolute = path.resolve(root, ...normalized.split('/'));
-  const relative = path.relative(root, absolute);
-  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
-    throw new Error(`Environment file path escapes the project root: ${relativePath}`);
-  }
-  return absolute;
+  containedRelativePath(root, absolute, relativePath);
+  return assertNoSymlinkComponents(root, absolute);
 }
 
 export function encodeStorageKey(relativePath) {
