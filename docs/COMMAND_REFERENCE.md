@@ -1,6 +1,6 @@
 # Command reference
 
-This is the canonical user-facing command map for Agent Kernel `1.15.1`.
+This is the canonical user-facing command map for Agent Kernel `1.19.0`.
 
 The `agent-kernel` and `ak` commands route to focused runtime helpers. Use the routed command unless a helper binary is required by an integration, hook, or recovery procedure.
 
@@ -32,6 +32,51 @@ The `agent-kernel` and `ak` commands route to focused runtime helpers. Use the r
 | `agent-kernel memory` with `list`, `search`, or `show` | Inspect approved memory. |
 
 Common memory options include `--type`, `--scope`, `--level`, `--targets`, and `--tags`. Agents should create proposals; they should not silently approve or publish.
+
+## Project Environment Vault
+
+Environment Vault stores selected project environment files locally under the configured Agent Kernel home
+
+```text
+${AGENT_KERNEL_HOME:-~/.agent-kernel}/vault/env/<full-sha256>/
+```
+
+| Command | Purpose |
+|---|---|
+| `agent-kernel env link [project] [options]` | Resolve stable project identity, discover environment files, create the version 2 manifest, and store initial revisions |
+| `agent-kernel env status [project] [--json]` | Report identity, health, selected files, conflicts, missing files, and permission drift without secret contents |
+| `agent-kernel env push [project] [--file path] [--prune] [--dry-run]` | Store changed local files and create revisions |
+| `agent-kernel env pull [project] [--file path] [--force] [--no-backup] [--dry-run]` | Restore missing files and refuse differing local content unless force is explicit |
+| `agent-kernel env watch [project] [--interval seconds]` | Watch linked file parents with debounce and periodic reconciliation |
+| `agent-kernel env doctor [project] [--repair-permissions] [--migrate]` | Validate manifests, stored files, locks, permissions, and optional legacy migration |
+| `agent-kernel env history [project] [--file path] [--json]` | List revision metadata without secret content |
+| `agent-kernel env restore [project] --file path --revision id [--force]` | Restore a selected revision through the same conflict and backup rules as pull |
+| `agent-kernel env list [--json]` | List local Vault identities, health, linked paths, and file names |
+| `agent-kernel env unlink [project]` | Detach the current path while retaining stored files and revisions |
+| `agent-kernel env purge [project] --yes` | Delete stored data for the exact resolved identity |
+
+Common link options
+
+```text
+--include path
+--exclude pattern
+--allow-empty
+--allow-path-identity
+--max-bytes number
+--json
+```
+
+Common SSH and HTTPS forms for the same repository resolve to one identity
+
+Path identity requires explicit opt-in and does not survive moving the project folder
+
+Normal pull and automatic session restore do not overwrite differing local files
+
+Forced restore creates a backup under `<project>/.agent-kernel/env-backups/<timestamp>/` unless `--no-backup` is explicit
+
+Vault directories use `0700` and protected files use `0600` on POSIX systems
+
+Read `docs/ENVIRONMENT_VAULT.md` for discovery rules, migration, storage behavior, and threat boundaries
 
 ## Search, context, and runtime evidence
 

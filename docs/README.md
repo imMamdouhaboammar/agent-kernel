@@ -12,6 +12,7 @@ Use it to understand the current runtime, connect agent surfaces, update memory 
 |---|---|---|
 | I want to install and use Agent Kernel | `INSTALL_AND_AGENT_SETUP.md` | `COMMAND_REFERENCE.md`, `ENVIRONMENT_VARIABLES.md`, `OPERATING_MODEL.md` |
 | I want to connect any software project to Agent Kernel | `PROJECT_CONNECTION.md` | `INSTALL_AND_AGENT_SETUP.md`, `SAFE_LINKING.md` |
+| I want to preserve local project environment files safely | `ENVIRONMENT_VAULT.md` | `COMMAND_REFERENCE.md`, `TROUBLESHOOTING.md`, `ARCHITECTURE_NOW.md` |
 | I want to inspect pending, approved, rejected, memory, episode, failure, and runtime state in a browser | `STATIC_MEMORY_DASHBOARD.md` | `RETENTION_AND_PORTABILITY.md`, `MEMORY_PROTOCOL.md` |
 | I want trusted agents to check or apply Agent Kernel updates | `UPDATES.md` | `AGENT_WRITE_MODES.md`, `ARCHITECTURE_NOW.md` |
 | I want to understand how the system works | `OPERATING_MODEL.md` | `ARCHITECTURE_NOW.md` |
@@ -46,16 +47,17 @@ For a new reader, follow this order:
 1. `README.md` at repo root for the product-level overview and current release.
 2. `INSTALL_AND_AGENT_SETUP.md` for the safest setup path.
 3. `COMMAND_REFERENCE.md` and `ENVIRONMENT_VARIABLES.md` for the exact current interface.
-4. `OPERATING_MODEL.md` for the propose, approve, publish, capture, and promote workflow.
-5. `AGENT_WRITE_MODES.md` and `AGENT_PROPOSALS.md` for agent trust boundaries.
-6. `ARCHITECTURE_NOW.md` for the actual current runtime shape.
-7. `ARCHITECTURE_GUARDIAN.md` when AI agents will make non-trivial code changes.
-8. `SAFE_LINKING.md` and `SAFE_GIT_HOOKS.md` before modifying an existing project.
-9. The relevant file under `integrations/` for exact client setup and rollback.
-10. `STATIC_MEMORY_DASHBOARD.md` when a browser snapshot is useful for reviewing local state.
-11. `RETENTION_AND_PORTABILITY.md` before pruning, exporting, importing, or restoring local state.
-12. `UPDATES.md` before allowing an AI agent to install a global Agent Kernel version.
-13. `TROUBLESHOOTING.md` if setup, linking, hooks, MCP, architecture checks, memory, portability, dashboard, or updates behave unexpectedly.
+4. `ENVIRONMENT_VAULT.md` before linking or restoring project environment files.
+5. `OPERATING_MODEL.md` for the propose, approve, publish, capture, and promote workflow.
+6. `AGENT_WRITE_MODES.md` and `AGENT_PROPOSALS.md` for agent trust boundaries.
+7. `ARCHITECTURE_NOW.md` for the actual current runtime shape.
+8. `ARCHITECTURE_GUARDIAN.md` when AI agents will make non-trivial code changes.
+9. `SAFE_LINKING.md` and `SAFE_GIT_HOOKS.md` before modifying an existing project.
+10. The relevant file under `integrations/` for exact client setup and rollback.
+11. `STATIC_MEMORY_DASHBOARD.md` when a browser snapshot is useful for reviewing local state.
+12. `RETENTION_AND_PORTABILITY.md` before pruning, exporting, importing, or restoring local state.
+13. `UPDATES.md` before allowing an AI agent to install a global Agent Kernel version.
+14. `TROUBLESHOOTING.md` if setup, linking, hooks, MCP, architecture checks, memory, portability, dashboard, or updates behave unexpectedly.
 
 This order gets a user from installation to safe project adoption before asking them to understand every protocol.
 
@@ -64,6 +66,7 @@ This order gets a user from installation to safe project adoption before asking 
 ## Runtime and protocol docs
 
 - `COMMAND_REFERENCE.md` is the canonical current command and public-binary map.
+- `ENVIRONMENT_VAULT.md` documents stable project identity, discovery, revisions, safe restore, migration, watcher behavior, storage permissions, and threat boundaries.
 - `ENVIRONMENT_VARIABLES.md` classifies stable user-facing variables and internal test overrides.
 - `SKILL_CONTRACT.md` defines the shared behavioral contract across canonical and adapter skills.
 - `SECURE_RUNTIME_AND_RELEASES.md` documents daemon, identifier, CI, trusted-publishing, and release boundaries.
@@ -91,9 +94,10 @@ This order gets a user from installation to safe project adoption before asking 
 ## Setup and integration docs
 
 - `INSTALL_AND_AGENT_SETUP.md` gives the safest install and agent setup flow.
+- `ENVIRONMENT_VAULT.md` gives the local environment-file continuity and recovery flow.
 - `SAFE_LINKING.md` explains `agent-kernel-safe-link`, managed blocks, backups, atomic project writes, and idempotent linking.
 - `SAFE_GIT_HOOKS.md` explains worktree-aware hook discovery, dry-run and force repair behavior, symlink refusal, permissions, backups, and atomic replacement.
-- `TROUBLESHOOTING.md` gives symptom-based diagnosis for install, memory home, safe-link, hooks, MCP, Failure Lessons, Architecture Guardian, docs drift, and releases.
+- `TROUBLESHOOTING.md` gives symptom-based diagnosis for install, memory home, Environment Vault, safe-link, hooks, MCP, Failure Lessons, Architecture Guardian, docs drift, and releases.
 - `INTEGRATIONS.md` covers the general integration surface across agents.
 - `integrations/CLAUDE_CODE_LIVE_CONTEXT.md` covers Claude Code files, MCP, hooks, optional runtime, and rollback.
 - `integrations/CODEX_LIVE_CONTEXT.md` covers Codex `AGENTS.md`, MCP CLI and TOML setup, optional runtime, and rollback.

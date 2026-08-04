@@ -1,78 +1,169 @@
-import { runCli, makeEnv, assertContains, assertNotContains, repo } from './_lib/helpers.mjs';
-import { writeFileSync, readFileSync, existsSync, rmSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
-import { execFileSync } from 'node:child_process';
-import assert from 'node:assert';
+import { repo } from './_lib/helpers.mjs';
+import assert from 'node:assert/strict';
+import childProcess from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
+function git(cwd, args) {
+  return childProcess.execFileSync('git', args, {
+    cwd,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe']
+  }).trim();
+}
+
+function createGitProject(root, name, remote) {
+  const project = path.join(root, name);
+  fs.mkdirSync(project, { recursive: true });
+  git(project, ['init']);
+  git(project, ['config', 'user.email', 'env-vault@example.test']);
+  git(project, ['config', 'user.name', 'Env Vault Test']);
+  fs.writeFileSync(path.join(project, 'README.md'), '# fixture\n', 'utf8');
+  git(project, ['add', 'README.md']);
+  git(project, ['commit', '-m', 'initial']);
+  if (remote) git(project, ['remote', 'add', 'origin', remote]);
+  return project;
+}
+
+async function withKernelHome(kernelHome, fn) {
+  const previous = {
+    AGENT_KERNEL_HOME: process.env.AGENT_KERNEL_HOME,
+    HOME: process.env.HOME,
+    USERPROFILE: process.env.USERPROFILE
+  };
+  process.env.AGENT_KERNEL_HOME = kernelHome;
+  process.env.HOME = path.dirname(kernelHome);
+  process.env.USERPROFILE = path.dirname(kernelHome);
+  try {
+    return await fn();
+  } finally {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+}
+
+function regularFiles(root) {
+  if (!fs.existsSync(root)) return [];
+  const out = [];
+  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+    const full = path.join(root, entry.name);
+    if (entry.isDirectory()) out.push(...regularFiles(full));
+    else if (entry.isFile()) out.push(full);
+  }
+  return out;
+}
 
 export async function run() {
-  const { env, homeDir } = makeEnv();
-  const testProject = join(homeDir, 'my-secret-app');
-  mkdirSync(testProject, { recursive: true });
+  const homeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-kernel-env-v2-'));
+  const kernelHome = path.join(homeDir, 'custom-kernel-home');
+  const fixtureRoot = path.join(homeDir, 'projects');
+  fs.mkdirSync(kernelHome, { recursive: true });
+  fs.mkdirSync(fixtureRoot, { recursive: true });
 
-  // Init git repo
-  execFileSync('git', ['init'], { cwd: testProject });
-  execFileSync('git', ['config', 'remote.origin.url', 'https://github.com/imMamdouhaboammar/my-secret-app.git'], { cwd: testProject });
-  execFileSync('git', ['commit', '--allow-empty', '-m', 'initial commit'], { cwd: testProject });
+  await withKernelHome(kernelHome, async () => {
+    const vault = await import('../dist/env-vault.mjs');
+    assert.equal(typeof vault.calculateProjectIdentity, 'function', 'v2 identity API must be exported');
 
-  // Write .env
-  writeFileSync(join(testProject, '.env'), 'DATABASE_URL="postgres://user:pass@localhost:5432/db"\nSECRET_KEY="super-secret"\n');
+    const project = createGitProject(
+      fixtureRoot,
+      'canonical-project',
+      'https://token-user:token-secret@github.com/Owner/Repo.git?source=test#fragment'
+    );
 
-  // 1. Link project
-  const linkOut = runCli(env, 'env', 'link', testProject);
-  assertContains(linkOut, 'Linked project to Env Vault');
+    const httpsIdentity = vault.calculateProjectIdentity(project);
+    assert.equal(httpsIdentity.fingerprint.length, 64, 'fingerprint must use the full SHA256 digest');
+    assert.equal(httpsIdentity.canonical, 'remote:github.com/owner/repo');
+    assert(!httpsIdentity.canonical.includes('token-secret'), 'canonical identity must redact credentials');
 
-  // 2. Status
-  const statusOut = runCli(env, 'env', 'status', testProject);
-  assertContains(statusOut, 'Linked: YES');
-  assertContains(statusOut, 'https://github.com/imMamdouhaboammar/my-secret-app.git');
+    git(project, ['remote', 'set-url', 'origin', 'git@github.com:Owner/Repo.git']);
+    const sshIdentity = vault.calculateProjectIdentity(project);
+    assert.equal(sshIdentity.fingerprint, httpsIdentity.fingerprint, 'SSH and HTTPS clones must share one fingerprint');
 
-  // 3. Remove local .env
-  rmSync(join(testProject, '.env'));
+    const pathOnly = path.join(fixtureRoot, 'path-only');
+    fs.mkdirSync(pathOnly, { recursive: true });
+    assert.throws(
+      () => vault.calculateProjectIdentity(pathOnly),
+      /allow-path-identity|stable git identity/i,
+      'path identity must require explicit opt-in'
+    );
+    const pathIdentity = vault.calculateProjectIdentity(pathOnly, { allowPathIdentity: true });
+    assert.equal(pathIdentity.source, 'path');
+    assert.equal(pathIdentity.fingerprint.length, 64);
 
-  // 4. Restore manually via CLI (pull)
-  const restoreOut = runCli(env, 'env', 'pull', testProject);
-  assertContains(restoreOut, 'Restored .env');
-  const restoredContent = readFileSync(join(testProject, '.env'), 'utf8');
-  assertContains(restoredContent, 'super-secret');
+    fs.mkdirSync(path.join(project, 'apps', 'api'), { recursive: true });
+    fs.writeFileSync(path.join(project, '.env'), 'SECRET_VALUE=alpha\n', { mode: 0o644 });
+    fs.writeFileSync(path.join(project, '.env.example'), 'SECRET_VALUE=example\n', 'utf8');
+    fs.writeFileSync(path.join(project, 'apps', 'api', '.env.local'), 'API_TOKEN=nested\n', 'utf8');
 
-  // 5. Test Auto-Restore on SessionStart
-  rmSync(join(testProject, '.env'));
-  assert(!existsSync(join(testProject, '.env')), 'Local .env should be deleted before SessionStart test');
+    const linked = vault.vaultLinkProject(project);
+    assert.equal(linked.ok, true);
+    assert(linked.vaultDir.startsWith(kernelHome), 'vault must respect AGENT_KERNEL_HOME');
+    assert.deepEqual([...linked.syncedFiles].sort(), ['.env', 'apps/api/.env.local']);
 
-  const sessionInput = JSON.stringify({ cwd: testProject, hook_event: 'SessionStart' });
-  const sessionStartOut = execFileSync(process.execPath, [join(repo.root, 'dist', 'cli.mjs'), 'hook', 'session-start'], {
-    cwd: repo.root,
-    env,
-    input: sessionInput,
-    encoding: 'utf8'
+    if (process.platform !== 'win32') {
+      const manifestMode = fs.statSync(path.join(linked.vaultDir, 'manifest.json')).mode & 0o777;
+      assert.equal(manifestMode, 0o600, 'manifest must be owner-readable and owner-writable only');
+      const stored = regularFiles(path.join(linked.vaultDir, 'files'));
+      assert.equal(stored.length, 2);
+      for (const file of stored) {
+        assert.equal(fs.statSync(file).mode & 0o777, 0o600, `${file} must use 0600 permissions`);
+      }
+    }
+
+    fs.writeFileSync(path.join(project, '.env'), 'SECRET_VALUE=beta\n', 'utf8');
+    const refused = vault.vaultRestoreProject(project);
+    assert.equal(refused.ok, false, 'pull must refuse a differing local file');
+    assert.deepEqual(refused.conflicts.map((item) => item.file), ['.env']);
+    assert.equal(fs.readFileSync(path.join(project, '.env'), 'utf8'), 'SECRET_VALUE=beta\n');
+
+    const forced = vault.vaultRestoreProject(project, { force: true });
+    assert.equal(forced.ok, true);
+    assert.equal(fs.readFileSync(path.join(project, '.env'), 'utf8'), 'SECRET_VALUE=alpha\n');
+    assert.equal(forced.backups.length, 1, 'forced overwrite must create a local backup');
+    assert.equal(fs.readFileSync(forced.backups[0].backupPath, 'utf8'), 'SECRET_VALUE=beta\n');
+
+    const outside = path.join(homeDir, 'outside-secret');
+    fs.writeFileSync(outside, 'OUTSIDE_SECRET=value\n', 'utf8');
+    const linkedPath = path.join(project, '.env.link');
+    let symlinkCreated = true;
+    try {
+      fs.symlinkSync(outside, linkedPath, 'file');
+    } catch (error) {
+      if (process.platform === 'win32' && ['EPERM', 'EACCES'].includes(error.code)) symlinkCreated = false;
+      else throw error;
+    }
+    if (symlinkCreated) {
+      assert.throws(
+        () => vault.vaultSyncProject(project, { files: ['.env.link'] }),
+        /symlink|regular file/i,
+        'symlink environment files must be rejected'
+      );
+    }
+
+    const router = path.join(repo.root, 'bin', 'agent-kernel-router.mjs');
+    const output = childProcess.execFileSync(
+      process.execPath,
+      [router, 'env', 'status', project, '--json'],
+      {
+        cwd: repo.root,
+        env: {
+          ...process.env,
+          AGENT_KERNEL_HOME: kernelHome,
+          HOME: homeDir,
+          USERPROFILE: homeDir
+        },
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe']
+      }
+    );
+    const status = JSON.parse(output);
+    assert.equal(status.linked, true);
+    assert(!output.includes('alpha'), 'JSON status must never contain secret values');
+    assert(!output.includes('nested'), 'JSON status must never contain nested secret values');
   });
-  assertContains(sessionStartOut, 'Automatically restored missing environment files from vault');
-  assert(existsSync(join(testProject, '.env')), 'Auto-restore failed on SessionStart');
-
-  // 6. Test Auto-Sync on PostToolUse
-  writeFileSync(join(testProject, '.env'), 'DATABASE_URL="postgres://newuser:newpass@localhost:5432/db"\nSECRET_KEY="super-secret-updated"\n');
-  const postInput = JSON.stringify({ cwd: testProject, tool_name: 'Write', tool_input: { path: '.env' } });
-  execFileSync(process.execPath, [join(repo.root, 'dist', 'cli.mjs'), 'hook', 'post-tool-use'], {
-    cwd: repo.root,
-    env,
-    input: postInput,
-    encoding: 'utf8'
-  });
-
-  const statusAfterEdit = runCli(env, 'env', 'status', testProject);
-  assertContains(statusAfterEdit, 'IN_SYNC');
-
-  // 7. Test env list
-  const listOut = runCli(env, 'env', 'list');
-  assertContains(listOut, 'my-secret-app');
-  assertContains(listOut, 'https://github.com/imMamdouhaboammar/my-secret-app.git');
-
-  // 8. Test env unlink
-  const unlinkOut = runCli(env, 'env', 'unlink', testProject);
-  assertContains(unlinkOut, 'Unlinked project from Env Vault');
-
-  const statusAfterUnlink = runCli(env, 'env', 'status', testProject);
-  assertContains(statusAfterUnlink, 'Linked: NO');
 }
 
 export const name = 'env-vault';

@@ -1,107 +1,103 @@
 # Troubleshooting
 
-This guide helps users and agents diagnose common Agent Kernel setup, linking, hook, MCP, memory, and release issues.
+Use this guide before changing runtime code
 
-Use it before changing runtime code. Many failures are setup, stale generated output, wrong memory home, or unsafe direct edits.
-
----
+Many Agent Kernel failures come from stale generated output, different Agent Kernel homes, unresolved project identity, incomplete linking, or unsafe direct edits
 
 ## Fast diagnosis
-
-Start with these commands:
 
 ```bash
 agent-kernel --version
 agent-kernel doctor
 agent-kernel status
+agent-kernel env status
 ```
 
-Then check the current memory home:
+Check the current Agent Kernel home
 
 ```bash
 echo "$AGENT_KERNEL_HOME"
 ls -la "${AGENT_KERNEL_HOME:-$HOME/.agent-kernel}"
 ```
 
-If the package is installed globally but commands look stale:
+Check the public executable
 
 ```bash
 which agent-kernel
+which ak
 npm list -g @mamdouh-aboammar/agent-kernel --depth=0
-npm view @mamdouh-aboammar/agent-kernel version
 ```
-
----
 
 ## Common symptoms
 
 | Symptom | Likely cause | First action |
 |---|---|---|
-| `agent-kernel` command not found | Package not installed globally, PATH issue, or shell cache | Run `npx -y @mamdouh-aboammar/agent-kernel --version` |
-| Project files do not update | Generated dist is stale | Run `agent-kernel compile` then `agent-kernel-safe-link . --dry-run` |
-| Agent Kernel block appears twice | Old linked file or manual copy | Run `agent-kernel-safe-link .` to collapse duplicate marked blocks |
-| Existing `AGENTS.md` got mixed with generated text | Direct linker used where safe linker was better | Restore from git or backup, then use `agent-kernel-safe-link .` |
-| Hook does not block a command | Hook not installed, wrong project path, or platform hook config not loaded | Run `agent-kernel-safe-git-hook . --dry-run`, then inspect `.git/hooks/pre-commit` |
-| Claude hook creates too much noise | Matcher too broad or event choice too general | Use `PostToolUseFailure` for failure capture and narrow matchers |
-| MCP server works in terminal but not agent | Agent config points to wrong binary or env | Re-run `agent-kernel mcp install <agent>` and inspect agent config |
-| Memory proposal exists but agent does not see it | Proposal is pending, not approved and published | Run `agent-kernel inbox`, then approve and publish if valid |
-| Failure Lesson not found | Error text does not match signature or lesson was never captured | Search by command, error code, package name, and root cause words |
-| CI fails after docs-only change | Docs examples reference missing files or outdated commands | Check README, docs index, and package files list alignment |
+| `agent-kernel` command not found | Package missing from the global PATH or stale shell command cache | Run `npx -y @mamdouh-aboammar/agent-kernel --version` |
+| Project guidance does not update | Generated output is stale | Run `agent-kernel compile` then `agent-kernel-safe-link . --dry-run` |
+| Agent Kernel block appears twice | Old manual copy or duplicated marked block | Run `agent-kernel-safe-link .` |
+| Hook does not block a command | Hook missing, wrong project path, or client hook config not loaded | Run `agent-kernel-safe-git-hook . --dry-run` |
+| MCP works in terminal but not in an agent | Wrong executable path or different environment | Run the configured command manually with the same `AGENT_KERNEL_HOME` |
+| Memory proposal exists but an agent cannot see it | Proposal is pending rather than approved and published | Run `agent-kernel inbox` |
+| `env pull` reports a conflict | Local and stored hashes differ | Run `agent-kernel env status`, then decide whether to preserve local content or use `--force` |
+| Fresh clone has no matching vault | Remote identity differs, project has no stable Git identity, or another Agent Kernel home is active | Check `git remote get-url origin` and `AGENT_KERNEL_HOME` |
+| Environment status reports permission drift | Existing file or vault copy is broader than owner-only | Run `agent-kernel env doctor --repair-permissions` |
+| Environment Vault is locked | Another push, link, migration, or watcher is active | Stop the other process and retry |
+| Environment manifest is unhealthy | Corrupt JSON, unsupported version, invalid path, or missing stored file | Run `agent-kernel env doctor --json` and preserve the vault before manual recovery |
+| CI fails after a documentation change | Command examples, file references, or package contents drifted | Run `npm run docs:check` and `npm run publish:dry` |
 
----
-
-## Install issues
+## Installation issues
 
 ### Command not found
 
-Try the package through `npx` first:
+Try the package without global installation
 
 ```bash
 npx -y @mamdouh-aboammar/agent-kernel --version
 ```
 
-If that works, reinstall globally:
+If that works, reinstall globally
 
 ```bash
 npm install -g @mamdouh-aboammar/agent-kernel
 agent-kernel --version
 ```
 
-Check where the executable resolves:
-
-```bash
-which agent-kernel
-which ak
-```
-
-If `ak` works but `agent-kernel` does not, the global npm bin directory may be stale in your shell. Restart the shell or refresh your shell hash:
+Refresh the shell command cache when needed
 
 ```bash
 hash -r
 ```
 
----
+### Installed command behaves like an older release
 
-## Memory home issues
+```bash
+which agent-kernel
+agent-kernel --version
+npm list -g @mamdouh-aboammar/agent-kernel --depth=0
+npm view @mamdouh-aboammar/agent-kernel version
+```
 
-Agent Kernel defaults to:
+Confirm that the resolved executable belongs to the expected package manager prefix
+
+## Agent Kernel home issues
+
+The default home is
 
 ```text
 ~/.agent-kernel
 ```
 
-If `AGENT_KERNEL_HOME` is set, the CLI uses that instead.
-
-Check it:
+A configured `AGENT_KERNEL_HOME` replaces that path for memory, Vault data, update state, runtime shims, logs, and reports
 
 ```bash
 echo "$AGENT_KERNEL_HOME"
 agent-kernel doctor
+agent-kernel env list
 ```
 
-Common mistake: one terminal uses the default home while another uses a custom `AGENT_KERNEL_HOME`. This makes memory look missing even though it exists elsewhere.
+A common mistake is running an agent with one home and a terminal with another
 
-To test with a clean temporary home:
+Test with a clean isolated home
 
 ```bash
 export AGENT_KERNEL_HOME="$(mktemp -d)"
@@ -109,11 +105,214 @@ agent-kernel init --sync
 agent-kernel status
 ```
 
----
+## Project Environment Vault issues
+
+Read [`ENVIRONMENT_VAULT.md`](./ENVIRONMENT_VAULT.md) for the complete command and storage contract
+
+### Project has no stable Git identity
+
+Environment Vault uses a canonical Git remote first, then the initial commit hash
+
+Check both
+
+```bash
+git remote get-url origin
+git rev-list --max-parents=0 HEAD
+```
+
+For a new repository, create the first commit or configure the remote
+
+```bash
+git add .
+git commit -m "chore: initialize project"
+git remote add origin <repository-url>
+```
+
+Use path identity only for an intentional local-only project
+
+```bash
+agent-kernel env link --allow-path-identity
+```
+
+Path identity changes when the folder moves
+
+### Fresh clone is not matched
+
+Compare the remote used by the original project and the new clone
+
+```bash
+git remote get-url origin
+agent-kernel env status --json
+```
+
+Common GitHub SSH and HTTPS forms resolve to the same identity
+
+A fork, mirror, renamed path, or different host is treated as a separate project
+
+Also confirm the same Agent Kernel home is active on the machine
+
+```bash
+echo "$AGENT_KERNEL_HOME"
+agent-kernel env list
+```
+
+Environment Vault is local and does not copy secrets between computers
+
+### No eligible files found
+
+Default discovery includes `.env` and `.env.*` recursively and excludes templates such as `.env.example`
+
+Select an exact Monorepo file
+
+```bash
+agent-kernel env link \
+  --include apps/api/.env \
+  --include apps/web/.env.local
+```
+
+Link an intentionally empty project
+
+```bash
+agent-kernel env link --allow-empty
+```
+
+### Symlink or non-regular file rejected
+
+The Vault does not follow environment-file symlinks and does not accept directories, sockets, devices, or FIFOs
+
+Replace the symlink with a regular file inside the project root, or manage that secret through the external source that owns the symlink
+
+Do not bypass this check by copying a target outside the project into the Vault path manually
+
+### File exceeds the size limit
+
+The default limit is 1 MiB per environment file
+
+Confirm that the file is genuinely an environment configuration file rather than a certificate bundle, database dump, or generated artifact
+
+Increase the limit only when the content is expected
+
+```bash
+agent-kernel env link --max-bytes 2097152
+```
+
+### Pull reports a conflict
+
+A normal pull restores missing files only and refuses to overwrite a differing local file
+
+```bash
+agent-kernel env status
+agent-kernel env pull --dry-run
+```
+
+Preserve the local file manually, push it as the new stored revision, or restore the Vault copy with a backup
+
+```bash
+agent-kernel env push
+```
+
+```bash
+agent-kernel env pull --force
+```
+
+Forced restore writes the previous local file under
+
+```text
+<project>/.agent-kernel/env-backups/<timestamp>/
+```
+
+Keep backups enabled unless there is a specific reason not to
+
+### Permission drift
+
+Inspect and repair owner-only permissions
+
+```bash
+agent-kernel env doctor
+agent-kernel env doctor --repair-permissions
+```
+
+On POSIX systems, Vault directories should be `0700` and Vault files should be `0600`
+
+Windows access is governed by Windows ACL behavior rather than POSIX mode bits
+
+### Vault is locked
+
+Another writer or watcher may be active
+
+Stop other `agent-kernel env watch`, link, push, migration, or restore processes and retry
+
+The Vault removes a stale lock only when it is old, was created on the same host, and its recorded process is no longer running
+
+Do not delete a recent lock while another process may still be writing
+
+### Manifest is corrupt
+
+Run doctor in JSON mode
+
+```bash
+agent-kernel env doctor --json
+```
+
+A corrupt manifest blocks writes rather than silently creating new metadata for the same directory
+
+Preserve the entire Vault directory before manual recovery
+
+```text
+${AGENT_KERNEL_HOME:-~/.agent-kernel}/vault/env/<fingerprint>/
+```
+
+Check legacy backups when a migration was attempted
+
+```text
+${AGENT_KERNEL_HOME:-~/.agent-kernel}/vault/legacy-backups/
+```
+
+### Migrate the previous Vault format
+
+```bash
+agent-kernel env doctor --migrate
+```
+
+Migration searches for a matching legacy identity, copies the old Vault to a backup, creates a version 2 manifest, and retains the original legacy directory
+
+Normal commands do not silently migrate legacy data
+
+### Watcher does not detect an external edit
+
+Confirm the file was selected during link
+
+```bash
+agent-kernel env status --json
+```
+
+Restart the watcher after adding or removing selected files
+
+```bash
+agent-kernel env watch --interval 15
+```
+
+The periodic reconciliation handles file events that are dropped or coalesced by the operating system
+
+### Unlink did not delete the Vault
+
+This is expected
+
+```bash
+agent-kernel env unlink
+```
+
+Unlink detaches the current project path and retains files and revisions
+
+Destructive deletion is separate
+
+```bash
+agent-kernel env purge --yes
+```
 
 ## Project linking issues
 
-For existing repositories, use safe linking:
+For existing repositories, use safe linking
 
 ```bash
 agent-kernel compile
@@ -121,7 +320,7 @@ agent-kernel-safe-link . --dry-run
 agent-kernel-safe-link .
 ```
 
-Safe-link writes only inside this block:
+Safe linking writes only inside marked blocks
 
 ```md
 <!-- agent-kernel:start -->
@@ -129,107 +328,73 @@ Safe-link writes only inside this block:
 <!-- agent-kernel:end -->
 ```
 
-Content outside the block is user-owned and should remain untouched.
+Content outside the markers is user-owned
 
-If a file contains duplicate Agent Kernel blocks, run:
+If direct linking damaged hand-written guidance
 
-```bash
-agent-kernel-safe-link .
-```
-
-The safe-link path should collapse duplicate marked blocks into one canonical block.
-
-If a direct link damaged hand-written project guidance:
-
-1. Restore the file from git, editor history, or `.agent-kernel-backups/`.
-2. Re-run safe-link with `--dry-run`.
-3. Apply safe-link only after reviewing planned changes.
-
----
+1. Restore the file from Git, editor history, or `.agent-kernel-backups/`
+2. Run safe link with `--dry-run`
+3. Apply the reviewed change
 
 ## Git hook issues
-
-Install the safe pre-commit path:
 
 ```bash
 agent-kernel-safe-git-hook . --dry-run
 agent-kernel-safe-git-hook .
 ```
 
-Check the hook exists:
+Check the hook
 
 ```bash
 cat .git/hooks/pre-commit
 ```
 
-Run the guard manually before blaming the hook:
+Run the guard manually
 
 ```bash
 agent-kernel guard --staged
 agent-kernel guard --file path/to/file
 ```
 
-If the hook does not run, verify:
-
-- the repository has a `.git/` directory
-- the hook file is executable
-- your Git client does not disable hooks
-- the change is staged when using `--staged`
-
----
+Confirm that the repository has Git metadata, the hook is executable, the client permits hooks, and the intended files are staged
 
 ## Claude hook issues
 
-Failure capture should use `PostToolUseFailure`, narrow matchers, exec-form commands, and short timeouts.
+Failure capture should use `PostToolUseFailure`, narrow matchers, exec-form commands, and bounded timeouts
 
-Bad pattern:
+Broad `PostToolUse` matchers can create noise and unnecessary context
 
-```text
-PostToolUse with broad matcher and long-running shell logic
-```
-
-Better pattern:
-
-```text
-PostToolUseFailure with Bash|Write|Edit|MultiEdit and exec-form args
-```
-
-If Claude receives too much extra context, reduce the hook output. Hook output should be short, structured, and tied to the failed tool call.
-
-See:
+See
 
 - `docs/hooks/FAILURE_LESSONS_HOOK.md`
 - `docs/hooks/CLAUDE_HOOKS_BEST_PRACTICES.md`
 
----
-
 ## MCP issues
-
-Run the local MCP setup command:
 
 ```bash
 agent-kernel mcp config
 agent-kernel mcp install claude
 ```
 
-If the agent cannot start the MCP server:
+When the client cannot start the server
 
-1. Check the installed command path.
-2. Check `AGENT_KERNEL_HOME` inside the agent environment.
-3. Run the same command manually in a terminal.
-4. Check whether the client expects stdio MCP, not HTTP.
+1. Check the executable path
+2. Check `AGENT_KERNEL_HOME` inside the client process
+3. Run the same command manually
+4. Confirm the client expects stdio MCP
 
-Approval through MCP is disabled by default. If an agent can search memory but cannot approve proposals, that is expected. The safer path is still:
+MCP approval is disabled by default
+
+The normal governance flow remains
 
 ```text
-agent proposes -> user reviews inbox -> user approves -> kernel publishes
+agent proposes
+user reviews inbox
+user approves
+Agent Kernel publishes
 ```
 
----
-
 ## Failure Lessons issues
-
-Search before retrying:
 
 ```bash
 agent-kernel failure search "ERR_MODULE_NOT_FOUND"
@@ -237,37 +402,25 @@ agent-kernel failure search "npm test"
 agent-kernel failure list
 ```
 
-A useful Failure Lesson needs:
+A useful lesson includes the failing command, exit code when available, error signature, cause, remedy, and verification evidence
 
-- failing command
-- exit code when available
-- error text
-- root cause
-- fix path
+Repeated captures for the same project, command, and error signature should update the existing lesson rather than create uncontrolled duplicates
 
-If dedupe looks wrong, compare the project, command, and error signature. Repeated captures of the same `project + command + errorSignature` should update the existing lesson and increment occurrences.
+## Documentation drift
 
-Do not promote every captured failure. Promote only when the pattern is reusable.
+Check current behavior in this order
 
----
+1. `bin/agent-kernel-router.mjs` for public routing
+2. The focused `bin/*.mjs` command when the family is routed
+3. `src/cli.mjs` for core commands and hooks
+4. `docs/ARCHITECTURE_NOW.md` for the current architecture statement
+5. `README.md` and the dedicated feature guide
 
-## Docs drift issues
-
-When docs and code disagree, check in this order:
-
-1. `src/cli.mjs` for current core runtime behavior.
-2. `bin/*.mjs` for helper binary behavior.
-3. `docs/ARCHITECTURE_NOW.md` for the current architecture statement.
-4. `README.md` for user-facing setup.
-5. `docs/README.md` for documentation ownership rules.
-
-Roadmap docs are not proof that behavior ships. Do not document planned features as current behavior.
-
----
+Roadmap documents are not proof of shipped behavior
 
 ## Daemon authentication issues
 
-The default daemon is local-only. A non-loopback host must have both remote opt-in and a strong token:
+A non-loopback daemon requires explicit remote opt-in and a strong token
 
 ```bash
 export AGENT_KERNEL_DAEMON_HOST=0.0.0.0
@@ -276,15 +429,13 @@ export AGENT_KERNEL_DAEMON_TOKEN="$(openssl rand -hex 32)"
 agent-kernel daemon start
 ```
 
-A remote request without `Authorization: Bearer <token>` returns `401`. A token shorter than 32 bytes or a remote host without explicit opt-in prevents startup. If a request returns `413`, reduce its body below 1 MiB.
+Do not place the token in command history, committed files, issue reports, or screenshots
 
-Do not put the token in command history, committed files, issue reports, or screenshots. Stop the daemon and rotate the token after temporary remote access.
-
----
+Stop the daemon and rotate the token after temporary remote access
 
 ## Release issues
 
-Run the canonical gate before tagging:
+Run the canonical gate before tagging
 
 ```bash
 npm ci
@@ -292,13 +443,11 @@ npm run verify:release
 npm run publish:dry
 ```
 
-`publish:dry` uses `npm pack --dry-run`; it does not query the registry for an unpublished version. The tag must exactly match `package.json`, for example package version `1.15.1` requires tag `v1.15.1`.
+The tag must match `package.json`
 
-The canonical npm registry is npmjs. GitHub Packages workflows are intentionally absent because `@mamdouh-aboammar` does not match the repository owner `imMamdouhaboammar`.
+For example, package version `1.19.0` requires tag `v1.19.0`
 
-If an old CodeScan job reports Java class-file incompatibility, remove or disable that obsolete workflow. The product does not require Java; CodeQL is the maintained static-analysis workflow.
-
-Check these files stay aligned:
+Check these surfaces remain aligned
 
 ```text
 package.json
@@ -312,21 +461,11 @@ bin/* version constants
 .claude-plugin/plugin.json
 ```
 
-Use [`SECURE_RUNTIME_AND_RELEASES.md`](./SECURE_RUNTIME_AND_RELEASES.md) for tag, provenance, checksum, and recovery requirements.
+Use [`SECURE_RUNTIME_AND_RELEASES.md`](./SECURE_RUNTIME_AND_RELEASES.md) for provenance, checksums, tags, and recovery
 
----
+## Opening an issue
 
-## When to open an issue
-
-Open an issue when:
-
-- a command fails with a reproducible input
-- safe-link duplicates or removes content outside marked blocks
-- guard misses a clearly dangerous pattern
-- MCP config is generated but the documented client cannot start it
-- docs and shipped command behavior disagree
-
-Include:
+Include
 
 ```text
 agent-kernel --version
@@ -334,7 +473,10 @@ node --version
 npm --version
 operating system
 command run
-full error output
-AGENT_KERNEL_HOME value, if set
-whether the repo already had AGENTS.md, CLAUDE.md, GEMINI.md, Cursor rules, or .agents files
+full error output with secret values removed
+AGENT_KERNEL_HOME value when set
+Git remote form when the issue concerns project identity
+whether the repository already contained agent guidance or hook files
 ```
+
+Never attach `.env` contents, Vault files, credential-bearing Git remotes, access tokens, or screenshots that expose secrets

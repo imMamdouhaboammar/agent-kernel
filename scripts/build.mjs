@@ -16,8 +16,10 @@
 import {
   chmodSync,
   copyFileSync,
+  cpSync,
   mkdirSync,
   readFileSync,
+  rmSync,
   statSync,
   writeFileSync
 } from 'node:fs';
@@ -89,10 +91,8 @@ function redactEpisodeText(value) {
   return srcText;
 }
 
-// Ensure dist/ exists. copyFileSync would fail otherwise.
 mkdirSync(dirname(distPath), { recursive: true });
 
-// Step 1: read package.json and the source file.
 const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
 let srcText = readFileSync(srcPath, 'utf8');
 
@@ -102,23 +102,25 @@ if (!before) {
   process.exit(1);
 }
 
-// Step 2: rewrite the VERSION constant if it drifted.
 if (before[1] !== pkg.version) {
   console.log(`  bumping VERSION: ${before[1]} → ${pkg.version}`);
   srcText = srcText.replace(VERSION_REGEX, `const VERSION = '${pkg.version}'`);
 }
 
-// Step 3: apply targeted runtime patches and persist source if needed.
 srcText = applyRuntimePatches(srcText);
 if (srcText !== readFileSync(srcPath, 'utf8')) {
   writeFileSync(srcPath, srcText);
 }
 
-// Step 4: copy to dist and ensure it is executable.
 copyFileSync(srcPath, distPath);
 const envVaultSrc = join(root, 'src', 'env-vault.mjs');
 const envVaultDist = join(root, 'dist', 'env-vault.mjs');
 copyFileSync(envVaultSrc, envVaultDist);
+
+const envVaultModulesSrc = join(root, 'src', 'env-vault');
+const envVaultModulesDist = join(root, 'dist', 'env-vault');
+rmSync(envVaultModulesDist, { recursive: true, force: true });
+cpSync(envVaultModulesSrc, envVaultModulesDist, { recursive: true });
 
 const skillsEngineSrc = join(root, 'src', 'skills-engine.mjs');
 const skillsEngineDist = join(root, 'dist', 'skills-engine.mjs');
