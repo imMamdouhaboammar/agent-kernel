@@ -1,45 +1,161 @@
 ---
 name: agent-kernel-ops
-description: Universal Agent Kernel operational guide for AI agents. Enables any agent (Claude, Antigravity, Cursor, Codex, Gemini, OpenCode) to seamlessly operate Agent Kernel environment vault, memory, policies, and health diagnostics.
+description: Operational guide for agents working with Agent Kernel environment files, memory proposals, policies, and diagnostics
 ---
 
-# Agent Kernel Universal Operations Guide
+# Agent Kernel Operations Guide
 
-This skill provides step-by-step instructions for AI agents to interact with Agent Kernel CLI and runtime seamlessly.
+Use this skill when the user mentions `agent-kernel`, `.env`, Environment Vault, memory proposals, agent rules, policies, or runtime diagnostics
 
-## Triggers & Trigger Phrases
-Activate this skill when:
-- The user mentions `agent-kernel`, `agy`, `.env`, `env-vault`, `memory proposal`, `agent rule`, or `policy`.
-- You need to manage environment keys, check project status, or run policy/guard checks.
+## Environment Vault safety rules
 
-## 1. Environment Vault Management (`agent-kernel env`)
-- **Link Project `.env` to Vault:**
-  `agent-kernel env link [projectPath]`
-- **Check Sync Status & Fingerprint:**
-  `agent-kernel env status [projectPath]`
-- **Auto-Sync / Force Push Edits:**
-  `agent-kernel env push [projectPath]`
-- **Restore Missing `.env` Keys:**
-  `agent-kernel env pull [projectPath]`
-- **List All Backed-Up Projects:**
-  `agent-kernel env list`
+- Never print, summarize, diff, log, or paste environment file contents
+- Start with `agent-kernel env status [project]`
+- Use `agent-kernel env doctor [project]` when the vault is unhealthy or permissions drift
+- Use normal pull for missing files
+- Do not use `--force` until the user understands that a differing local file will be replaced
+- Keep backups enabled during forced restore unless the user explicitly requests otherwise
+- Use `unlink` to detach a project path while retaining stored files
+- Use `purge --yes` only after an explicit request to delete the stored vault
+- Reject symlinks, non-regular files, paths outside the project root, and unstable project identity
 
-## 2. Memory & Rule Proposals (`agent-kernel propose / approve`)
-- **Propose a New Rule:**
-  `agent-kernel propose --from <agentName> --text "Your rule text" --reason "Why"`
-- **Inspect Inbox:**
-  `agent-kernel inbox`
-- **Approve Proposal:**
-  `agent-kernel approve <proposalId> --publish`
+## Environment Vault commands
 
-## 3. Governance & Quality Guards (`agent-kernel guard / policy`)
-- **Run File & Policy Guard:**
-  `agent-kernel guard [--staged|--file path]`
-- **Verify Policy Compliance:**
-  `agent-kernel policy check mandatory-bun-package-manager`
+Link the project and discover eligible environment files
 
-## 4. Health & Context Diagnostics (`agent-kernel doctor / status`)
-- **Check Kernel Status:**
-  `agent-kernel status`
-- **Run Health Doctor:**
-  `agent-kernel doctor`
+```bash
+agent-kernel env link [project]
+```
+
+Link exact Monorepo files
+
+```bash
+agent-kernel env link [project] \
+  --include apps/api/.env \
+  --include apps/web/.env.local
+```
+
+Check identity, health, and file states
+
+```bash
+agent-kernel env status [project]
+agent-kernel env status [project] --json
+```
+
+Store local edits
+
+```bash
+agent-kernel env push [project]
+agent-kernel env push [project] --file apps/api/.env
+```
+
+Preview without writing
+
+```bash
+agent-kernel env push [project] --dry-run
+```
+
+Restore missing files
+
+```bash
+agent-kernel env pull [project]
+```
+
+Handle an intentional overwrite with a backup
+
+```bash
+agent-kernel env pull [project] --force
+```
+
+Run health checks and repair POSIX permissions
+
+```bash
+agent-kernel env doctor [project]
+agent-kernel env doctor [project] --repair-permissions
+```
+
+Migrate a matching legacy vault after inspection
+
+```bash
+agent-kernel env doctor [project] --migrate
+```
+
+Watch environment files edited outside an Agent Kernel hook
+
+```bash
+agent-kernel env watch [project]
+```
+
+Inspect revisions without secret contents
+
+```bash
+agent-kernel env history [project] --file .env
+```
+
+Restore one revision with normal conflict handling
+
+```bash
+agent-kernel env restore [project] --file .env --revision <revision-id>
+```
+
+Detach automatic behavior while retaining stored data
+
+```bash
+agent-kernel env unlink [project]
+```
+
+Delete stored data only after explicit confirmation
+
+```bash
+agent-kernel env purge [project] --yes
+```
+
+Read the complete command and security guide at `docs/ENVIRONMENT_VAULT.md`
+
+## Memory and rule proposals
+
+Propose a new rule
+
+```bash
+agent-kernel propose --from <agentName> --text "Your rule text" --reason "Why"
+```
+
+Inspect the approval inbox
+
+```bash
+agent-kernel inbox
+```
+
+Approve and publish a proposal
+
+```bash
+agent-kernel approve <proposalId> --publish
+```
+
+## Governance and quality guards
+
+Run file and policy guards
+
+```bash
+agent-kernel guard [--staged|--file path]
+```
+
+Verify a named policy
+
+```bash
+agent-kernel policy check mandatory-bun-package-manager
+```
+
+## Health and context diagnostics
+
+Check Kernel status
+
+```bash
+agent-kernel status
+```
+
+Run the main health doctor
+
+```bash
+agent-kernel doctor
+```
