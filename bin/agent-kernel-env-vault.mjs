@@ -68,6 +68,7 @@ function optionsFrom(flags) {
     force: flags.force === true,
     noBackup: flags['no-backup'] === true,
     prune: flags.prune === true,
+    dryRun: flags['dry-run'] === true,
     repairPermissions: flags['repair-permissions'] === true,
     confirm: flags.yes === true,
     maxBytes: flags['max-bytes'] ? Number(flags['max-bytes']) : undefined
@@ -100,10 +101,32 @@ function outputResult(command, result) {
     return;
   }
   if (command === 'push') {
+    if (!result.ok) {
+      process.stdout.write('Environment Vault push blocked\n');
+      process.stdout.write(`Reason: ${result.reason || 'Vault is not writable'}\n`);
+      return;
+    }
+    if (result.dryRun) {
+      process.stdout.write('Environment Vault push dry run\n');
+      process.stdout.write(`Would change: ${result.changedFiles?.length || 0}\n`);
+      process.stdout.write(`Would prune: ${result.prunedFiles?.length || 0}\n`);
+      process.stdout.write(`Unchanged: ${result.unchangedFiles?.length || 0}\n`);
+      process.stdout.write(`Skipped: ${result.skippedFiles?.length || 0}\n`);
+      return;
+    }
     process.stdout.write(`Environment Vault push complete\nChanged: ${result.changedFiles?.length || 0}\nUnchanged: ${result.unchangedFiles?.length || 0}\n`);
     return;
   }
   if (command === 'pull') {
+    if (result.dryRun) {
+      process.stdout.write('Environment Vault pull dry run\n');
+      process.stdout.write(`Would restore: ${result.wouldRestore?.length || 0}\n`);
+      process.stdout.write(`Would backup: ${result.wouldBackup?.length || 0}\n`);
+      process.stdout.write(`Unchanged: ${result.unchangedFiles?.length || 0}\n`);
+      process.stdout.write(`Conflicts: ${result.conflicts?.length || 0}\n`);
+      for (const conflict of result.conflicts || []) process.stdout.write(`Conflict ${conflict.file}\n`);
+      return;
+    }
     process.stdout.write(`Environment Vault pull ${result.ok ? 'complete' : 'blocked by conflicts'}\n`);
     for (const file of result.restoredFiles || []) process.stdout.write(`Restored ${file}\n`);
     for (const conflict of result.conflicts || []) process.stdout.write(`Conflict ${conflict.file}\n`);
@@ -161,12 +184,6 @@ function main() {
     if (flags.json) outputJson(result);
     else if (!result.length) process.stdout.write('No Environment Vault projects found\n');
     else for (const item of result) process.stdout.write(`${item.projectName || 'unknown'}  ${item.fingerprint}  ${item.healthy ? 'healthy' : 'unhealthy'}\n`);
-    return;
-  }
-
-  if (flags['dry-run'] === true && ['push', 'pull'].includes(command)) {
-    const result = { ok: true, dryRun: true, command, status: vaultGetStatus(project, options) };
-    flags.json ? outputJson(result) : process.stdout.write(`Dry run for env ${command}\nNo files were changed\n`);
     return;
   }
 
