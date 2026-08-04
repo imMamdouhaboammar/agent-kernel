@@ -57,8 +57,13 @@ export function assertNoSymlinkComponents(projectRoot, absolutePath) {
   let current = root;
   for (const component of relative.split(path.sep)) {
     current = path.join(current, component);
-    if (!fs.existsSync(current)) break;
-    const stat = fs.lstatSync(current);
+    let stat;
+    try {
+      stat = fs.lstatSync(current);
+    } catch (error) {
+      if (error.code === 'ENOENT') break;
+      throw error;
+    }
     if (stat.isSymbolicLink()) {
       throw new Error(`Refusing environment path through symlinked component: ${current}`);
     }
