@@ -144,18 +144,22 @@ export function vaultGetStatus(projectDir = '.', options = {}) {
   if (!status.fingerprint || !status.vaultDir || !fs.existsSync(manifestPath(status.vaultDir))) return status;
   try {
     const manifest = readManifest(status.vaultDir);
+    const effectiveStatus = {
+      ...status,
+      linked: !manifest.detachedPaths.includes(status.projectRoot)
+    };
     const issues = integrityIssues(
       status.vaultDir,
       manifest,
       manifest.selectedFiles,
       options.maxBytes || DEFAULT_MAX_FILE_BYTES
     );
-    if (!issues.length) return status;
+    if (!issues.length) return effectiveStatus;
     return {
-      ...status,
+      ...effectiveStatus,
       healthy: false,
       diffs: [
-        ...(status.diffs || []),
+        ...(effectiveStatus.diffs || []),
         ...issues.map((issue) => ({ file: issue.file, status: 'UNHEALTHY', reason: issue.message }))
       ]
     };
