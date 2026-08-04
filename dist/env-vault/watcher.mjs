@@ -3,7 +3,7 @@ import path from 'node:path';
 import { projectFilePath } from './common.mjs';
 import { calculateProjectIdentity } from './identity.mjs';
 import { readManifest } from './manifest.mjs';
-import { vaultSyncProject } from './engine.mjs';
+import { vaultSyncProject } from './secure-engine.mjs';
 import { vaultRoot } from './common.mjs';
 
 export function watchVaultProject(projectDir = '.', options = {}) {
@@ -13,6 +13,8 @@ export function watchVaultProject(projectDir = '.', options = {}) {
   const projectRoot = identity.projectRoot;
   const vaultDir = path.join(vaultRoot(), identity.fingerprint);
   const manifest = readManifest(vaultDir);
+  const linked = manifest.linkedPaths.includes(projectRoot) && !manifest.detachedPaths.includes(projectRoot);
+  if (!linked) throw new Error('Project path is detached from Environment Vault. Run agent-kernel env link first.');
   const selected = new Set(manifest.selectedFiles);
   const parentDirectories = new Set(
     manifest.selectedFiles.map((relativePath) => path.dirname(projectFilePath(projectRoot, relativePath)))
