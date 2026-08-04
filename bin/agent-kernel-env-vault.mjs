@@ -12,7 +12,7 @@ import {
   vaultSyncProject,
   vaultUnlinkProject,
   watchVaultProject
-} from '../src/env-vault.mjs';
+} from '../dist/env-vault.mjs';
 
 const VALUE_FLAGS = new Set([
   'include',
