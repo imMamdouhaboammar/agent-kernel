@@ -58,6 +58,7 @@ import { run as runPackageFiles } from './package-files.mjs';
 import { run as runPolicy } from './policy.mjs';
 import { run as runEnvVault } from './env-vault.mjs';
 import { run as runEnvVaultFreshClone } from './env-vault-fresh-clone.mjs';
+import { run as runEnvVaultTransactionCli } from './env-vault-transaction-cli.mjs';
 import { run as runSkillsEngine } from './skills-engine.mjs';
 import { run as runSelfEvolveEngine } from './self-evolve-engine.mjs';
 import { run as runDocLinks } from './doc-links.mjs';
@@ -199,6 +200,7 @@ const tests = [
   ['policy', runPolicy],
   ['env-vault', runEnvVault],
   ['env-vault-fresh-clone', runEnvVaultFreshClone],
+  ['env-vault-transaction-cli', runEnvVaultTransactionCli],
   ['skills-engine', runSkillsEngine],
   ['self-evolve-engine', runSelfEvolveEngine],
   ['doc-links', runDocLinks],
