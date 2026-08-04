@@ -5,6 +5,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- `agent-kernel link` now refreshes update guidance in the requested project when safe-link flags appear before the project path.
+
 ## [1.19.0] - 2026-07-30
 
 ### Added

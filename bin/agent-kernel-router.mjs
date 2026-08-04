@@ -102,12 +102,24 @@ function cachedUpdateNotice() {
 function refreshUpdateGuidance() {
   if (!['update', 'init', 'compile', 'sync', 'link'].includes(command)) return;
   const guidanceArgs = [updateGuidancePath];
-  if (command === 'link') guidanceArgs.push('--project', args[1] || '.');
+  if (command === 'link') guidanceArgs.push('--project', linkProjectArgument(args.slice(1)));
   childProcess.spawnSync(process.execPath, guidanceArgs, {
     cwd: process.cwd(),
     env: process.env,
     stdio: 'ignore'
   });
+}
+
+function linkProjectArgument(linkArgs) {
+  let positionalOnly = false;
+  for (const arg of linkArgs) {
+    if (!positionalOnly && arg === '--') {
+      positionalOnly = true;
+      continue;
+    }
+    if (positionalOnly || !arg.startsWith('-')) return arg;
+  }
+  return '.';
 }
 
 refreshUpdateCheckIfDue();

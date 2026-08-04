@@ -301,6 +301,15 @@ export async function run() {
   assert.ok(constitution.includes(guidanceVersion));
   assert.match(constitution, /agent-kernel update apply --agent <agent-id>/);
 
+  const flagFirstProject = path.join(fixture.homeDir, 'flag-first-link-project');
+  fs.mkdirSync(flagFirstProject, { recursive: true });
+  const flagFirstGuidance = path.join(flagFirstProject, 'AGENTS.md');
+  fs.writeFileSync(flagFirstGuidance, '# Project instructions\n');
+  runPublic(baseEnv, 'link', '--force', flagFirstProject);
+  const refreshedProjectGuidance = fs.readFileSync(flagFirstGuidance, 'utf8');
+  assert.match(refreshedProjectGuidance, /Agent Kernel update available/);
+  assert.ok(refreshedProjectGuidance.includes(guidanceVersion));
+
   const malformedGuidancePath = path.join(fixture.homeDir, '.codex', 'AGENTS.md');
   fs.mkdirSync(path.dirname(malformedGuidancePath), { recursive: true });
   const malformedGuidance = 'User guidance\n<!-- agent-kernel-update:start -->\nKeep this tail intact\n';

@@ -67,6 +67,7 @@ Run `--dry-run` first in any repository that already has project instructions or
 | `--no-backup` | Skip persistent `.agent-kernel-backups/` files; in-process rollback still applies |
 
 The safe-link path is idempotent. Running it repeatedly updates the Agent Kernel block rather than duplicating it.
+The project path may appear before or after safe-link flags; follow-up guidance refreshes use the resolved positional project rather than treating a flag as a path.
 
 ---
 
