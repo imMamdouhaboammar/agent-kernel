@@ -26,7 +26,7 @@ function createGitProject(root, name, remote) {
   return project;
 }
 
-function withKernelHome(kernelHome, fn) {
+async function withKernelHome(kernelHome, fn) {
   const previous = {
     AGENT_KERNEL_HOME: process.env.AGENT_KERNEL_HOME,
     HOME: process.env.HOME,
@@ -36,7 +36,7 @@ function withKernelHome(kernelHome, fn) {
   process.env.HOME = path.dirname(kernelHome);
   process.env.USERPROFILE = path.dirname(kernelHome);
   try {
-    return fn();
+    return await fn();
   } finally {
     for (const [key, value] of Object.entries(previous)) {
       if (value === undefined) delete process.env[key];
