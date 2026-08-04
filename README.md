@@ -54,8 +54,8 @@ Install once. Give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
   </table>
   <p><strong>Daily build pulse</strong></p>
   <ul>
-      <li>1 issue changed, including #111: docs: Add examples and troubleshooting guide for agent-kernel CLI setup.</li>
-      <li>Daily summary covers 1 public activity item from the last 1 day.</li>
+      <li>2 pull requests updated, led by #113: chore(deps): bump github/codeql-action/init from 4.37.3 to 4.37.4.</li>
+      <li>Daily summary covers 2 public activity items from the last 1 day.</li>
       <li>Documentation and project status remain aligned with the repository’s current public state.</li>
   </ul>
 </details>
