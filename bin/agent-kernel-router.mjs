@@ -57,6 +57,21 @@ function kernelHome() {
   return process.env.AGENT_KERNEL_HOME || path.join(os.homedir(), '.agent-kernel');
 }
 
+function linkProjectArg() {
+  const linkArgs = args.slice(1);
+  let positionalOnly = false;
+  for (const arg of linkArgs) {
+    if (positionalOnly) return arg;
+    if (arg === '--') {
+      positionalOnly = true;
+      continue;
+    }
+    if (['--dry-run', '--force', '--no-backup', '--help', '-h'].includes(arg)) continue;
+    if (!arg.startsWith('-')) return arg;
+  }
+  return '.';
+}
+
 function updateStatePaths() {
   const root = kernelHome();
   return {
@@ -107,7 +122,7 @@ function cachedUpdateNotice() {
 function refreshUpdateGuidance() {
   if (!['update', 'init', 'compile', 'sync', 'link'].includes(command)) return;
   const guidanceArgs = [updateGuidancePath];
-  if (command === 'link') guidanceArgs.push('--project', args[1] || '.');
+  if (command === 'link') guidanceArgs.push('--project', linkProjectArg());
   childProcess.spawnSync(process.execPath, guidanceArgs, {
     cwd: process.cwd(),
     env: process.env,
