@@ -32,24 +32,32 @@ Install once and give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigrav
 
 <!-- project-story:start -->
 <details open>
-  <summary><strong>Why Agent Kernel exists</strong></summary>
+  <summary><strong>Problem to project: Why I built Agent Kernel</strong></summary>
   <br />
+  <p align="center"><img src="https://raw.githubusercontent.com/imMamdouhaboammar/imMamdouhaboammar/main/assets/profile/project-badges.svg" width="488" alt="Real friction, building in public, daily pulse" /></p>
   <table>
     <tr>
       <td width="104" align="center" valign="middle"><img src="./docs/brand/agent-kernel-logo.svg" width="76" alt="Agent Kernel repository mark" /></td>
-      <td valign="middle"><strong>Agent Kernel</strong><br />A local memory and governance layer around the coding agents developers already use</td>
+      <td valign="middle"><strong>Agent Kernel</strong><br />A local memory and governance layer for the AI coding agents developers already use.</td>
     </tr>
   </table>
   <table>
     <tr>
-      <td width="50%" valign="top"><strong>Recurring problem</strong><br />Coding agents lose repository context, repeat rejected mistakes, mishandle local credentials, and weaken architecture boundaries across sessions</td>
-      <td width="50%" valign="top"><strong>Practical goal</strong><br />Keep reviewed rules, local continuity, failure evidence, and architecture checks around existing tools without replacing them</td>
+      <td width="50%" valign="top"><strong>Recurring problem</strong><br />Coding agents repeatedly lose repository context, repeat rejected mistakes, and weaken architecture boundaries across sessions.</td>
+      <td width="50%" valign="top"><strong>Practical goal</strong><br />Keep durable local memory, reviewed rules, failure lessons, and architecture controls around existing coding agents without replacing them.</td>
     </tr>
     <tr>
-      <td width="50%" valign="top"><strong>Built for</strong><br />Developers and teams using Claude Code, Codex, Cursor, Gemini CLI, OpenCode, or AGENTS.md-compatible tools</td>
-      <td width="50%" valign="top"><strong>Storage model</strong><br />Local files and JSON records with optional hooks, MCP tools, and zero runtime dependencies</td>
+      <td width="50%" valign="top"><strong>Built for</strong><br />Developers and teams using Claude Code, Codex, Cursor, Gemini CLI, OpenCode, or AGENTS.md-compatible tools.</td>
+      <td width="50%" valign="top"><strong>Search terms</strong><br />AI coding agent memory · local agent governance · architecture guardrails · coding agent context</td>
     </tr>
   </table>
+  <p><strong>Daily build pulse</strong></p>
+  <ul>
+      <li>4 commits landed: fix: make Environment Vault dry-runs truthful and restore atomic; fix: restore Environment Vault files in fresh clones.</li>
+      <li>6 pull requests updated, led by #120: fix(router): resolve link project after flags.</li>
+      <li>5 issues changed, including #118: docs: explain the routed CLI architecture in the contributor guide.</li>
+      <li>Daily summary covers 15 public activity items from the last 1 day.</li>
+  </ul>
 </details>
 <!-- project-story:end -->
 
