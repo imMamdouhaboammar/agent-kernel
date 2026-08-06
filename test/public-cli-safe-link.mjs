@@ -37,8 +37,44 @@ function countMarkers(text) {
   return (text.match(/<!-- agent-kernel:start -->/g) || []).length;
 }
 
-export async function run() {
+function assertRoutedFlagsBeforeProject() {
   const { env, homeDir, kernelHome } = makeEnv();
+  runCli(env, 'init', '--sync');
+  mkdirSync(join(kernelHome, 'runtime'), { recursive: true });
+  writeFileSync(
+    join(kernelHome, 'runtime', 'update-status.json'),
+    JSON.stringify({
+      updateAvailable: true,
+      currentVersion: '1.19.0',
+      targetVersion: '9.9.9',
+      channel: 'latest'
+    })
+  );
+
+  const project = join(homeDir, 'routed-link-flags-first-project');
+  mkdirSync(project, { recursive: true });
+  execFileSync('git', ['init'], { cwd: project, env, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+  const agentsPath = join(project, 'AGENTS.md');
+  writeFileSync(agentsPath, '# Existing project guidance\n');
+
+  runRoutedPublic(env, 'link', '--dry-run', project);
+  const guidance = readFileSync(agentsPath, 'utf8');
+  assertContains(
+    guidance,
+    '<!-- agent-kernel-update:start -->',
+    'link flags before the project path should refresh guidance in that project'
+  );
+  assertContains(
+    guidance,
+    '- Available: 9.9.9',
+    'project update guidance should use the cached target version'
+  );
+}
+
+export async function run() {
+  assertRoutedFlagsBeforeProject();
+
+  const { env, homeDir } = makeEnv();
   runCli(env, 'init', '--sync');
 
   const dryRunProject = join(homeDir, 'public-cli-link-dry-run-project');
@@ -55,31 +91,6 @@ export async function run() {
       throw new Error('public link --dry-run --hooks installed Agent Kernel pre-commit hook');
     }
   }
-
-  mkdirSync(join(kernelHome, 'runtime'), { recursive: true });
-  writeFileSync(
-    join(kernelHome, 'runtime', 'update-status.json'),
-    JSON.stringify({
-      updateAvailable: true,
-      currentVersion: '1.19.0',
-      targetVersion: '9.9.9',
-      channel: 'latest'
-    })
-  );
-  const dryRunAgentsPath = join(dryRunProject, 'AGENTS.md');
-  writeFileSync(dryRunAgentsPath, '# Existing project guidance\n');
-  runRoutedPublic(env, 'link', '--dry-run', dryRunProject);
-  const dryRunGuidance = readFileSync(dryRunAgentsPath, 'utf8');
-  assertContains(
-    dryRunGuidance,
-    '<!-- agent-kernel-update:start -->',
-    'link flags before the project path should refresh guidance in that project'
-  );
-  assertContains(
-    dryRunGuidance,
-    '- Available: 9.9.9',
-    'project update guidance should use the cached target version'
-  );
 
   const project = join(homeDir, 'public-cli-link-project');
   mkdirSync(project, { recursive: true });
