@@ -8,7 +8,7 @@
 //   5. repeated link runs do not duplicate marked blocks
 //   6. public link repairs pre-existing duplicate marked blocks
 //   7. `agent-kernel link --dry-run --hooks` writes no project files and no git hook
-//   8. update guidance resolves the positional project path when flags appear first
+//   8. the published router resolves the positional project path when flags appear first
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -17,6 +17,15 @@ import { assertContains, makeEnv, repo, runCli } from './_lib/helpers.mjs';
 
 function runPublic(env, ...args) {
   return execFileSync(process.execPath, [join(repo.root, 'bin', 'agent-kernel.mjs'), ...args], {
+    cwd: repo.root,
+    env,
+    encoding: 'utf8',
+    stdio: ['pipe', 'pipe', 'pipe']
+  });
+}
+
+function runRoutedPublic(env, ...args) {
+  return execFileSync(process.execPath, [join(repo.root, 'bin', 'agent-kernel-router.mjs'), ...args], {
     cwd: repo.root,
     env,
     encoding: 'utf8',
@@ -59,7 +68,7 @@ export async function run() {
   );
   const dryRunAgentsPath = join(dryRunProject, 'AGENTS.md');
   writeFileSync(dryRunAgentsPath, '# Existing project guidance\n');
-  runPublic(env, 'link', '--dry-run', dryRunProject);
+  runRoutedPublic(env, 'link', '--dry-run', dryRunProject);
   const dryRunGuidance = readFileSync(dryRunAgentsPath, 'utf8');
   assertContains(
     dryRunGuidance,
