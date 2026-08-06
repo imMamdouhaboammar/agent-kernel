@@ -29,6 +29,9 @@ export function inspectSmokeRegistration({
     unregisteredFiles: candidates.filter((file) => !delegated.has(file) && !registeredSet.has(file)),
     duplicateScheduledModules: duplicateValues(registeredFiles),
     duplicateTestNames: duplicateValues(registeredNames),
+    delegatedButScheduled: sortedUnique(
+      registeredFiles.filter((file) => delegated.has(file))
+    ),
     missingRegisteredFiles: sortedUnique(
       registeredFiles.filter((file) => !candidateSet.has(file))
     ),
@@ -49,6 +52,9 @@ export function assertSmokeRegistration(options) {
   }
   if (report.duplicateTestNames.length) {
     failures.push(`Smoke test names used more than once: ${report.duplicateTestNames.join(', ')}`);
+  }
+  if (report.delegatedButScheduled.length) {
+    failures.push(`Delegated smoke modules must not be scheduled directly: ${report.delegatedButScheduled.join(', ')}`);
   }
   if (report.missingRegisteredFiles.length) {
     failures.push(`Registered smoke modules do not exist: ${report.missingRegisteredFiles.join(', ')}`);
