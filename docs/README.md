@@ -205,4 +205,5 @@ When behavior changes, update docs in the same PR.
 | New client integration | Matching file under `integrations/`, `docs/README.md`, and `INTEGRATIONS.md` when the support matrix changes |
 | Skill trigger, workflow, or trust-boundary change | `SKILL.md`, both adapter skills, `SKILL_CONTRACT.md`, relevant protocol doc, docs contract |
 | Public environment variable | `ENVIRONMENT_VARIABLES.md`, relevant setup/security doc, docs contract |
+| Focused smoke registration, execution order, ignored files, or delegated coverage | `CONTRIBUTING.md`, `docs/README.md`, `test/smoke-registration.mjs`, `test/smoke.mjs` |
 | Workflow or release behavior | `SECURE_RUNTIME_AND_RELEASES.md`, `TROUBLESHOOTING.md`, `CHANGELOG.md`, CI hardening test |

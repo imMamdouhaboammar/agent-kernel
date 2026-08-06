@@ -49,6 +49,18 @@ npm run size
 npm run publish:dry
 ```
 
+## Adding focused smoke coverage
+
+Root-level `test/*.mjs` files are checked against the explicit registry in `test/smoke.mjs`. Each standalone smoke module must:
+
+1. Export `run()` and `name`.
+2. Be imported by `test/smoke.mjs`.
+3. Appear exactly once in the ordered `tests` array as `[name, runner, filename]`.
+
+`npm test` validates this contract before executing the suite. It reports every unregistered file, duplicate filename, duplicate test name, delegated file scheduled directly, missing registered file, and invalid delegated file so registration drift cannot silently reduce coverage.
+
+Only the orchestrator and independently executed CI checks belong in the explicit `ignoredFiles` list. A module invoked by another registered module must be named in `delegatedFiles`, with the invocation kept explicit in the registered parent. Delegated modules must not appear directly in `tests`. Do not add a file to either list merely to bypass registration.
+
 ## Adding a new command
 
 The CLI is intentionally a single `src/cli.mjs` file today. To add a command:
