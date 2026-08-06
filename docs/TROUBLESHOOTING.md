@@ -28,6 +28,203 @@ which ak
 npm list -g @mamdouh-aboammar/agent-kernel --depth=0
 ```
 
+## Bun and Node environment setup
+
+Agent Kernel works with both npm and Bun. The following covers common setup issues specific to each runtime.
+
+### Installing with Bun
+
+```bash
+bun install -g @mamdouh-aboammar/agent-kernel
+agent-kernel --version
+```
+
+If the `agent-kernel` command is not found after a Bun global install, confirm that Bun's global bin directory is on your PATH:
+
+```bash
+echo $PATH | tr ':' '\n' | grep bun
+# Expected output should include something like: /Users/<you>/.bun/bin
+```
+
+If missing, add it to your shell profile (`~/.zshrc`, `~/.bashrc`, or `~/.profile`):
+
+```bash
+export PATH="$HOME/.bun/bin:$PATH"
+```
+
+Then reload your shell and retry.
+
+### Bun version conflicts
+
+Some Bun versions below `1.0` have module resolution differences that can cause `ERR_MODULE_NOT_FOUND`. Upgrade Bun:
+
+```bash
+bun upgrade
+bun --version
+```
+
+Agent Kernel requires Node.js `>=18.18.0` or a compatible Bun runtime.
+
+### Node version issues
+
+If using Node directly, confirm the active version:
+
+```bash
+node --version
+```
+
+If below `18.18.0`, use a version manager such as `nvm` or `fnm`:
+
+```bash
+# With nvm
+nvm install 20
+nvm use 20
+node --version
+```
+
+After switching Node versions, reinstall the global package:
+
+```bash
+npm install -g @mamdouh-aboammar/agent-kernel
+agent-kernel --version
+```
+
+### PATH not updated after install
+
+Some shell environments cache the `PATH` lookup. After global install, run:
+
+```bash
+hash -r            # bash/zsh: clear the command hash cache
+exec $SHELL -l     # reload shell profile
+agent-kernel --version
+```
+
+---
+
+## Agent configuration snippets
+
+The following are minimum configuration examples for connecting Agent Kernel to popular AI coding clients.
+
+### Claude Code
+
+Add the MCP server to your Claude Code configuration. The easiest path is via the `agent-kernel` command itself:
+
+```bash
+agent-kernel mcp install claude
+```
+
+Or add manually to `~/.claude.json` (Claude Code's global config):
+
+```json
+{
+  "mcpServers": {
+    "agent-kernel": {
+      "command": "agent-kernel",
+      "args": ["mcp"],
+      "env": {}
+    }
+  }
+}
+```
+
+Wire the context hook in `.claude/settings.json` inside your project:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "agent-kernel-claude-context-hook"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### Cursor
+
+Add Agent Kernel's MCP server in Cursor's settings (`Cursor > Settings > MCP`):
+
+```json
+{
+  "mcpServers": {
+    "agent-kernel": {
+      "command": "agent-kernel",
+      "args": ["mcp"],
+      "env": {}
+    }
+  }
+}
+```
+
+To ensure Cursor picks up your custom `AGENT_KERNEL_HOME`, set the environment variable before launching Cursor, or add it to your shell profile.
+
+Cursor reads `.cursor/rules` for project-level AI instructions. Link your compiled Agent Kernel guidance to this file:
+
+```bash
+agent-kernel-safe-link . --no-backup
+```
+
+### Gemini CLI (Antigravity / agy)
+
+Agent Kernel integrates with Gemini CLI through its rules and MCP configuration. Add to `~/.gemini/config/mcp_config.json` or the project-local `.gemini/config/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "agent-kernel": {
+      "command": "agent-kernel",
+      "args": ["mcp"],
+      "transport": "stdio"
+    }
+  }
+}
+```
+
+To wire project guidance into Gemini CLI's context, link your compiled rules:
+
+```bash
+agent-kernel compile
+agent-kernel-safe-link .
+```
+
+This writes an `AGENTS.md` block into your project root, which Gemini CLI (and other `AGENTS.md`-compatible agents) reads automatically.
+
+Set `AGENT_KERNEL_HOME` in your shell profile if you use a non-default install location:
+
+```bash
+export AGENT_KERNEL_HOME="$HOME/.agent-kernel"
+```
+
+### Codex
+
+Add the MCP configuration via the CLI:
+
+```bash
+agent-kernel mcp install codex
+```
+
+Or add to `.codex/mcp.json` inside your project:
+
+```json
+{
+  "mcpServers": {
+    "agent-kernel": {
+      "command": "agent-kernel",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+---
+
 ## Common symptoms
 
 | Symptom | Likely cause | First action |
