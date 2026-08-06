@@ -53,10 +53,9 @@ Install once and give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigrav
   </table>
   <p><strong>Daily build pulse</strong></p>
   <ul>
-      <li>4 commits landed: fix: make Environment Vault dry-runs truthful and restore atomic; fix: restore Environment Vault files in fresh clones.</li>
-      <li>6 pull requests updated, led by #120: fix(router): resolve link project after flags.</li>
-      <li>5 issues changed, including #118: docs: explain the routed CLI architecture in the contributor guide.</li>
-      <li>Daily summary covers 15 public activity items from the last 1 day.</li>
+      <li>2 commits landed: chore: remove accidental noop file; noop.</li>
+      <li>2 pull requests updated, led by #126: test(package): remove POSIX shell dependency.</li>
+      <li>Daily summary covers 4 public activity items from the last 1 day.</li>
   </ul>
 </details>
 <!-- project-story:end -->
