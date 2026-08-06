@@ -69,8 +69,6 @@ import { run as runProjectConnect } from './project-connect.test.mjs';
 import { installChildProcessCompatibility } from '../bin/agent-kernel-command-runner.mjs';
 import { assertSmokeRegistration } from './_lib/smoke-registration.mjs';
 
-const smokeFilePath = fileURLToPath(import.meta.url);
-const testDirectory = path.dirname(smokeFilePath);
 const brokerModulePath = fileURLToPath(new URL('../bin/agent-kernel-project-broker.mjs', import.meta.url));
 const brokerPlatformPath = fileURLToPath(new URL('../bin/agent-kernel-project-broker-platform.mjs', import.meta.url));
 const windowsOwnerOnlyStateFiles = new Set([
@@ -159,66 +157,71 @@ async function runProjectContextBrokerCompat() {
 }
 
 const tests = [
-  ['version', runVersion],
-  ['init', runInit],
-  ['memory', runMemory],
-  ['episode', runEpisode],
-  ['guard', runGuard],
-  ['mcp', runMcp],
-  ['safe-link', runSafeLink],
-  ['safe-git-hook', runSafeGitHook],
-  ['core-link-claude', runCoreLinkClaude],
-  ['public-cli-safe-link', runPublicCliSafeLink],
-  ['public-cli-safe-git-hook', runPublicCliSafeGitHook],
-  ['public-cli-daemon', runPublicCliDaemon],
-  ['public-cli-runtime-doctor', runPublicCliRuntimeDoctor],
-  ['public-cli-session', runPublicCliSession],
-  ['public-cli-session-timeline', runPublicCliSessionTimeline],
-  ['public-cli-commit-links', runPublicCliCommitLinks],
-  ['public-cli-observation', runPublicCliObservation],
-  ['public-cli-context', runPublicCliContext],
-  ['public-cli-architecture', runPublicCliArchitecture],
-  ['public-cli-portability', runPublicCliPortability],
-  ['public-cli-dashboard', runPublicCliDashboard],
-  ['public-cli-dashboard-safety', runPublicCliDashboardSafety],
-  ['public-cli-update', runPublicCliUpdate],
-  ['windows-update-runner', runWindowsUpdateRunner],
-  ['windows-credential-boundary', runWindowsCredentialBoundary],
-  ['windows-empty-launcher-allowlist', runWindowsEmptyLauncherAllowlist],
-  ['project-broker-symlink', runProjectBrokerSymlink],
-  ['file-context', runFileContext],
-  ['file-references', runFileReferences],
-  ['structured-search', runStructuredSearch],
-  ['claude-context-hook', runClaudeContextHook],
-  ['wrapper-routing', runWrapperRouting],
-  ['agent-propose', runAgentPropose],
-  ['failure-lessons', runFailureLessons],
-  ['public-cli-failure-patterns', runPublicCliFailurePatterns],
-  ['public-cli-pattern-proposal', runPublicCliPatternProposal],
-  ['public-cli-agent-identity', runPublicCliAgentIdentity],
-  ['public-cli-registries', runPublicCliRegistries],
-  ['mode-config', runModeConfig],
-  ['agent-write-modes', runAgentWriteModes],
-  ['architecture-guardian', runArchitectureGuardian],
-  ['package-files', runPackageFiles],
-  ['smoke-registration', runSmokeRegistration],
-  ['policy', runPolicy],
-  ['env-vault', runEnvVault],
-  ['env-vault-fresh-clone', runEnvVaultFreshClone],
-  ['env-vault-transaction-cli', runEnvVaultTransactionCli],
-  ['skills-engine', runSkillsEngine],
-  ['self-evolve-engine', runSelfEvolveEngine],
-  ['doc-links', runDocLinks],
-  ['cli-status-json', runCliStatusJson],
-  ['project-context-broker', runProjectContextBrokerCompat],
-  ['project-connect', runProjectConnect]
+  ['version', runVersion, 'version.mjs'],
+  ['init', runInit, 'init.mjs'],
+  ['memory', runMemory, 'memory.mjs'],
+  ['episode', runEpisode, 'episode.mjs'],
+  ['guard', runGuard, 'guard.mjs'],
+  ['mcp', runMcp, 'mcp.mjs'],
+  ['safe-link', runSafeLink, 'safe-link.mjs'],
+  ['safe-git-hook', runSafeGitHook, 'safe-git-hook.mjs'],
+  ['core-link-claude', runCoreLinkClaude, 'core-link-claude.mjs'],
+  ['public-cli-safe-link', runPublicCliSafeLink, 'public-cli-safe-link.mjs'],
+  ['public-cli-safe-git-hook', runPublicCliSafeGitHook, 'public-cli-safe-git-hook.mjs'],
+  ['public-cli-daemon', runPublicCliDaemon, 'public-cli-daemon.mjs'],
+  ['public-cli-runtime-doctor', runPublicCliRuntimeDoctor, 'public-cli-runtime-doctor.mjs'],
+  ['public-cli-session', runPublicCliSession, 'public-cli-session.mjs'],
+  ['public-cli-session-timeline', runPublicCliSessionTimeline, 'public-cli-session-timeline.mjs'],
+  ['public-cli-commit-links', runPublicCliCommitLinks, 'public-cli-commit-links.mjs'],
+  ['public-cli-observation', runPublicCliObservation, 'public-cli-observation.mjs'],
+  ['public-cli-context', runPublicCliContext, 'public-cli-context.mjs'],
+  ['public-cli-architecture', runPublicCliArchitecture, 'public-cli-architecture.mjs'],
+  ['public-cli-portability', runPublicCliPortability, 'public-cli-portability.mjs'],
+  ['public-cli-dashboard', runPublicCliDashboard, 'public-cli-dashboard.mjs'],
+  ['public-cli-dashboard-safety', runPublicCliDashboardSafety, 'public-cli-dashboard-safety.mjs'],
+  ['public-cli-update', runPublicCliUpdate, 'public-cli-update.mjs'],
+  ['windows-update-runner', runWindowsUpdateRunner, 'windows-update-runner.mjs'],
+  ['windows-credential-boundary', runWindowsCredentialBoundary, 'windows-credential-boundary.mjs'],
+  ['windows-empty-launcher-allowlist', runWindowsEmptyLauncherAllowlist, 'windows-empty-launcher-allowlist.mjs'],
+  ['project-broker-symlink', runProjectBrokerSymlink, 'project-broker-symlink.mjs'],
+  ['file-context', runFileContext, 'file-context.mjs'],
+  ['file-references', runFileReferences, 'file-references.mjs'],
+  ['structured-search', runStructuredSearch, 'structured-search.mjs'],
+  ['claude-context-hook', runClaudeContextHook, 'claude-context-hook.mjs'],
+  ['wrapper-routing', runWrapperRouting, 'wrapper-routing.mjs'],
+  ['agent-propose', runAgentPropose, 'agent-propose.mjs'],
+  ['failure-lessons', runFailureLessons, 'failure-lessons.mjs'],
+  ['public-cli-failure-patterns', runPublicCliFailurePatterns, 'public-cli-failure-patterns.mjs'],
+  ['public-cli-pattern-proposal', runPublicCliPatternProposal, 'public-cli-pattern-proposal.mjs'],
+  ['public-cli-agent-identity', runPublicCliAgentIdentity, 'public-cli-agent-identity.mjs'],
+  ['public-cli-registries', runPublicCliRegistries, 'public-cli-registries.mjs'],
+  ['mode-config', runModeConfig, 'mode-config.mjs'],
+  ['agent-write-modes', runAgentWriteModes, 'agent-write-modes.mjs'],
+  ['architecture-guardian', runArchitectureGuardian, 'architecture-guardian.mjs'],
+  ['package-files', runPackageFiles, 'package-files.mjs'],
+  ['smoke-registration', runSmokeRegistration, 'smoke-registration.mjs'],
+  ['policy', runPolicy, 'policy.mjs'],
+  ['env-vault', runEnvVault, 'env-vault.mjs'],
+  ['env-vault-fresh-clone', runEnvVaultFreshClone, 'env-vault-fresh-clone.mjs'],
+  ['env-vault-transaction-cli', runEnvVaultTransactionCli, 'env-vault-transaction-cli.mjs'],
+  ['skills-engine', runSkillsEngine, 'skills-engine.mjs'],
+  ['self-evolve-engine', runSelfEvolveEngine, 'self-evolve-engine.mjs'],
+  ['doc-links', runDocLinks, 'doc-links.mjs'],
+  ['cli-status-json', runCliStatusJson, 'cli-status-json.mjs'],
+  ['project-context-broker', runProjectContextBrokerCompat, 'project-context-broker.test.mjs'],
+  ['project-connect', runProjectConnect, 'project-connect.test.mjs']
 ];
 
+const candidateFiles = fs
+  .readdirSync('test', { withFileTypes: true })
+  .filter((entry) => entry.isFile())
+  .map((entry) => entry.name);
+const registrations = tests.map(([name, , file]) => ({ name, file }));
 assertSmokeRegistration({
-  testDirectory,
-  smokeSource: fs.readFileSync(smokeFilePath, 'utf8'),
+  candidateFiles,
+  registrations,
   ignoredFiles: ['smoke.mjs', 'ci-hardening.mjs'],
-  delegatedFiles: ['architecture-guardian-evals.mjs', 'project-context-broker.test.mjs']
+  delegatedFiles: ['architecture-guardian-evals.mjs']
 });
 
 let passed = 0;
