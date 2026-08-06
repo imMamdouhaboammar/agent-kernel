@@ -44,7 +44,7 @@ export function inspectSmokeRegistration({
   const scheduleCounts = new Map();
   for (const alias of scheduledAliases) scheduleCounts.set(alias, (scheduleCounts.get(alias) || 0) + 1);
 
-  const unregisteredFiles = candidateFiles.filter((file) => !importedFiles.has(file));
+  const unregisteredFiles = candidateFiles.filter((file) => !delegated.has(file) && !importedFiles.has(file));
   const importedButUnscheduled = imports
     .filter((entry) => !delegated.has(entry.file) && (scheduleCounts.get(entry.alias) || 0) === 0)
     .map((entry) => entry.file);
@@ -64,7 +64,7 @@ export function inspectSmokeRegistration({
     })
     .map((entry) => entry.file);
 
-  const invalidDelegatedFiles = delegatedFiles.filter((file) => !importedFiles.has(file));
+  const invalidDelegatedFiles = delegatedFiles.filter((file) => !candidateFiles.includes(file));
 
   return {
     candidateFiles,
@@ -96,7 +96,7 @@ export function assertSmokeRegistration(options) {
     failures.push(`Smoke module imports escape test directory: ${report.importedOutsideTestDirectory.join(', ')}`);
   }
   if (report.invalidDelegatedFiles.length) {
-    failures.push(`Delegated smoke modules are not imported: ${report.invalidDelegatedFiles.join(', ')}`);
+    failures.push(`Delegated smoke modules do not exist: ${report.invalidDelegatedFiles.join(', ')}`);
   }
   if (failures.length) {
     throw new Error(`Smoke registration contract failed\n- ${failures.join('\n- ')}`);
