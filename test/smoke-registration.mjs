@@ -18,6 +18,7 @@ export async function run() {
       'missing-b.mjs',
       'imported-only.mjs',
       'duplicate.mjs',
+      'delegated.mjs',
       'smoke.mjs',
       'ci-hardening.mjs'
     ]) {
@@ -38,23 +39,27 @@ const tests = [
     const report = inspectSmokeRegistration({
       testDirectory: directory,
       smokeSource: source,
-      ignoredFiles: ['smoke.mjs', 'ci-hardening.mjs']
+      ignoredFiles: ['smoke.mjs', 'ci-hardening.mjs'],
+      delegatedFiles: ['delegated.mjs']
     });
 
     assert.deepStrictEqual(report.unregisteredFiles, ['missing-a.mjs', 'missing-b.mjs']);
     assert.deepStrictEqual(report.importedButUnscheduled, ['imported-only.mjs']);
     assert.deepStrictEqual(report.duplicateScheduledModules, ['duplicate.mjs']);
+    assert.deepStrictEqual(report.invalidDelegatedFiles, []);
 
     assert.throws(
       () => assertSmokeRegistration({
         testDirectory: directory,
         smokeSource: source,
-        ignoredFiles: ['smoke.mjs', 'ci-hardening.mjs']
+        ignoredFiles: ['smoke.mjs', 'ci-hardening.mjs'],
+        delegatedFiles: ['delegated.mjs', 'missing-delegated.mjs']
       }),
       (error) => {
         assert.match(error.message, /missing-a\.mjs, missing-b\.mjs/);
         assert.match(error.message, /imported-only\.mjs/);
         assert.match(error.message, /duplicate\.mjs/);
+        assert.match(error.message, /missing-delegated\.mjs/);
         return true;
       }
     );
@@ -77,7 +82,8 @@ const tests = [
     assert.doesNotThrow(() => assertSmokeRegistration({
       testDirectory: directory,
       smokeSource: healthySource,
-      ignoredFiles: ['smoke.mjs', 'ci-hardening.mjs']
+      ignoredFiles: ['smoke.mjs', 'ci-hardening.mjs'],
+      delegatedFiles: ['delegated.mjs']
     }));
   } finally {
     rmSync(directory, { recursive: true, force: true });
