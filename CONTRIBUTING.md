@@ -49,6 +49,18 @@ npm run size
 npm run publish:dry
 ```
 
+## Adding focused smoke coverage
+
+Root-level `test/*.mjs` files are treated as focused smoke modules. Each module must:
+
+1. Export `run()` and `name`.
+2. Be imported by `test/smoke.mjs` using `import { run as ... }`.
+3. Appear exactly once in the ordered `tests` array.
+
+`npm test` validates this contract before executing the suite. It fails with every unregistered, imported-but-unscheduled, or duplicate module name so registration drift cannot silently reduce coverage.
+
+Only the orchestrator and independently executed CI checks belong in the explicit `ignoredFiles` list. A module that uses a compatibility wrapper must be named in `delegatedFiles`, and the underlying module must still be imported. Do not add a file to either list merely to bypass registration.
+
 ## Adding a new command
 
 The CLI is intentionally a single `src/cli.mjs` file today. To add a command:
@@ -195,7 +207,6 @@ npm publish --access public
 git archive --prefix=agent-kernel-vX.Y.Z/ \
     --format=tar.gz \
     -o /tmp/agent-kernel-vX.Y.Z.tar.gz vX.Y.Z
-
 gh release upload vX.Y.Z /tmp/agent-kernel-vX.Y.Z.tar.gz --clobber
 
 # 3. Verify
