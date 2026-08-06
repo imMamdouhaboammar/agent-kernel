@@ -11,10 +11,28 @@
 //
 // The list of required files matches package.json#files.
 
-import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { repo } from './_lib/helpers.mjs';
+
+function resolveNpmCli() {
+  const nodeDir = dirname(process.execPath);
+  const candidates = [
+    process.env.npm_execpath,
+    join(nodeDir, 'node_modules', 'npm', 'bin', 'npm-cli.js'),
+    resolve(nodeDir, '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js')
+  ].filter(Boolean);
+
+  const npmCli = candidates.find((candidate) => existsSync(candidate));
+  if (!npmCli) {
+    throw new Error(
+      `Unable to locate npm CLI without a shell. Checked: ${candidates.join(', ')}. ` +
+        'Run this test through npm or install npm alongside Node.js.'
+    );
+  }
+  return npmCli;
+}
 
 export async function run() {
   const pkg = JSON.parse(readFileSync(join(repo.root, 'package.json'), 'utf8'));
@@ -24,14 +42,31 @@ export async function run() {
 
   // `npm pack --dry-run` triggers the `prepack` script by default, which
   // can re-enter our test suite. Use --ignore-scripts to avoid that.
-  //
-  // npm sends the file listing to **stderr**, not stdout. Capture
-  // both via the shell.
-  const out = execFileSync('sh', ['-c', 'npm pack --dry-run --ignore-scripts 2>&1'], {
+  // Execute npm's JavaScript CLI with the active Node binary so Windows
+  // does not need cmd.exe and POSIX does not need sh.
+  const npmCli = resolveNpmCli();
+  const result = spawnSync(process.execPath, [npmCli, 'pack', '--dry-run', '--ignore-scripts'], {
     cwd: repo.root,
     encoding: 'utf8',
-    stdio: ['pipe', 'pipe', 'pipe']
+    stdio: ['ignore', 'pipe', 'pipe']
   });
+
+  const stdout = result.stdout ?? '';
+  const stderr = result.stderr ?? '';
+  const out = `${stdout}\n${stderr}`;
+
+  if (result.error || result.status !== 0) {
+    const details = [
+      `npm pack --dry-run failed (status: ${result.status ?? 'unknown'}, signal: ${result.signal ?? 'none'})`,
+      result.error ? `error: ${result.error.message}` : null,
+      `npm CLI: ${npmCli}`,
+      `stdout:\n${stdout || '<empty>'}`,
+      `stderr:\n${stderr || '<empty>'}`
+    ]
+      .filter(Boolean)
+      .join('\n');
+    throw new Error(details);
+  }
 
   // The dry-run output contains one file entry per line, e.g.:
   //   "npm notice 1.2kB README.md"
