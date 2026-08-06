@@ -123,6 +123,132 @@ Read [`docs/INSTALL_AND_AGENT_SETUP.md`](./docs/INSTALL_AND_AGENT_SETUP.md) for 
 
 ---
 
+## ⚡ Quick-start prompt — copy and paste into any AI coding agent
+
+> Paste the block below into Claude Code, Cursor, Gemini CLI, Codex, or any `AGENTS.md`-compatible agent.
+> The agent will install or upgrade Agent Kernel, connect your project, activate all tools, save your environment files, and enable the watcher.
+
+````
+You are setting up Agent Kernel in this project. Execute the following steps in order, stopping and reporting any failure before continuing.
+
+## Step 1 — Install or upgrade Agent Kernel
+
+Check if agent-kernel is already installed:
+
+```bash
+agent-kernel --version 2>/dev/null || echo "NOT_INSTALLED"
+```
+
+If NOT_INSTALLED, install with Bun (preferred) or npm:
+
+```bash
+# With Bun (preferred — requires Bun >= 1.0.0)
+bun install -g @mamdouh-aboammar/agent-kernel
+
+# Or with npm (requires Node.js >= 18.18.0)
+npm install -g @mamdouh-aboammar/agent-kernel
+```
+
+If already installed, upgrade to the latest version:
+
+```bash
+agent-kernel update
+```
+
+Confirm the installed version:
+
+```bash
+agent-kernel --version
+```
+
+## Step 2 — Initialize and connect this project
+
+Initialize the local Agent Kernel home if this is a fresh machine:
+
+```bash
+agent-kernel init --sync
+agent-kernel doctor
+```
+
+Connect this repository to Agent Kernel:
+
+```bash
+agent-kernel project connect --yes
+agent-kernel project status --json
+```
+
+## Step 3 — Link and activate all agent tools
+
+Compile rules and link generated guidance into all supported agent surfaces (AGENTS.md, CLAUDE.md, Cursor rules, Gemini config):
+
+```bash
+agent-kernel compile
+agent-kernel-safe-link .
+```
+
+Install MCP tools so every connected agent can call Agent Kernel capabilities:
+
+```bash
+agent-kernel mcp install claude
+agent-kernel mcp install codex
+```
+
+Install safety hooks:
+
+```bash
+agent-kernel-safe-git-hook .
+```
+
+Verify all tools are active:
+
+```bash
+agent-kernel status
+agent-kernel doctor
+```
+
+## Step 4 — Save environment files (Environment Vault)
+
+Discover and link all .env files in this project:
+
+```bash
+agent-kernel env link .
+```
+
+Push all current .env files to the vault exactly as they are — do NOT modify file contents:
+
+```bash
+agent-kernel env push .
+```
+
+Confirm the vault is healthy and all files are stored:
+
+```bash
+agent-kernel env status . --json
+```
+
+## Step 5 — Enable the environment watcher (mirror mode)
+
+Start watching .env files for changes and automatically mirror them to the vault:
+
+```bash
+agent-kernel env watch .
+```
+
+## Done — confirm the full setup
+
+Run a final health check and report the output:
+
+```bash
+agent-kernel doctor
+agent-kernel env status . --json
+agent-kernel project status --json
+```
+
+Report: version installed, number of env files stored, project identity fingerprint, and which agent surfaces received compiled guidance.
+````
+
+---
+
 ## Project Environment Vault
 
 Environment Vault stores project environment files only on the current machine under
