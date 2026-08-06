@@ -24,6 +24,7 @@ const unhealthyRegistrations = [
   { name: 'duplicate-b', file: 'duplicate.mjs' },
   { name: 'same-name', file: 'same-name-a.mjs' },
   { name: 'same-name', file: 'same-name-b.mjs' },
+  { name: 'delegated-direct', file: 'delegated.mjs' },
   { name: 'absent', file: 'absent.mjs' }
 ];
 
@@ -37,6 +38,7 @@ function assertUnhealthyReport() {
   assert.deepStrictEqual(report.unregisteredFiles, ['missing-a.mjs', 'missing-b.mjs']);
   assert.deepStrictEqual(report.duplicateScheduledModules, ['duplicate.mjs']);
   assert.deepStrictEqual(report.duplicateTestNames, ['same-name']);
+  assert.deepStrictEqual(report.delegatedButScheduled, ['delegated.mjs']);
   assert.deepStrictEqual(report.missingRegisteredFiles, ['absent.mjs']);
   assert.deepStrictEqual(report.invalidDelegatedFiles, []);
 }
@@ -53,6 +55,7 @@ function assertActionableFailure() {
       assert.match(error.message, /missing-a\.mjs, missing-b\.mjs/);
       assert.match(error.message, /duplicate\.mjs/);
       assert.match(error.message, /same-name/);
+      assert.match(error.message, /delegated\.mjs/);
       assert.match(error.message, /absent\.mjs/);
       assert.match(error.message, /missing-delegated\.mjs/);
       return true;
