@@ -63,7 +63,14 @@ Only the orchestrator and independently executed CI checks belong in the explici
 
 ## Adding a new command
 
-The CLI is intentionally a single `src/cli.mjs` file today. To add a command:
+The public `agent-kernel` executable is routed. `bin/agent-kernel-router.mjs` dispatches every invocation: core commands go to the monolithic core CLI (`src/cli.mjs`, built to `dist/cli.mjs`), while intentionally separate command families go to focused helper binaries under `bin/`. `docs/ARCHITECTURE_NOW.md` holds the authoritative map of which commands live where.
+
+First decide where the new command belongs:
+
+- **Core command** (`src/cli.mjs`): it operates on kernel state (memory, proposals, episodes, compile/sync/link, guard, MCP, status) and shares the core CLI's flags and lifecycle.
+- **Routed command** (`bin/` helper): it is an intentionally separate subsystem, for example one that needs network access, platform-specific behavior, or a large isolated feature that should stay out of the monolithic core.
+
+To add a core command:
 
 1. Edit `src/cli.mjs` and update command dispatch.
 2. Update help output.
@@ -71,6 +78,14 @@ The CLI is intentionally a single `src/cli.mjs` file today. To add a command:
 4. Update `README.md`, `docs/ARCHITECTURE_NOW.md`, and the relevant protocol doc.
 5. Add a `CHANGELOG.md` entry under `Unreleased`.
 6. Run `npm run build && npm test && npm run lint && npm run typecheck`.
+
+To add a routed command:
+
+1. Add or edit the helper binary in `bin/` and wire the command through `bin/agent-kernel-router.mjs`.
+2. Follow the helper binary checklist below (`package.json#bin`, `scripts/lint-bins.mjs`, smoke coverage).
+3. Update `README.md`, `docs/ARCHITECTURE_NOW.md`, and the relevant `docs/*.md` file.
+4. Add a `CHANGELOG.md` entry under `Unreleased`.
+5. Run `npm run build && npm test && npm run lint && npm run typecheck`.
 
 Do not add production code under `src/adapters/`, `src/commands/`, `src/core/`, or `src/hooks/` unless the modularization is also wired into runtime, build, and tests.
 
