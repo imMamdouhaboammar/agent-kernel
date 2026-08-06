@@ -51,15 +51,15 @@ npm run publish:dry
 
 ## Adding focused smoke coverage
 
-Root-level `test/*.mjs` files are treated as focused smoke modules. Each module must:
+Root-level `test/*.mjs` files are checked against the explicit registry in `test/smoke.mjs`. Each standalone smoke module must:
 
 1. Export `run()` and `name`.
-2. Be imported by `test/smoke.mjs` using `import { run as ... }`.
-3. Appear exactly once in the ordered `tests` array.
+2. Be imported by `test/smoke.mjs`.
+3. Appear exactly once in the ordered `tests` array as `[name, runner, filename]`.
 
-`npm test` validates this contract before executing the suite. It fails with every unregistered, imported-but-unscheduled, or duplicate module name so registration drift cannot silently reduce coverage.
+`npm test` validates this contract before executing the suite. It reports every unregistered file, duplicate filename, duplicate test name, missing registered file, and invalid delegated file so registration drift cannot silently reduce coverage.
 
-Only the orchestrator and independently executed CI checks belong in the explicit `ignoredFiles` list. A module executed through a compatibility wrapper or invoked by another registered module must be named in `delegatedFiles`, with the invocation kept explicit in the registered parent. Do not add a file to either list merely to bypass registration.
+Only the orchestrator and independently executed CI checks belong in the explicit `ignoredFiles` list. A module invoked by another registered module must be named in `delegatedFiles`, with the invocation kept explicit in the registered parent. Do not add a file to either list merely to bypass registration.
 
 ## Adding a new command
 
