@@ -218,7 +218,7 @@ assertSmokeRegistration({
   testDirectory,
   smokeSource: fs.readFileSync(smokeFilePath, 'utf8'),
   ignoredFiles: ['smoke.mjs', 'ci-hardening.mjs'],
-  delegatedFiles: ['project-context-broker.test.mjs']
+  delegatedFiles: ['architecture-guardian-evals.mjs', 'project-context-broker.test.mjs']
 });
 
 let passed = 0;
