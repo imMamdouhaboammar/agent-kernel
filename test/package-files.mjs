@@ -12,9 +12,27 @@
 // The list of required files matches package.json#files.
 
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { repo } from './_lib/helpers.mjs';
+
+function resolveNpmCli() {
+  const nodeDir = dirname(process.execPath);
+  const candidates = [
+    process.env.npm_execpath,
+    join(nodeDir, 'node_modules', 'npm', 'bin', 'npm-cli.js'),
+    resolve(nodeDir, '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js')
+  ].filter(Boolean);
+
+  const npmCli = candidates.find((candidate) => existsSync(candidate));
+  if (!npmCli) {
+    throw new Error(
+      `Unable to locate npm CLI without a shell. Checked: ${candidates.join(', ')}. ` +
+        'Run this test through npm or install npm alongside Node.js.'
+    );
+  }
+  return npmCli;
+}
 
 export async function run() {
   const pkg = JSON.parse(readFileSync(join(repo.root, 'package.json'), 'utf8'));
@@ -24,10 +42,10 @@ export async function run() {
 
   // `npm pack --dry-run` triggers the `prepack` script by default, which
   // can re-enter our test suite. Use --ignore-scripts to avoid that.
-  // npm writes parts of the package preview to stderr, so preserve both
-  // streams without depending on a POSIX shell.
-  const npmExecutable = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-  const result = spawnSync(npmExecutable, ['pack', '--dry-run', '--ignore-scripts'], {
+  // Execute npm's JavaScript CLI with the active Node binary so Windows
+  // does not need cmd.exe and POSIX does not need sh.
+  const npmCli = resolveNpmCli();
+  const result = spawnSync(process.execPath, [npmCli, 'pack', '--dry-run', '--ignore-scripts'], {
     cwd: repo.root,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe']
@@ -41,6 +59,7 @@ export async function run() {
     const details = [
       `npm pack --dry-run failed (status: ${result.status ?? 'unknown'}, signal: ${result.signal ?? 'none'})`,
       result.error ? `error: ${result.error.message}` : null,
+      `npm CLI: ${npmCli}`,
       `stdout:\n${stdout || '<empty>'}`,
       `stderr:\n${stderr || '<empty>'}`
     ]
