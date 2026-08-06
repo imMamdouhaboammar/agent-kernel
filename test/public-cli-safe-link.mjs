@@ -8,6 +8,7 @@
 //   5. repeated link runs do not duplicate marked blocks
 //   6. public link repairs pre-existing duplicate marked blocks
 //   7. `agent-kernel link --dry-run --hooks` writes no project files and no git hook
+//   8. the published router resolves the positional project path when flags appear first
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -23,11 +24,56 @@ function runPublic(env, ...args) {
   });
 }
 
+function runRoutedPublic(env, ...args) {
+  return execFileSync(process.execPath, [join(repo.root, 'bin', 'agent-kernel-router.mjs'), ...args], {
+    cwd: repo.root,
+    env,
+    encoding: 'utf8',
+    stdio: ['pipe', 'pipe', 'pipe']
+  });
+}
+
 function countMarkers(text) {
   return (text.match(/<!-- agent-kernel:start -->/g) || []).length;
 }
 
+function assertRoutedFlagsBeforeProject() {
+  const { env, homeDir, kernelHome } = makeEnv();
+  runCli(env, 'init', '--sync');
+  mkdirSync(join(kernelHome, 'runtime'), { recursive: true });
+  writeFileSync(
+    join(kernelHome, 'runtime', 'update-status.json'),
+    JSON.stringify({
+      updateAvailable: true,
+      currentVersion: '1.19.0',
+      targetVersion: '9.9.9',
+      channel: 'latest'
+    })
+  );
+
+  const project = join(homeDir, 'routed-link-flags-first-project');
+  mkdirSync(project, { recursive: true });
+  execFileSync('git', ['init'], { cwd: project, env, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+  const agentsPath = join(project, 'AGENTS.md');
+  writeFileSync(agentsPath, '# Existing project guidance\n');
+
+  runRoutedPublic(env, 'link', '--dry-run', project);
+  const guidance = readFileSync(agentsPath, 'utf8');
+  assertContains(
+    guidance,
+    '<!-- agent-kernel-update:start -->',
+    'link flags before the project path should refresh guidance in that project'
+  );
+  assertContains(
+    guidance,
+    '- Available: 9.9.9',
+    'project update guidance should use the cached target version'
+  );
+}
+
 export async function run() {
+  assertRoutedFlagsBeforeProject();
+
   const { env, homeDir } = makeEnv();
   runCli(env, 'init', '--sync');
 
