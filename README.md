@@ -22,7 +22,7 @@ Install once and give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigrav
 </p>
 
 <p>
-  <strong>Current stable release: <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'>v1.19.0</a></strong><br />
+  <strong>Current stable release: <a href='https://www.npmjs.com/package/@mamdouh-aboammar/agent-kernel'>v1.20.0</a></strong><br />
   Includes Multi-Scoped Persistent Memory, Failure Lessons, approved update workflows, Universal Skills, Environment Vault, and Architecture Guardian
 </p>
 

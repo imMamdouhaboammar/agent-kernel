@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.20.0] - 2026-08-06
+
 ### Added
 
 - Added Project Environment Vault v2 with a routed `agent-kernel env` command, recursive Monorepo discovery, explicit include and exclude paths, revision history, watcher support, doctor diagnostics, and JSON output
@@ -22,10 +24,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Environment Vault storage now respects `AGENT_KERNEL_HOME` and uses `vault/env/<full-sha256>/`
 - The public router now resolves runtime shims from the configured Agent Kernel home and routes the Environment Vault command through a focused executable
 - The build now copies the Environment Vault facade and modules into `dist` for installed-package execution
+- Updated CONTRIBUTING.md to describe the routed CLI shape: when to add a command to `src/cli.mjs` versus a focused `bin/` helper, with a decision rule and separate checklists for each path
 
 ### Documentation
 
 - Added `docs/ENVIRONMENT_VAULT.md` and updated README, architecture, troubleshooting, command reference, documentation navigation, operations skill, design spec, and implementation plan
+- Added Bun and Node environment setup troubleshooting guide covering installation, PATH configuration, version conflicts, and shell cache issues
+- Added configuration snippets for Claude Code (MCP server + context hook), Cursor (MCP + safe-link), Gemini CLI / Antigravity (MCP + AGENTS.md), and Codex (MCP) to `docs/TROUBLESHOOTING.md`
 
 ## [1.19.0] - 2026-07-30
 
