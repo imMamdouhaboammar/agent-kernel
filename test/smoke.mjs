@@ -240,11 +240,13 @@ for (const [name, run] of tests) {
   }
 }
 
-console.log(`\n${passed} passed, ${failed} failed`);
+console.log(`
+${passed} passed, ${failed} failed`);
 
 if (failedTests.length > 0) {
   for (const { name, error } of failedTests) {
-    console.error(`\n[${name}]`);
+    console.error(`
+[${name}]`);
     console.error(error?.stack || error);
   }
   process.exit(1);
