@@ -27,9 +27,11 @@ function sortedUnique(values) {
 export function inspectSmokeRegistration({
   testDirectory,
   smokeSource,
-  ignoredFiles = []
+  ignoredFiles = [],
+  delegatedFiles = []
 }) {
   const ignored = new Set(ignoredFiles);
+  const delegated = new Set(delegatedFiles);
   const candidateFiles = fs
     .readdirSync(testDirectory, { withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith('.mjs') && !ignored.has(entry.name))
@@ -44,7 +46,7 @@ export function inspectSmokeRegistration({
 
   const unregisteredFiles = candidateFiles.filter((file) => !importedFiles.has(file));
   const importedButUnscheduled = imports
-    .filter((entry) => (scheduleCounts.get(entry.alias) || 0) === 0)
+    .filter((entry) => !delegated.has(entry.file) && (scheduleCounts.get(entry.alias) || 0) === 0)
     .map((entry) => entry.file);
   const duplicateScheduledModules = imports
     .filter((entry) => (scheduleCounts.get(entry.alias) || 0) > 1)
@@ -62,13 +64,16 @@ export function inspectSmokeRegistration({
     })
     .map((entry) => entry.file);
 
+  const invalidDelegatedFiles = delegatedFiles.filter((file) => !importedFiles.has(file));
+
   return {
     candidateFiles,
     unregisteredFiles: sortedUnique(unregisteredFiles),
     importedButUnscheduled: sortedUnique(importedButUnscheduled),
     duplicateScheduledModules: sortedUnique(duplicateScheduledModules),
     duplicateImportedModules: sortedUnique(duplicateImportedModules),
-    importedOutsideTestDirectory: sortedUnique(importedOutsideTestDirectory)
+    importedOutsideTestDirectory: sortedUnique(importedOutsideTestDirectory),
+    invalidDelegatedFiles: sortedUnique(invalidDelegatedFiles)
   };
 }
 
@@ -89,6 +94,9 @@ export function assertSmokeRegistration(options) {
   }
   if (report.importedOutsideTestDirectory.length) {
     failures.push(`Smoke module imports escape test directory: ${report.importedOutsideTestDirectory.join(', ')}`);
+  }
+  if (report.invalidDelegatedFiles.length) {
+    failures.push(`Delegated smoke modules are not imported: ${report.invalidDelegatedFiles.join(', ')}`);
   }
   if (failures.length) {
     throw new Error(`Smoke registration contract failed\n- ${failures.join('\n- ')}`);
