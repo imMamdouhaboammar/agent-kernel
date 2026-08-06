@@ -207,6 +207,7 @@ npm publish --access public
 git archive --prefix=agent-kernel-vX.Y.Z/ \
     --format=tar.gz \
     -o /tmp/agent-kernel-vX.Y.Z.tar.gz vX.Y.Z
+
 gh release upload vX.Y.Z /tmp/agent-kernel-vX.Y.Z.tar.gz --clobber
 
 # 3. Verify
