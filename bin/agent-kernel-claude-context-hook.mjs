@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const VERSION = '1.20.0';
+const VERSION = '1.20.1';
 const DEFAULT_TIMEOUT_MS = 1200;
 const MAX_CONTEXT_CHARS = 1800;
 const MAX_FAILURE_CHARS = 3000;

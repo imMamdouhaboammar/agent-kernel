@@ -5,6 +5,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.20.1] - 2026-08-06
+
+### Documentation
+
+- Added copyable quick-start Prompt Block to README — install/upgrade, project connect, all-tools activation, env vault push, and watcher enable in one agent-ready paste
+- Updated `SKILL.md` root: added Environment Vault v2 section, command families list, and canonical docs links (`ENVIRONMENT_VAULT.md`, `TROUBLESHOOTING.md`, `INSTALL_AND_AGENT_SETUP.md`)
+- Updated `skills/agent-kernel-ops/SKILL.md`: added `env list --json`, `env doctor --json`, Bun/npm install guide, and stable version reference
+- Updated `docs/COMMAND_REFERENCE.md` and `docs/TROUBLESHOOTING.md` version references to 1.20.x
+
 ## [1.20.0] - 2026-08-06
 
 ### Added

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-const VERSION = '1.20.0';
+const VERSION = '1.20.1';
 const COMPACT_WIDTH = 120;
 const SESSION_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
 const OBSERVATION_TYPES = new Set([
