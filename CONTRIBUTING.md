@@ -59,7 +59,7 @@ Root-level `test/*.mjs` files are treated as focused smoke modules. Each module 
 
 `npm test` validates this contract before executing the suite. It fails with every unregistered, imported-but-unscheduled, or duplicate module name so registration drift cannot silently reduce coverage.
 
-Only the orchestrator and independently executed CI checks belong in the explicit `ignoredFiles` list. A module that uses a compatibility wrapper must be named in `delegatedFiles`, and the underlying module must still be imported. Do not add a file to either list merely to bypass registration.
+Only the orchestrator and independently executed CI checks belong in the explicit `ignoredFiles` list. A module executed through a compatibility wrapper or invoked by another registered module must be named in `delegatedFiles`, with the invocation kept explicit in the registered parent. Do not add a file to either list merely to bypass registration.
 
 ## Adding a new command
 
