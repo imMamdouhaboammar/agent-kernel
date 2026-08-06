@@ -11,7 +11,7 @@
 //
 // The list of required files matches package.json#files.
 
-import { execFileSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { repo } from './_lib/helpers.mjs';
@@ -24,14 +24,30 @@ export async function run() {
 
   // `npm pack --dry-run` triggers the `prepack` script by default, which
   // can re-enter our test suite. Use --ignore-scripts to avoid that.
-  //
-  // npm sends the file listing to **stderr**, not stdout. Capture
-  // both via the shell.
-  const out = execFileSync('sh', ['-c', 'npm pack --dry-run --ignore-scripts 2>&1'], {
+  // npm writes parts of the package preview to stderr, so preserve both
+  // streams without depending on a POSIX shell.
+  const npmExecutable = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+  const result = spawnSync(npmExecutable, ['pack', '--dry-run', '--ignore-scripts'], {
     cwd: repo.root,
     encoding: 'utf8',
-    stdio: ['pipe', 'pipe', 'pipe']
+    stdio: ['ignore', 'pipe', 'pipe']
   });
+
+  const stdout = result.stdout ?? '';
+  const stderr = result.stderr ?? '';
+  const out = `${stdout}\n${stderr}`;
+
+  if (result.error || result.status !== 0) {
+    const details = [
+      `npm pack --dry-run failed (status: ${result.status ?? 'unknown'}, signal: ${result.signal ?? 'none'})`,
+      result.error ? `error: ${result.error.message}` : null,
+      `stdout:\n${stdout || '<empty>'}`,
+      `stderr:\n${stderr || '<empty>'}`
+    ]
+      .filter(Boolean)
+      .join('\n');
+    throw new Error(details);
+  }
 
   // The dry-run output contains one file entry per line, e.g.:
   //   "npm notice 1.2kB README.md"
