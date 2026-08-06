@@ -1,93 +1,81 @@
 // test/smoke-registration.mjs — Registration contract for focused smoke modules
 
 import assert from 'node:assert';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import {
   assertSmokeRegistration,
   inspectSmokeRegistration
 } from './_lib/smoke-registration.mjs';
 
-export async function run() {
-  const directory = mkdtempSync(join(tmpdir(), 'agent-kernel-smoke-registration-'));
-  try {
-    for (const file of [
-      'registered.mjs',
-      'missing-a.mjs',
-      'missing-b.mjs',
-      'imported-only.mjs',
-      'duplicate.mjs',
-      'delegated.mjs',
-      'smoke.mjs',
-      'ci-hardening.mjs'
-    ]) {
-      writeFileSync(join(directory, file), `// ${file}\n`, 'utf8');
+const candidateFiles = [
+  'registered.mjs',
+  'missing-a.mjs',
+  'missing-b.mjs',
+  'duplicate.mjs',
+  'same-name-a.mjs',
+  'same-name-b.mjs',
+  'delegated.mjs',
+  'smoke.mjs',
+  'ci-hardening.mjs'
+];
+const ignoredFiles = ['smoke.mjs', 'ci-hardening.mjs'];
+const unhealthyRegistrations = [
+  { name: 'registered', file: 'registered.mjs' },
+  { name: 'duplicate-a', file: 'duplicate.mjs' },
+  { name: 'duplicate-b', file: 'duplicate.mjs' },
+  { name: 'same-name', file: 'same-name-a.mjs' },
+  { name: 'same-name', file: 'same-name-b.mjs' },
+  { name: 'absent', file: 'absent.mjs' }
+];
+
+function assertUnhealthyReport() {
+  const report = inspectSmokeRegistration({
+    candidateFiles,
+    registrations: unhealthyRegistrations,
+    ignoredFiles,
+    delegatedFiles: ['delegated.mjs']
+  });
+  assert.deepStrictEqual(report.unregisteredFiles, ['missing-a.mjs', 'missing-b.mjs']);
+  assert.deepStrictEqual(report.duplicateScheduledModules, ['duplicate.mjs']);
+  assert.deepStrictEqual(report.duplicateTestNames, ['same-name']);
+  assert.deepStrictEqual(report.missingRegisteredFiles, ['absent.mjs']);
+  assert.deepStrictEqual(report.invalidDelegatedFiles, []);
+}
+
+function assertActionableFailure() {
+  assert.throws(
+    () => assertSmokeRegistration({
+      candidateFiles,
+      registrations: unhealthyRegistrations,
+      ignoredFiles,
+      delegatedFiles: ['delegated.mjs', 'missing-delegated.mjs']
+    }),
+    (error) => {
+      assert.match(error.message, /missing-a\.mjs, missing-b\.mjs/);
+      assert.match(error.message, /duplicate\.mjs/);
+      assert.match(error.message, /same-name/);
+      assert.match(error.message, /absent\.mjs/);
+      assert.match(error.message, /missing-delegated\.mjs/);
+      return true;
     }
+  );
+}
 
-    const source = `
-import { run as runRegistered } from './registered.mjs';
-import { run as runImportedOnly } from './imported-only.mjs';
-import { run as runDuplicate } from './duplicate.mjs';
-const tests = [
-  ['registered', runRegistered],
-  ['duplicate-a', runDuplicate],
-  ['duplicate-b', runDuplicate]
-];
-`;
+function assertHealthyRegistry() {
+  const registrations = candidateFiles
+    .filter((file) => file !== 'delegated.mjs' && !ignoredFiles.includes(file))
+    .map((file) => ({ name: file.replace(/\.mjs$/, ''), file }));
+  assert.doesNotThrow(() => assertSmokeRegistration({
+    candidateFiles,
+    registrations,
+    ignoredFiles,
+    delegatedFiles: ['delegated.mjs']
+  }));
+}
 
-    const report = inspectSmokeRegistration({
-      testDirectory: directory,
-      smokeSource: source,
-      ignoredFiles: ['smoke.mjs', 'ci-hardening.mjs'],
-      delegatedFiles: ['delegated.mjs']
-    });
-
-    assert.deepStrictEqual(report.unregisteredFiles, ['missing-a.mjs', 'missing-b.mjs']);
-    assert.deepStrictEqual(report.importedButUnscheduled, ['imported-only.mjs']);
-    assert.deepStrictEqual(report.duplicateScheduledModules, ['duplicate.mjs']);
-    assert.deepStrictEqual(report.invalidDelegatedFiles, []);
-
-    assert.throws(
-      () => assertSmokeRegistration({
-        testDirectory: directory,
-        smokeSource: source,
-        ignoredFiles: ['smoke.mjs', 'ci-hardening.mjs'],
-        delegatedFiles: ['delegated.mjs', 'missing-delegated.mjs']
-      }),
-      (error) => {
-        assert.match(error.message, /missing-a\.mjs, missing-b\.mjs/);
-        assert.match(error.message, /imported-only\.mjs/);
-        assert.match(error.message, /duplicate\.mjs/);
-        assert.match(error.message, /missing-delegated\.mjs/);
-        return true;
-      }
-    );
-
-    const healthySource = `
-import { run as runRegistered } from './registered.mjs';
-import { run as runMissingA } from './missing-a.mjs';
-import { run as runMissingB } from './missing-b.mjs';
-import { run as runImportedOnly } from './imported-only.mjs';
-import { run as runDuplicate } from './duplicate.mjs';
-const tests = [
-  ['registered', runRegistered],
-  ['missing-a', runMissingA],
-  ['missing-b', runMissingB],
-  ['imported-only', runImportedOnly],
-  ['duplicate', runDuplicate]
-];
-`;
-
-    assert.doesNotThrow(() => assertSmokeRegistration({
-      testDirectory: directory,
-      smokeSource: healthySource,
-      ignoredFiles: ['smoke.mjs', 'ci-hardening.mjs'],
-      delegatedFiles: ['delegated.mjs']
-    }));
-  } finally {
-    rmSync(directory, { recursive: true, force: true });
-  }
+export async function run() {
+  assertUnhealthyReport();
+  assertActionableFailure();
+  assertHealthyRegistry();
 }
 
 export const name = 'smoke-registration';
