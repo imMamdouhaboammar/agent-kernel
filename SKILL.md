@@ -203,6 +203,57 @@ agent-kernel commit link \
 agent-kernel commit context <commit-sha> --json
 ```
 
+## Environment Vault
+
+Environment Vault stores selected project `.env` files locally under the configured Agent Kernel home. It uses a full SHA256 project fingerprint so fresh clones, SSH and HTTPS remotes, and Monorepos all resolve to one identity.
+
+Safety rules before any vault command:
+
+- Never print, summarize, diff, or paste vault file contents
+- Read `docs/ENVIRONMENT_VAULT.md` before a forced overwrite or purge
+- Do not use `--force` unless the user understands a differing local file will be replaced
+
+Quick workflow:
+
+```bash
+# Link project and discover eligible .env files
+agent-kernel env link [project] [--include path] [--exclude pattern]
+
+# Check identity, health, and file states
+agent-kernel env status [project] --json
+
+# Store changed local files
+agent-kernel env push [project] [--file path] [--dry-run]
+
+# Restore missing files (never overwrites existing without --force)
+agent-kernel env pull [project] [--file path] [--force]
+
+# Watch for changes in the background
+agent-kernel env watch [project]
+
+# Inspect revision history (no secret content)
+agent-kernel env history [project] --file .env
+
+# Restore a specific revision
+agent-kernel env restore [project] --file .env --revision <id>
+
+# Run health checks and repair permissions
+agent-kernel env doctor [project] [--repair-permissions] [--migrate]
+
+# List all local vault identities
+agent-kernel env list --json
+
+# Detach project path while keeping stored files
+agent-kernel env unlink [project]
+
+# Delete stored data (requires explicit --yes)
+agent-kernel env purge [project] --yes
+```
+
+Vault directories use `0700` and stored files use `0600` on POSIX systems.
+
+See [docs/ENVIRONMENT_VAULT.md](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/ENVIRONMENT_VAULT.md) for discovery rules, monorepo support, migration, conflict handling, and threat boundaries.
+
 ## Project Context Broker
 
 Use project connection when a repository needs shared global memory but isolated local configuration and provider targets.
@@ -344,6 +395,7 @@ After tagging, verify npm registry visibility, package integrity, GitHub Release
 Use the canonical reference for the complete surface:
 
 - core memory and guidance
+- **Environment Vault** — secure `.env` storage, versioned revisions, conflict-safe restore
 - search, context, sessions, episodes, and failures
 - Architecture Guardian
 - guards, linking, hooks, and MCP
@@ -385,7 +437,10 @@ Do not claim native blocking hooks for an agent unless Agent Kernel ships and te
 
 - [Documentation map](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/README.md)
 - [Command reference](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/COMMAND_REFERENCE.md)
+- [Environment Vault](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/ENVIRONMENT_VAULT.md)
 - [Environment variables](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/ENVIRONMENT_VARIABLES.md)
+- [Install and agent setup](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/INSTALL_AND_AGENT_SETUP.md)
+- [Troubleshooting](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/TROUBLESHOOTING.md)
 - [Operating model](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/OPERATING_MODEL.md)
 - [AI agent runbook](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/AGENT_RUNBOOK.md)
 - [MCP server](https://github.com/imMamdouhaboammar/agent-kernel/blob/master/docs/MCP_SERVER.md)

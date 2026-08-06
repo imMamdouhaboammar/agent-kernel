@@ -642,7 +642,7 @@ npm run publish:dry
 
 The tag must match `package.json`
 
-For example, package version `1.19.0` requires tag `v1.19.0`
+For example, package version `1.20.0` requires tag `v1.20.0`
 
 Check these surfaces remain aligned
 

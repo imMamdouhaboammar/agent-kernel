@@ -1,6 +1,6 @@
 # Command reference
 
-This is the canonical user-facing command map for Agent Kernel `1.19.0`.
+This is the canonical user-facing command map for Agent Kernel `1.20.0`.
 
 The `agent-kernel` and `ak` commands route to focused runtime helpers. Use the routed command unless a helper binary is required by an integration, hook, or recovery procedure.
 

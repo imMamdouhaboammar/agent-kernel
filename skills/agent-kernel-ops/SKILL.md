@@ -1,6 +1,6 @@
 ---
 name: agent-kernel-ops
-description: Operational guide for agents working with Agent Kernel environment files, memory proposals, policies, and diagnostics
+description: Operational guide for agents working with Agent Kernel v1.20.0+ — environment vault, memory proposals, policies, installation, and diagnostics
 ---
 
 # Agent Kernel Universal Operations Guide
@@ -80,6 +80,12 @@ Migrate a matching legacy vault after inspection
 agent-kernel env doctor [project] --migrate
 ```
 
+Inspect vault health in JSON
+
+```bash
+agent-kernel env doctor [project] --json
+```
+
 Watch environment files edited outside an Agent Kernel hook
 
 ```bash
@@ -110,7 +116,46 @@ Delete stored data only after explicit confirmation
 agent-kernel env purge [project] --yes
 ```
 
+List all local vault identities
+
+```bash
+agent-kernel env list --json
+```
+
 Read the complete command and security guide at `docs/ENVIRONMENT_VAULT.md`
+
+## Installation
+
+With npm (requires Node.js >=18.18.0):
+
+```bash
+npm install -g @mamdouh-aboammar/agent-kernel
+agent-kernel --version
+agent-kernel init --sync
+```
+
+With Bun:
+
+```bash
+bun install -g @mamdouh-aboammar/agent-kernel
+agent-kernel --version
+agent-kernel init --sync
+```
+
+If `agent-kernel` is not found after Bun install, add Bun's bin directory to PATH:
+
+```bash
+export PATH="$HOME/.bun/bin:$PATH"
+```
+
+One-off (no global install):
+
+```bash
+npx -y @mamdouh-aboammar/agent-kernel --version
+bunx @mamdouh-aboammar/agent-kernel --version
+```
+
+Current stable release: `1.20.0`
 
 ## Memory and rule proposals
 
