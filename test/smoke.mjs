@@ -55,6 +55,7 @@ import { run as runModeConfig } from './mode-config.mjs';
 import { run as runAgentWriteModes } from './agent-write-modes.mjs';
 import { run as runArchitectureGuardian } from './architecture-guardian.mjs';
 import { run as runPackageFiles } from './package-files.mjs';
+import { run as runSmokeRegistration } from './smoke-registration.mjs';
 import { run as runPolicy } from './policy.mjs';
 import { run as runEnvVault } from './env-vault.mjs';
 import { run as runEnvVaultFreshClone } from './env-vault-fresh-clone.mjs';
@@ -66,7 +67,10 @@ import { run as runCliStatusJson } from './cli-status-json.mjs';
 import { run as runProjectContextBroker } from './project-context-broker.test.mjs';
 import { run as runProjectConnect } from './project-connect.test.mjs';
 import { installChildProcessCompatibility } from '../bin/agent-kernel-command-runner.mjs';
+import { assertSmokeRegistration } from './_lib/smoke-registration.mjs';
 
+const smokeFilePath = fileURLToPath(import.meta.url);
+const testDirectory = path.dirname(smokeFilePath);
 const brokerModulePath = fileURLToPath(new URL('../bin/agent-kernel-project-broker.mjs', import.meta.url));
 const brokerPlatformPath = fileURLToPath(new URL('../bin/agent-kernel-project-broker-platform.mjs', import.meta.url));
 const windowsOwnerOnlyStateFiles = new Set([
@@ -197,6 +201,7 @@ const tests = [
   ['agent-write-modes', runAgentWriteModes],
   ['architecture-guardian', runArchitectureGuardian],
   ['package-files', runPackageFiles],
+  ['smoke-registration', runSmokeRegistration],
   ['policy', runPolicy],
   ['env-vault', runEnvVault],
   ['env-vault-fresh-clone', runEnvVaultFreshClone],
@@ -208,6 +213,13 @@ const tests = [
   ['project-context-broker', runProjectContextBrokerCompat],
   ['project-connect', runProjectConnect]
 ];
+
+assertSmokeRegistration({
+  testDirectory,
+  smokeSource: fs.readFileSync(smokeFilePath, 'utf8'),
+  ignoredFiles: ['smoke.mjs', 'ci-hardening.mjs'],
+  delegatedFiles: ['project-context-broker.test.mjs']
+});
 
 let passed = 0;
 let failed = 0;
@@ -228,13 +240,11 @@ for (const [name, run] of tests) {
   }
 }
 
-console.log(`
-${passed} passed, ${failed} failed`);
+console.log(`\n${passed} passed, ${failed} failed`);
 
 if (failedTests.length > 0) {
   for (const { name, error } of failedTests) {
-    console.error(`
-[${name}]`);
+    console.error(`\n[${name}]`);
     console.error(error?.stack || error);
   }
   process.exit(1);
