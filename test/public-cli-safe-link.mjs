@@ -8,6 +8,7 @@
 //   5. repeated link runs do not duplicate marked blocks
 //   6. public link repairs pre-existing duplicate marked blocks
 //   7. `agent-kernel link --dry-run --hooks` writes no project files and no git hook
+//   8. update guidance resolves the positional project path when flags appear first
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -28,7 +29,7 @@ function countMarkers(text) {
 }
 
 export async function run() {
-  const { env, homeDir } = makeEnv();
+  const { env, homeDir, kernelHome } = makeEnv();
   runCli(env, 'init', '--sync');
 
   const dryRunProject = join(homeDir, 'public-cli-link-dry-run-project');
@@ -45,6 +46,31 @@ export async function run() {
       throw new Error('public link --dry-run --hooks installed Agent Kernel pre-commit hook');
     }
   }
+
+  mkdirSync(join(kernelHome, 'runtime'), { recursive: true });
+  writeFileSync(
+    join(kernelHome, 'runtime', 'update-status.json'),
+    JSON.stringify({
+      updateAvailable: true,
+      currentVersion: '1.19.0',
+      targetVersion: '9.9.9',
+      channel: 'latest'
+    })
+  );
+  const dryRunAgentsPath = join(dryRunProject, 'AGENTS.md');
+  writeFileSync(dryRunAgentsPath, '# Existing project guidance\n');
+  runPublic(env, 'link', '--dry-run', dryRunProject);
+  const dryRunGuidance = readFileSync(dryRunAgentsPath, 'utf8');
+  assertContains(
+    dryRunGuidance,
+    '<!-- agent-kernel-update:start -->',
+    'link flags before the project path should refresh guidance in that project'
+  );
+  assertContains(
+    dryRunGuidance,
+    '- Available: 9.9.9',
+    'project update guidance should use the cached target version'
+  );
 
   const project = join(homeDir, 'public-cli-link-project');
   mkdirSync(project, { recursive: true });
