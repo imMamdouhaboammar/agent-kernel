@@ -8,8 +8,10 @@
 //   5. ContextFS exposes a safe canonical `ak://` virtual tree.
 //   6. ContextFS supports progressive L0/L1/L2 reads without changing source stores.
 //   7. ContextFS rejects traversal and foreign URI schemes before lookup.
+//   8. ContextFS find is hierarchy-aware, project/file-aware, budgeted, and explainable.
 
 import { execFileSync } from 'node:child_process';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { assertContains, makeEnv, repo, runCli } from './_lib/helpers.mjs';
 
@@ -54,7 +56,7 @@ function assertCollection(tree, name) {
 }
 
 export async function run() {
-  const { env } = makeEnv();
+  const { env, kernelHome } = makeEnv();
   runCli(env, 'init', '--sync');
 
   const approved = JSON.parse(runPublic(env, 'context', '--query', 'Memory changes', '--budget', '300', '--json'));
@@ -120,6 +122,72 @@ export async function run() {
     const rejected = runRouterFailure(env, 'context', 'tree', unsafe, '--json');
     if (rejected.status === 0) throw new Error(`ContextFS accepted unsafe URI ${unsafe}: ${rejected.stdout}`);
     assertContains(`${rejected.stdout}\n${rejected.stderr}`, 'Invalid ContextFS URI', `ContextFS rejection was not actionable for ${unsafe}`);
+  }
+
+  const failureDir = join(kernelHome, 'source', 'failures');
+  mkdirSync(failureDir, { recursive: true });
+  writeFileSync(join(failureDir, 'failure-lessons.json'), JSON.stringify([
+    {
+      id: 'contextfs-file-locality',
+      type: 'failure',
+      status: 'approved',
+      projectId: 'contextfs-project',
+      title: 'ContextFS file locality marker',
+      rootCause: 'A context lookup ignored the file being edited.',
+      fix: 'Prefer records tied to the requested file before unrelated records.',
+      files: ['src/contextfs-demo.mjs'],
+      commands: ['npm test'],
+      tags: ['contextfs', 'retrieval'],
+      occurrences: 3,
+      updatedAt: '2026-08-07T06:00:00.000Z'
+    },
+    {
+      id: 'contextfs-unrelated',
+      type: 'failure',
+      status: 'approved',
+      projectId: 'other-project',
+      title: 'ContextFS file locality marker unrelated copy',
+      rootCause: 'Different project and different file.',
+      files: ['src/unrelated.mjs'],
+      updatedAt: '2026-08-07T06:00:00.000Z'
+    }
+  ], null, 2) + '\n');
+
+  const found = JSON.parse(runRouter(
+    env,
+    'context', 'find', 'ContextFS file locality marker',
+    '--under', 'ak://global/',
+    '--project-id', 'contextfs-project',
+    '--file', 'src/contextfs-demo.mjs',
+    '--budget', '900',
+    '--limit', '4',
+    '--trace',
+    '--json'
+  ));
+  if (found.query !== 'ContextFS file locality marker' || found.under !== 'ak://global/') {
+    throw new Error(`ContextFS find did not preserve query/scope: ${JSON.stringify(found)}`);
+  }
+  if (!Array.isArray(found.results) || found.results.length === 0) {
+    throw new Error(`ContextFS find returned no results: ${JSON.stringify(found)}`);
+  }
+  if (found.results[0].uri !== 'ak://global/failures/contextfs-file-locality') {
+    throw new Error(`ContextFS file/project locality did not rank the expected record first: ${JSON.stringify(found.results)}`);
+  }
+  if (found.results.some((result) => !result.uri.startsWith('ak://global/'))) {
+    throw new Error(`ContextFS find escaped requested hierarchy: ${JSON.stringify(found.results)}`);
+  }
+  if (found.results.some((result) => 'details' in result)) {
+    throw new Error(`ContextFS find loaded L2 details without opt-in: ${JSON.stringify(found.results)}`);
+  }
+  if (found.results[0].level !== 1 || typeof found.results[0].overview !== 'object') {
+    throw new Error(`ContextFS did not promote strongest result to L1: ${JSON.stringify(found.results[0])}`);
+  }
+  if (Number(found.budgetUsed) > 900) throw new Error(`ContextFS find exceeded budget: ${JSON.stringify(found)}`);
+  if (!Array.isArray(found.trace) || !found.trace.some((step) => step.stage === 'collection' && step.collection === 'failures')) {
+    throw new Error(`ContextFS trace did not expose collection descent: ${JSON.stringify(found.trace)}`);
+  }
+  if (!found.trace.some((step) => step.stage === 'candidate' && step.uri === 'ak://global/failures/contextfs-file-locality' && step.decision === 'include')) {
+    throw new Error(`ContextFS trace did not expose candidate inclusion: ${JSON.stringify(found.trace)}`);
   }
 }
 
