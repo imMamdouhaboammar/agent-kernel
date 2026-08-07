@@ -31,6 +31,9 @@ import { run as runPublicCliSessionTimeline } from './public-cli-session-timelin
 import { run as runPublicCliCommitLinks } from './public-cli-commit-links.mjs';
 import { run as runPublicCliObservation } from './public-cli-observation.mjs';
 import { run as runPublicCliContext } from './public-cli-context.mjs';
+import { run as runContextFsSecurity } from './contextfs-security.mjs';
+import { run as runContextFsProjects } from './contextfs-projects.mjs';
+import { run as runContextFsGlobalConsistency } from './contextfs-global-consistency.mjs';
 import { run as runPublicCliArchitecture } from './public-cli-architecture.mjs';
 import { run as runPublicCliPortability } from './public-cli-portability.mjs';
 import { run as runPublicCliDashboard } from './public-cli-dashboard.mjs';
@@ -175,6 +178,9 @@ const tests = [
   ['public-cli-commit-links', runPublicCliCommitLinks, 'public-cli-commit-links.mjs'],
   ['public-cli-observation', runPublicCliObservation, 'public-cli-observation.mjs'],
   ['public-cli-context', runPublicCliContext, 'public-cli-context.mjs'],
+  ['contextfs-security', runContextFsSecurity, 'contextfs-security.mjs'],
+  ['contextfs-projects', runContextFsProjects, 'contextfs-projects.mjs'],
+  ['contextfs-global-consistency', runContextFsGlobalConsistency, 'contextfs-global-consistency.mjs'],
   ['public-cli-architecture', runPublicCliArchitecture, 'public-cli-architecture.mjs'],
   ['public-cli-portability', runPublicCliPortability, 'public-cli-portability.mjs'],
   ['public-cli-dashboard', runPublicCliDashboard, 'public-cli-dashboard.mjs'],
@@ -243,13 +249,11 @@ for (const [name, run] of tests) {
   }
 }
 
-console.log(`
-${passed} passed, ${failed} failed`);
+console.log(`\n${passed} passed, ${failed} failed`);
 
 if (failedTests.length > 0) {
   for (const { name, error } of failedTests) {
-    console.error(`
-[${name}]`);
+    console.error(`\n[${name}]`);
     console.error(error?.stack || error);
   }
   process.exit(1);

@@ -122,6 +122,70 @@ npm test
 
 ---
 
+## Sprint 2.5: ContextFS hierarchical retrieval
+
+### Delivered items
+
+1. AK-CONTEXT-001: Clean-room `ak://` URI contract and traversal-safe canonicalization
+2. AK-CONTEXT-002: Virtual ContextFS projection over existing Agent Kernel stores
+3. AK-CONTEXT-003: Deterministic L0/L1/L2 progressive record projections
+4. AK-RETRIEVE-001: Hierarchy-aware retrieval with project/file locality and context budgets
+5. AK-TRACE-001: Explainable collection/candidate retrieval trace
+6. AK-SESSION-004: Append-only `context_used` session evidence
+7. AK-SESSION-005: Review-first deterministic session commit
+8. AK-MEMORY-001: Normalized candidate hashing and approved/pending deduplication
+
+### Delivered loop
+
+```text
+agent needs context
+  -> browses or searches ak://
+  -> receives L0/L1 context within budget
+  -> records the exact ContextFS URI used
+  -> session summary and failure evidence produce candidate lessons
+  -> context commit deduplicates candidates
+  -> novel candidates enter inbox/pending only
+  -> user reviews before durable publication
+```
+
+### Delivered constraints
+
+1. Existing JSON and JSONL stores remain authoritative
+2. `ak://` never becomes a raw filesystem path
+3. L2 is explicit and retrieval does not load it automatically
+4. No vector database, embeddings, LLM, daemon, cloud service, or runtime dependency is required
+5. Used-context evidence never creates durable memory
+6. Session commit never auto-approves or publishes
+7. Repeated session commit is idempotent
+8. Clean-room implementation preserves the MIT licensing boundary
+
+### Validation
+
+```bash
+agent-kernel context tree ak:// --json
+agent-kernel context read ak://global/memory/<id> --level 1 --json
+agent-kernel context find "query" --under ak://global/ --trace --json
+agent-kernel context used <session-id> ak://global/memory/<id> --json
+agent-kernel context commit <session-id> --dry-run --json
+npm test
+```
+
+### Optional future work
+
+These items are explicitly optional adapters, not default-path requirements:
+
+1. AK-RETRIEVE-002: Optional semantic reranker
+2. AK-RETRIEVE-003: Optional embeddings provider
+3. AK-RETRIEVE-004: Optional vector index adapter
+4. AK-RELATION-001: Richer bounded relation expansion
+5. AK-MCP-005: Bounded ContextFS MCP tools
+6. AK-EVAL-001: Flat-vs-hierarchical retrieval benchmark fixtures
+7. AK-HOOK-001: Pre-task ContextFS retrieval adapters for supported coding agents
+
+Any semantic implementation must preserve a fully functional deterministic local path.
+
+---
+
 ## Sprint 3: Hooks and live injection
 
 ### Items
@@ -334,15 +398,22 @@ Do not add these to the default path:
   episodes/
   runtime/
     sessions/
+      *.json
+      *.jsonl
+      *.context-commit.json
     observations/
     logs/
   index/
   dist/
 ```
 
+ContextFS remains a virtual projection over these stores and does not add a parallel persistence root.
+
 ## Issue creation order
 
-Create GitHub issues in this order:
+The original issue creation sequence remains the historical build order for the runtime foundation. New ContextFS follow-up issues should be created only for optional adapters or measured retrieval improvements.
+
+Historical sequence:
 
 1. Optional local daemon
 2. Runtime diagnostics
@@ -365,6 +436,14 @@ Create GitHub issues in this order:
 19. Retention policy
 20. Export and import
 
+ContextFS follow-up priority:
+
+1. Retrieval benchmark fixtures
+2. Bounded relation expansion
+3. ContextFS MCP read/search tools
+4. Pre-task agent adapters
+5. Optional semantic reranker only after deterministic baseline measurements exist
+
 ## Release strategy
 
 Ship this as incremental minor releases, not one large release.
@@ -379,6 +458,7 @@ Suggested release groups:
 | `v1.4` | Commit links and pattern proposals |
 | `v1.5` | Agent identity and trust levels |
 | `v1.6` | Retention, export, import, and reports |
+| Next minor | ContextFS virtual namespace, progressive retrieval, trace, used-context evidence, and review-first session commit |
 
 ## Final success criteria
 
@@ -396,6 +476,12 @@ Agent Kernel becomes live only when the user asks:
 agent-kernel daemon start
 agent-kernel mcp serve
 agent-kernel file-context src/cli.mjs
+```
+
+ContextFS remains useful without the daemon:
+
+```bash
+agent-kernel context find "safe-link" --under ak://global/ --trace
 ```
 
 That distinction is the product line. Preserve it.

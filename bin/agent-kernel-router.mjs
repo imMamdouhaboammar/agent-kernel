@@ -16,6 +16,10 @@ const patternProposalPath = path.join(here, 'agent-kernel-pattern-proposal.mjs')
 const identityCommandPath = path.join(here, 'agent-kernel-identity-command.mjs');
 const registryPath = path.join(here, 'agent-kernel-registry.mjs');
 const brokerPath = path.join(here, 'agent-kernel-project-broker-platform.mjs');
+const contextFsPath = path.join(here, 'agent-kernel-contextfs.mjs');
+const contextProjectPath = path.join(here, 'agent-kernel-context-projects.mjs');
+const contextUsedPath = path.join(here, 'agent-kernel-context-used.mjs');
+const contextCommitPath = path.join(here, 'agent-kernel-context-commit.mjs');
 const architecturePath = path.join(here, 'agent-kernel-architecture.mjs');
 const portabilityPath = path.join(here, 'agent-kernel-portability.mjs');
 const dashboardPath = path.join(here, 'agent-kernel-dashboard.mjs');
@@ -24,6 +28,16 @@ const updatePath = path.join(here, 'agent-kernel-update.mjs');
 const updateRunnerPath = path.join(here, 'agent-kernel-update-runner.mjs');
 const routedUpdatePath = process.platform === 'win32' ? updateRunnerPath : updatePath;
 const updateGuidancePath = path.join(here, 'agent-kernel-update-guidance.mjs');
+const CONTEXT_URI_SECRET_PATTERNS = [
+  /OPENAI_API_KEY\s*=\s*["']?[^\s"']+/iu,
+  /ANTHROPIC_API_KEY\s*=\s*["']?[^\s"']+/iu,
+  /SUPABASE_SERVICE_ROLE_KEY\s*=\s*["']?[^\s"']+/iu,
+  /AIza[0-9A-Za-z\-_]{35}/u,
+  /sk-(?:proj-)?[A-Za-z0-9_-]{20,}/u,
+  /ghp_[A-Za-z0-9]{20,}/u,
+  /github_pat_[A-Za-z0-9_]{20,}/u,
+  /xox[abposr]-[A-Za-z0-9-]{10,}/u
+];
 const args = process.argv.slice(2);
 const command = args[0];
 const jsonRequested = args.some((arg) => arg === '--json' || arg.startsWith('--json='));
@@ -39,6 +53,13 @@ const searchIdentityOrProject = command === 'search' && args.some((arg) =>
   arg === '--projectId' || arg.startsWith('--projectId=')
 );
 const identityAware = command === 'propose' || command === 'session' || searchIdentityOrProject;
+const contextUsedCommand = command === 'context' && args[1] === 'used';
+const contextCommitCommand = command === 'context' && args[1] === 'commit';
+const contextFsCommand = command === 'context' && ['tree', 'read', 'find'].includes(args[1]);
+const contextProjectCommand = contextFsCommand && (
+  args.some((arg) => arg.startsWith('ak://projects/')) ||
+  args.some((arg) => arg === '--project' || arg.startsWith('--project='))
+);
 const brokerCommand = [
   'projects',
   'auth',
@@ -55,6 +76,25 @@ const registryCommand = command === 'agent' || (command === 'project' && !broker
 
 function kernelHome() {
   return process.env.AGENT_KERNEL_HOME || path.join(os.homedir(), '.agent-kernel');
+}
+
+function hasRecognizedContextUriSecret(value) {
+  const text = String(value || '');
+  return CONTEXT_URI_SECRET_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+function rejectSecretBearingContextUriArgs() {
+  if (!(contextFsCommand || contextUsedCommand)) return;
+  for (const arg of args) {
+    const raw = String(arg || '');
+    const marker = raw.indexOf('ak://');
+    if (marker < 0) continue;
+    let decoded = raw.slice(marker);
+    try { decoded = decodeURIComponent(decoded); } catch {}
+    if (!hasRecognizedContextUriSecret(decoded)) continue;
+    process.stderr.write('Invalid ContextFS URI: secret-bearing values are not allowed\n');
+    process.exit(1);
+  }
 }
 
 function linkProjectArg() {
@@ -130,6 +170,7 @@ function refreshUpdateGuidance() {
   });
 }
 
+rejectSecretBearingContextUriArgs();
 refreshUpdateCheckIfDue();
 const notice = cachedUpdateNotice();
 if (notice) process.stderr.write(notice);
@@ -142,25 +183,33 @@ const target = command === 'dashboard'
       ? routedUpdatePath
       : command === 'architecture'
         ? architecturePath
-        : brokerCommand
-          ? brokerPath
-          : command === 'reindex' || (command === 'search' && !identityAware)
-            ? searchPath
-            : command === 'mcp'
-              ? mcpPath
-              : portabilityCommand
-                ? portabilityPath
-                : command === 'commit' || commitLinkHook
-                  ? commitPath
-                  : failurePatterns
-                    ? failurePatternsPath
-                    : patternProposal
-                      ? patternProposalPath
-                      : registryCommand
-                        ? registryPath
-                        : identityAware
-                          ? identityCommandPath
-                          : wrapperPath;
+        : contextUsedCommand
+          ? contextUsedPath
+          : contextCommitCommand
+            ? contextCommitPath
+            : contextProjectCommand
+              ? contextProjectPath
+              : contextFsCommand
+                ? contextFsPath
+                : brokerCommand
+                  ? brokerPath
+                  : command === 'reindex' || (command === 'search' && !identityAware)
+                    ? searchPath
+                    : command === 'mcp'
+                      ? mcpPath
+                      : portabilityCommand
+                        ? portabilityPath
+                        : command === 'commit' || commitLinkHook
+                          ? commitPath
+                          : failurePatterns
+                            ? failurePatternsPath
+                            : patternProposal
+                              ? patternProposalPath
+                              : registryCommand
+                                ? registryPath
+                                : identityAware
+                                  ? identityCommandPath
+                                  : wrapperPath;
 
 const shimsDir = path.join(kernelHome(), 'runtime', 'shims');
 const customEnv = { ...process.env };
@@ -169,7 +218,13 @@ if (fs.existsSync(shimsDir)) {
 }
 
 const routedTopLevel = ['architecture', 'update', 'dashboard', 'env'];
-const targetArgs = routedTopLevel.includes(command) ? args.slice(1) : args;
+const targetArgs = contextUsedCommand || contextCommitCommand
+  ? args.slice(2)
+  : contextFsCommand
+    ? args.slice(1)
+    : routedTopLevel.includes(command)
+      ? args.slice(1)
+      : args;
 const result = childProcess.spawnSync(process.execPath, [target, ...targetArgs], {
   cwd: process.cwd(),
   env: customEnv,

@@ -1,6 +1,6 @@
 # Command reference
 
-This is the canonical user-facing command map for Agent Kernel `1.20.0`.
+This is the canonical user-facing command map for Agent Kernel `1.20.1`.
 
 The `agent-kernel` and `ak` commands route to focused runtime helpers. Use the routed command unless a helper binary is required by an integration, hook, or recovery procedure.
 
@@ -44,8 +44,8 @@ ${AGENT_KERNEL_HOME:-~/.agent-kernel}/vault/env/<full-sha256>/
 | Command | Purpose |
 |---|---|
 | `agent-kernel env link [project] [options]` | Resolve stable project identity, discover environment files, create the version 2 manifest, and store initial revisions |
-| `agent-kernel env status [project] [--json]` | Report identity, health, selected files, conflicts, missing files, and permission drift without secret contents |
-| `agent-kernel env push [project] [--file path] [--prune] [--dry-run]` | Store changed local files and create revisions |
+| `agent-kernel env status [project] [--json]` | Report identity, health, conflicts, missing files, and permission drift without secret contents |
+| `agent-kernel env push [project] [--file path] [--prune] [--dry-run]` | Store local edits and create revisions |
 | `agent-kernel env pull [project] [--file path] [--force] [--no-backup] [--dry-run]` | Restore missing files and refuse differing local content unless force is explicit |
 | `agent-kernel env watch [project] [--interval seconds]` | Watch linked file parents with debounce and periodic reconciliation |
 | `agent-kernel env doctor [project] [--repair-permissions] [--migrate]` | Validate manifests, stored files, locks, permissions, and optional legacy migration |
@@ -84,7 +84,12 @@ Read `docs/ENVIRONMENT_VAULT.md` for discovery rules, migration, storage behavio
 |---|---|
 | `agent-kernel reindex` | Rebuild the structured search index. |
 | `agent-kernel search <query> [--type] [--files] [--commands] [--explain]` | Search memory, failures, episodes, commands, and file references. |
-| `agent-kernel context [query] [--project-id id] [--file path] [--budget n]` | Render bounded task or project context. |
+| `agent-kernel context [query] [--project-id id] [--file path] [--budget n]` | Render bounded task or project context through the existing flat context helper. |
+| `agent-kernel context tree [ak://...] [--depth n] [--json]` | Browse the virtual ContextFS namespace without exposing physical storage paths. |
+| `agent-kernel context read <ak://uri> [--level 0\|1\|2] [--json]` | Read a ContextFS record progressively as L0 abstract, L1 overview, or opt-in L2 detail. |
+| `agent-kernel context find <query> [--under ak://...] [--project-id id] [--file path] [--budget n] [--limit n] [--trace] [--json]` | Perform deterministic hierarchy-aware retrieval with project/file locality, budget accounting, and optional trace output. |
+| `agent-kernel context used <session-id> <ak://uri> [--reason text] [--result value] [--json]` | Append `context_used` evidence to a session without creating durable memory. |
+| `agent-kernel context commit <session-id> [--dry-run] [--json]` | Extract deterministic candidate lessons, deduplicate them, and create pending proposals only. Never auto-approves memory. |
 | `agent-kernel file-context <file...>` | Build file-specific context through the file-record adapter. |
 | `agent-kernel session start --agent <id> [--project .]` | Start a local runtime session. |
 | `agent-kernel session end <session-id>` | End a session. |
@@ -94,7 +99,11 @@ Read `docs/ENVIRONMENT_VAULT.md` for discovery rules, migration, storage behavio
 | `agent-kernel session timeline <session-id> [filters]` | Render a chronological session timeline. |
 | `agent-kernel session compact <session-id> [--dry-run]` | Deterministically compact old raw observations. |
 
+ContextFS uses virtual `ak://` identifiers. It rejects foreign schemes, traversal and encoded traversal, backslashes, NUL bytes, query strings, fragments, and unsafe session identifiers before record access. L2 is opt-in, `context find` does not load L2, and `context commit` writes only commit metadata plus pending inbox proposals.
+
 Session, proposal, episode, and other file-backed IDs are identifiers, not paths. Path separators and traversal-like values are rejected before filesystem access.
+
+See `docs/CONTEXTFS.md` for the namespace contract, progressive levels, retrieval behavior, session evidence, commit governance, clean-room boundary, and rollback notes.
 
 ## Optional daemon
 
