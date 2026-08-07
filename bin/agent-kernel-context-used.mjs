@@ -10,8 +10,9 @@ const SECRET_PATTERNS = [
   /OPENAI_API_KEY\s*=\s*["'][^"']+["']/giu,
   /ANTHROPIC_API_KEY\s*=\s*["'][^"']+["']/giu,
   /SUPABASE_SERVICE_ROLE_KEY\s*=\s*["'][^"']+["']/giu,
+  /(OPENAI_API_KEY|ANTHROPIC_API_KEY|SUPABASE_SERVICE_ROLE_KEY)\s*=\s*[^\s\n]+/giu,
   /AIza[0-9A-Za-z\-_]{35}/gu,
-  /sk-[A-Za-z0-9]{20,}/gu,
+  /sk-(?:proj-)?[A-Za-z0-9_-]{20,}/gu,
   /ghp_[A-Za-z0-9]{20,}/gu,
   /github_pat_[A-Za-z0-9_]{20,}/gu,
   /xox[abposr]-[A-Za-z0-9-]{10,}/gu
@@ -47,6 +48,11 @@ function safeText(value) {
   return text;
 }
 
+function containsRecognizedSecret(value) {
+  const text = String(value ?? '');
+  return safeText(text) !== text;
+}
+
 function requireSafeSessionId(value) {
   const id = String(value || '').trim();
   if (!SESSION_ID_PATTERN.test(id) || id === '.' || id === '..') {
@@ -70,16 +76,19 @@ function canonicalContextUri(value) {
   const trailing = remainder.endsWith('/');
   const body = trailing ? remainder.slice(0, -1) : remainder;
   if (!body) return 'ak://';
-  const segments = body.split('/').map((segment) => {
+  const decodedSegments = body.split('/').map((segment) => {
     if (!segment) invalidContextUri(raw, 'empty path segment');
     let decoded;
     try { decoded = decodeURIComponent(segment); } catch { invalidContextUri(raw, 'malformed percent encoding'); }
     if (!decoded || decoded === '.' || decoded === '..') invalidContextUri(raw, 'dot segments are not allowed');
     if (decoded.includes('/') || decoded.includes('\\') || decoded.includes('\0')) invalidContextUri(raw, 'path separators are not allowed inside segments');
     if (/[\u0000-\u001f\u007f]/u.test(decoded)) invalidContextUri(raw, 'control characters are not allowed');
-    return encodeURIComponent(decoded);
+    return decoded;
   });
-  return `ak://${segments.join('/')}${trailing ? '/' : ''}`;
+  if (containsRecognizedSecret(decodedSegments.join('/'))) {
+    invalidContextUri(raw, 'secret-bearing values are not allowed');
+  }
+  return `ak://${decodedSegments.map((segment) => encodeURIComponent(segment)).join('/')}${trailing ? '/' : ''}`;
 }
 
 function sessionPaths(id) {
@@ -102,8 +111,15 @@ function observationCount(logPath) {
   }
 }
 
-function writeJson(filePath, value) {
-  fs.writeFileSync(filePath, JSON.stringify(value, null, 2) + '\n', 'utf8');
+function writeJsonAtomic(filePath, value) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  const temporary = `${filePath}.tmp-${process.pid}-${crypto.randomBytes(4).toString('hex')}`;
+  try {
+    fs.writeFileSync(temporary, JSON.stringify(value, null, 2) + '\n', 'utf8');
+    fs.renameSync(temporary, filePath);
+  } finally {
+    try { fs.rmSync(temporary, { force: true }); } catch {}
+  }
 }
 
 function printJson(value) {
@@ -146,7 +162,7 @@ function main() {
     updatedAt: timestamp,
     observationCount: observationCount(paths.log)
   };
-  writeJson(paths.record, next);
+  writeJsonAtomic(paths.record, next);
 
   const output = { version: VERSION, observation, session: next };
   if (flags.json) printJson(output);
