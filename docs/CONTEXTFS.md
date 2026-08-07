@@ -44,6 +44,23 @@ ak://global/sessions/
 ak://global/commits/
 ```
 
+Known projects are also materialized as scoped trees:
+
+```text
+ak://projects/<project-id>/
+  memory/
+  failures/
+  episodes/
+  sessions/
+  files/
+  architecture/
+  commits/
+```
+
+Project collections only expose records whose existing project metadata matches the selected project. `files/` is a derived virtual collection built from validated file references already present on project records. It does not read arbitrary repository files.
+
+The `architecture/` directory is reserved in the project tree but phase 1 does not project arbitrary architecture files into ContextFS. This avoids turning a virtual URI into an uncontrolled filesystem read surface.
+
 A record URI is a virtual identifier. It is never converted directly into a filesystem path.
 
 Examples:
@@ -51,6 +68,8 @@ Examples:
 ```text
 ak://global/memory/no-secrets-in-code
 ak://global/failures/contextfs-file-locality
+ak://projects/my-project/failures/failure-123
+ak://projects/my-project/files/file_0123456789abcdef
 ```
 
 ## Commands
@@ -61,6 +80,9 @@ ak://global/failures/contextfs-file-locality
 agent-kernel context tree ak:// --json
 agent-kernel context tree ak://global/ --depth 2 --json
 agent-kernel context tree ak://global/memory/ --json
+agent-kernel context tree ak://projects/ --json
+agent-kernel context tree ak://projects/my-project/ --json
+agent-kernel context tree ak://projects/my-project/failures/ --json
 ```
 
 ### Progressive record reads
@@ -69,6 +91,7 @@ agent-kernel context tree ak://global/memory/ --json
 agent-kernel context read ak://global/memory/no-secrets-in-code --level 0 --json
 agent-kernel context read ak://global/memory/no-secrets-in-code --level 1 --json
 agent-kernel context read ak://global/memory/no-secrets-in-code --level 2 --json
+agent-kernel context read ak://projects/my-project/failures/failure-123 --level 1 --json
 ```
 
 The levels are:
@@ -79,7 +102,17 @@ The levels are:
 
 L2 is opt-in. Hierarchical retrieval does not load L2 by default.
 
+Project record projections also expose bounded typed relations such as:
+
+- `owned-by-project`
+- `references-file`
+- `referenced-by` for derived file records
+
+Relations use other `ak://` URIs. They do not contain raw physical filesystem targets.
+
 ### Hierarchical retrieval
+
+Global retrieval can retain global URIs while using project and file metadata as ranking signals:
 
 ```bash
 agent-kernel context find "restore conflict" \
@@ -92,19 +125,47 @@ agent-kernel context find "restore conflict" \
   --json
 ```
 
+Project-scoped retrieval stays inside one project hierarchy:
+
+```bash
+agent-kernel context find "restore conflict" \
+  --under ak://projects/my-project/ \
+  --file src/env-vault/engine.mjs \
+  --budget 1200 \
+  --limit 8 \
+  --trace \
+  --json
+```
+
+A registered project path can also resolve the existing project identity without creating a new identity:
+
+```bash
+agent-kernel context find "restore conflict" \
+  --project /path/to/registered/project \
+  --budget 1200 \
+  --json
+```
+
+If `--under`, `--project-id`, and `--project` resolve to contradictory project identities, retrieval fails with a project-scope mismatch instead of silently choosing one.
+
 The phase 1 retriever is deterministic and local.
 
 It uses existing record signals such as:
 
 - query phrase and term matches
-- project identity
-- file locality
+- exact project scope
+- explicit file locality
 - repeated failure occurrences
 - collection boundaries
+- bounded same-file relation expansion inside a project
+
+Lexical relevance, project identity, and file locality are scored as separate signals. Project metadata is not treated as query text.
 
 The retriever scores collections before descending into matching records. The strongest selected record may be promoted to L1. Other selected records begin at L0. Budget accounting can downgrade or skip a candidate instead of exceeding the requested budget.
 
-`--trace` exposes collection and candidate decisions, scores, levels, and scoring signals. It is intended for debugging and evaluation rather than hidden model state.
+For project retrieval, the strongest direct result may expand to a small number of same-project records that reference the same file. Relation expansion is bounded and appears explicitly as `stage: "relation"` in the retrieval trace.
+
+`--trace` exposes collection, candidate, relation, score, level, inclusion, and budget decisions. It is intended for debugging and evaluation rather than hidden model state.
 
 ## Used-context evidence
 
@@ -117,6 +178,8 @@ agent-kernel context used <session-id> \
   --result helpful \
   --json
 ```
+
+Project record URIs can be recorded the same way.
 
 This appends a `context_used` observation to the existing session JSONL and updates the session observation count.
 
@@ -152,11 +215,12 @@ The command:
 
 1. Reads the session record and JSONL observations
 2. Extracts bounded candidate text from session summaries and failure observations
-3. Carries used-context URIs as provenance
-4. Normalizes and hashes candidate text
-5. Deduplicates against approved memory and existing pending proposals
-6. Calls the existing core proposal workflow for novel candidates
-7. Writes session commit metadata to:
+3. Redacts known credential patterns before candidate projection, dry-run output, metadata, or proposal creation
+4. Carries used-context URIs as provenance
+5. Normalizes and hashes candidate text
+6. Deduplicates against approved memory and existing pending proposals
+7. Calls the existing core proposal workflow for novel candidates
+8. Writes session commit metadata to:
 
 ```text
 ${AGENT_KERNEL_HOME:-~/.agent-kernel}/runtime/sessions/<session-id>.context-commit.json
@@ -184,6 +248,7 @@ Examples:
 ```text
 ~/.agent-kernel/source/memories/*.json
 ~/.agent-kernel/source/failures/failure-lessons.json
+~/.agent-kernel/source/projects/projects.json
 ~/.agent-kernel/episodes/archive/*.json
 ~/.agent-kernel/runtime/sessions/*.json
 ~/.agent-kernel/runtime/sessions/*.jsonl
@@ -203,7 +268,7 @@ URI parsing rejects:
 - `..` and encoded dot-segments
 - backslashes
 - encoded path separators
-- NUL bytes
+- NUL bytes and control characters
 - query strings and fragments
 - credential-like URI syntax
 - empty path segments
@@ -212,13 +277,19 @@ Session IDs are validated before session file lookup.
 
 Output projections sanitize known secret patterns and secret-shaped keys before exposing L2 details.
 
-Retrieval limits candidate counts and context budgets. Phase 1 does not execute commands, resolve arbitrary filesystem paths, call a network service, or invoke an LLM.
+Session commit also redacts known secret patterns before creating candidate text. This applies to dry-run output, persisted context-commit metadata, and pending proposals.
+
+Project-path resolution uses the existing project registry. `--project` only resolves an existing identity and does not create or mutate a project record.
+
+Derived file nodes come only from file references already stored on project records. ContextFS does not open the referenced path merely because an `ak://projects/.../files/...` URI exists.
+
+Retrieval limits result counts, relation fan-out, and context budgets. Phase 1 does not execute commands, resolve arbitrary filesystem paths from URIs, call a network service, or invoke an LLM.
 
 Session commit writes only session commit metadata and pending proposals. Approved memory remains outside that write path.
 
 ## Clean-room and licensing boundary
 
-ContextFS was designed after studying public context-engineering concepts, including virtual context namespaces, progressive context loading, retrieval traces, and session memory diffs.
+ContextFS was designed after studying public context-engineering concepts, including virtual context namespaces, progressive context loading, retrieval traces, relations, and session memory diffs.
 
 OpenViking's core repository is licensed under AGPL-3.0. Agent Kernel is MIT licensed.
 
@@ -234,10 +305,10 @@ Possible future adapters include:
 
 - optional embeddings
 - optional vector or semantic reranking
-- richer relation expansion
-- project-specific virtual projections
+- richer typed relation expansion beyond bounded project/file evidence
 - bounded MCP ContextFS tools
 - retrieval evaluation fixtures comparing flat and hierarchical strategies
+- controlled architecture record projection from known validated architecture stores
 
 Any future semantic adapter should remain optional so the local deterministic path continues to work without it.
 
@@ -245,6 +316,6 @@ Any future semantic adapter should remain optional so the local deterministic pa
 
 ContextFS is a projection layer.
 
-Removing the routed ContextFS helpers and their router entries does not require migrating approved memory, Failure Lessons, episodes, sessions, or commit links.
+Removing the routed ContextFS helpers and their router entries does not require migrating approved memory, Failure Lessons, episodes, sessions, project registry entries, or commit links.
 
 Session commit metadata files can be removed independently after review. Pending proposals should use the normal approve or reject workflow so the audit trail remains explicit.
