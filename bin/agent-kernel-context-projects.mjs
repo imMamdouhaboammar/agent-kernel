@@ -62,7 +62,7 @@ function canonicalSegment(segment, raw) {
   try { decoded = decodeURIComponent(segment); } catch { throw invalidUri(raw, 'malformed percent encoding'); }
   if (!decoded || decoded === '.' || decoded === '..') throw invalidUri(raw, 'dot segments are not allowed');
   if (decoded.includes('/') || decoded.includes('\\') || decoded.includes('\0')) throw invalidUri(raw, 'path separators are not allowed inside segments');
-  if (/^[\u0000-\u001f\u007f]/u.test(decoded)) throw invalidUri(raw, 'control characters are not allowed');
+  if (/[\u0000-\u001f\u007f]/u.test(decoded)) throw invalidUri(raw, 'control characters are not allowed');
   return encodeURIComponent(decoded);
 }
 
@@ -403,19 +403,20 @@ function queryTerms(query) {
   return lower(query).match(/[\p{L}\p{N}_./:-]+/gu)?.filter((term) => term.length > 1) || [];
 }
 
-function searchableText(projectId, record) {
+function searchableText(record) {
+  const item = record.item || {};
   return lower(safeText(JSON.stringify({
-    id: record.id,
     type: record.type,
     abstract: abstractFor(record),
-    overview: overviewFor(projectId, record),
-    rootCause: record.item?.rootCause,
-    fix: record.item?.fix,
-    reason: record.item?.reason,
-    summary: record.item?.summary,
-    text: record.item?.text,
-    title: record.item?.title,
-    errorSignature: record.item?.errorSignature
+    rootCause: item.rootCause,
+    fix: item.fix,
+    reason: item.reason,
+    summary: item.summary,
+    text: item.text,
+    title: item.title,
+    errorSignature: item.errorSignature,
+    tags: item.tags,
+    commands: item.commands || item.command
   })));
 }
 
@@ -424,35 +425,41 @@ function filesFor(record) {
   return stringList(record.item?.files || record.item?.evidence?.filesTouched, 50);
 }
 
-function candidateScore(projectId, record, query, requestedFiles) {
+function candidateScore(record, query, requestedFiles) {
   if (record.item?.status === 'rejected') return { score: 0, signals: ['rejected'] };
-  const text = searchableText(projectId, record);
+  const text = searchableText(record);
   const terms = queryTerms(query);
-  const signals = ['project-exact'];
-  let score = 12;
+  const lexicalSignals = [];
+  let lexicalScore = 0;
   const phrase = lower(query).trim();
   if (phrase && text.includes(phrase)) {
-    score += 14;
-    signals.push('phrase');
+    lexicalScore += 14;
+    lexicalSignals.push('phrase');
   }
   for (const term of terms) {
     if (text.includes(term)) {
-      score += 3;
-      signals.push(`term:${term}`);
+      lexicalScore += 3;
+      lexicalSignals.push(`term:${term}`);
     }
   }
-  if (terms.length && !terms.some((term) => text.includes(term))) return { score: 0, signals: ['no-query-match'] };
 
   const recordFiles = filesFor(record).map(lower);
+  const fileSignals = [];
+  let fileScore = 0;
   for (const requested of requestedFiles.map(lower)) {
     if (recordFiles.includes(requested)) {
-      score += 18;
-      signals.push(`file-exact:${requested}`);
+      fileScore += 18;
+      fileSignals.push(`file-exact:${requested}`);
     } else if (recordFiles.some((file) => file.endsWith(`/${requested}`) || requested.endsWith(`/${file}`))) {
-      score += 10;
-      signals.push(`file-related:${requested}`);
+      fileScore += 10;
+      fileSignals.push(`file-related:${requested}`);
     }
   }
+
+  if (lexicalScore === 0 && fileScore === 0) return { score: 0, signals: ['no-query-match'] };
+
+  const signals = ['project-exact', ...lexicalSignals, ...fileSignals];
+  let score = 12 + lexicalScore + fileScore;
   const occurrences = Number(record.item?.occurrences || 0);
   if (Number.isFinite(occurrences) && occurrences > 1) {
     score += Math.min(occurrences, 5);
@@ -509,7 +516,7 @@ function relationCandidates(projectId, seed, includedUris) {
         collection,
         record,
         uri,
-        score: Math.max(1, Math.floor(seed.score * 0.35)),
+        score: Math.max(1, Math.floor(seed.score * 0.5)),
         signals: matchingFiles.map((file) => `relation:file:${file}`),
         from: seed.uri
       });
@@ -531,7 +538,7 @@ function findContext(flags) {
 
   for (const collection of collections) {
     const records = collectionRecords(projectId, collection);
-    const scored = records.map((record) => ({ record, ...candidateScore(projectId, record, query, requestedFiles) }));
+    const scored = records.map((record) => ({ record, ...candidateScore(record, query, requestedFiles) }));
     const collectionScore = scored.reduce((maximum, entry) => Math.max(maximum, entry.score), 0);
     trace.push({
       stage: 'collection',
@@ -551,13 +558,13 @@ function findContext(flags) {
   }
 
   candidates.sort((a, b) => b.score - a.score || a.uri.localeCompare(b.uri));
-  const limitedDirect = candidates.slice(0, limit);
-  const includedUris = new Set(limitedDirect.map((candidate) => candidate.uri));
-  const seed = limitedDirect[0] || null;
+  const selected = candidates.slice(0, limit);
+  const includedUris = new Set(selected.map((candidate) => candidate.uri));
+  const seed = selected[0] || null;
   const related = seed ? relationCandidates(projectId, seed, includedUris) : [];
   for (const relation of related) {
-    if (limitedDirect.length >= limit) break;
-    limitedDirect.push(relation);
+    if (selected.length >= limit) break;
+    selected.push(relation);
     includedUris.add(relation.uri);
     trace.push({
       stage: 'relation',
@@ -569,11 +576,12 @@ function findContext(flags) {
       signals: relation.signals
     });
   }
+  selected.sort((a, b) => b.score - a.score || a.uri.localeCompare(b.uri));
 
   const results = [];
   let budgetUsed = 0;
-  for (let index = 0; index < limitedDirect.length; index++) {
-    const candidate = limitedDirect[index];
+  for (let index = 0; index < selected.length; index++) {
+    const candidate = selected[index];
     let projection = recordProjection(projectId, candidate.collection, candidate.record, index === 0 ? 1 : 0);
     projection = { ...projection, score: candidate.score };
     let size = JSON.stringify(projection).length;
