@@ -74,7 +74,7 @@ Install once and give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigrav
 │ Rules and preferences    │ Identity and revisions   │ Policies and contracts  │
 │ Approval inbox           │ Safe restore and watcher │ Baselines and reports   │
 ├──────────────────────────┴──────────────────────────┴─────────────────────────┤
-│ Universal Skills · Failure Lessons · Agent integrations · Local dashboard    │
+│ ContextFS · Universal Skills · Failure Lessons · Agent integrations          │
 └───────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -82,12 +82,58 @@ Install once and give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigrav
 |---|---|
 | Rules are repeated in every prompt | Durable reviewed memory compiled into agent-readable files |
 | Claude, Codex, Cursor, and Gemini drift from each other | One source distributed to supported agent surfaces |
+| Context gets large or retrieval is hard to explain | ContextFS with virtual `ak://` URIs, progressive L0/L1/L2 reads, deterministic hierarchy-aware retrieval, budgets, and traces |
 | Local `.env` files disappear after a fresh clone | Environment Vault with stable identity, revisions, missing-only restore, conflicts, and backups |
 | Agents need repository-specific operating instructions | Universal Skills copied into supported agent directories |
 | The same build or test failure returns | Failure Lessons with command, error, cause, fix, and evidence |
 | AI-generated code creates structural drift | Architecture policies, contracts, baselines, reuse search, and checks |
 | An agent identifies a useful rule | Proposal inbox with explicit review and publication |
 | A hosted control plane is unwanted | Local Node CLI, optional hooks, MCP tools, and zero runtime dependencies |
+
+---
+
+## ContextFS
+
+ContextFS projects Agent Kernel's existing local records behind a virtual `ak://` namespace. The original JSON and JSONL stores remain authoritative.
+
+```bash
+# Browse the virtual tree
+agent-kernel context tree ak:// --json
+
+# Read compact or detailed projections
+agent-kernel context read ak://global/memory/<id> --level 0 --json
+agent-kernel context read ak://global/memory/<id> --level 1 --json
+agent-kernel context read ak://global/memory/<id> --level 2 --json
+
+# Search hierarchically with project/file locality and an explainable trace
+agent-kernel context find "restore conflict" \
+  --under ak://global/ \
+  --project-id my-project \
+  --file src/env-vault/engine.mjs \
+  --budget 1200 \
+  --trace \
+  --json
+
+# Record which context was actually used during a session
+agent-kernel context used <session-id> ak://global/failures/<id> \
+  --reason "pre-edit check" \
+  --result helpful \
+  --json
+
+# Preview candidate durable lessons without writing
+agent-kernel context commit <session-id> --dry-run --json
+
+# Materialize novel candidates as pending proposals only
+agent-kernel context commit <session-id> --json
+```
+
+L0 is a compact abstract, L1 is a structured overview, and L2 is opt-in authoritative detail. Hierarchical `find` never loads L2 automatically.
+
+Session commit is review-first. It deduplicates candidate text against approved memory and pending proposals, writes local session commit metadata, and uses the existing proposal inbox for novel candidates. It never auto-approves or publishes durable memory.
+
+Phase 1 is deterministic and local. It requires no vector database, embeddings, LLM, daemon, cloud service, or new runtime dependency.
+
+Read [`docs/CONTEXTFS.md`](./docs/CONTEXTFS.md) for the URI contract, retrieval behavior, security boundaries, clean-room licensing boundary, and rollback path.
 
 ---
 
@@ -398,6 +444,7 @@ agent-kernel propose --from <agent> --text <text> --reason <reason>
 agent-kernel inbox
 agent-kernel approve <id> [--publish]
 agent-kernel reject <id>
+agent-kernel context tree|read|find|used|commit
 agent-kernel dashboard [--out file.html] [--json]
 agent-kernel architecture init|discover|baseline|check|reuse|contract
 agent-kernel failure capture|learn|list|search|show|propose
@@ -416,6 +463,7 @@ Start with [`docs/README.md`](./docs/README.md)
 |---|---|
 | Install and connect agents | [`docs/INSTALL_AND_AGENT_SETUP.md`](./docs/INSTALL_AND_AGENT_SETUP.md) |
 | Complete command reference | [`docs/COMMAND_REFERENCE.md`](./docs/COMMAND_REFERENCE.md) |
+| ContextFS virtual context and retrieval | [`docs/CONTEXTFS.md`](./docs/CONTEXTFS.md) |
 | Project Environment Vault | [`docs/ENVIRONMENT_VAULT.md`](./docs/ENVIRONMENT_VAULT.md) |
 | Environment variables | [`docs/ENVIRONMENT_VARIABLES.md`](./docs/ENVIRONMENT_VARIABLES.md) |
 | Skill contract and synchronization | [`docs/SKILL_CONTRACT.md`](./docs/SKILL_CONTRACT.md) |
