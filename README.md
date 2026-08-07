@@ -53,9 +53,11 @@ Install once and give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigrav
   </table>
   <p><strong>Daily build pulse</strong></p>
   <ul>
-      <li>2 commits landed: chore: remove accidental noop file; noop.</li>
-      <li>2 pull requests updated, led by #126: test(package): remove POSIX shell dependency.</li>
-      <li>Daily summary covers 4 public activity items from the last 1 day.</li>
+      <li>Published v1.20.1: v1.20.1 — Quick-start Prompt Block &amp; Skills Update.</li>
+      <li>9 commits landed: chore(release): bump to v1.20.1; docs(readme): add copyable quick-start prompt block for any AI coding agent.</li>
+      <li>7 pull requests updated, led by #120: fix(router): resolve link project after flags.</li>
+      <li>7 issues changed, including #128: docs(release): enforce command-reference version consistency.</li>
+      <li>Daily summary covers 25 public activity items from the last 1 day.</li>
   </ul>
 </details>
 <!-- project-story:end -->
