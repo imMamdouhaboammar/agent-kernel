@@ -6,13 +6,14 @@ import path from 'node:path';
 
 const VERSION = '1.20.1';
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/u;
-const SECRET_KEY = /^(token|password|secret|credential|authorization|cookie|api.?key|private.?key)$/iu;
+const SECRET_KEY = /(?:^|[_-])(token|password|secret|credential|authorization|cookie|api.?key|private.?key|service.?role.?key|access.?key)(?:$|[_-])/iu;
 const SECRET_PATTERNS = [
   /OPENAI_API_KEY\s*=\s*["'][^"']+["']/giu,
   /ANTHROPIC_API_KEY\s*=\s*["'][^"']+["']/giu,
   /SUPABASE_SERVICE_ROLE_KEY\s*=\s*["'][^"']+["']/giu,
+  /(OPENAI_API_KEY|ANTHROPIC_API_KEY|SUPABASE_SERVICE_ROLE_KEY)\s*=\s*[^\s\n]+/giu,
   /AIza[0-9A-Za-z\-_]{35}/gu,
-  /sk-[A-Za-z0-9]{20,}/gu,
+  /sk-(?:proj-)?[A-Za-z0-9_-]{20,}/gu,
   /ghp_[A-Za-z0-9]{20,}/gu,
   /github_pat_[A-Za-z0-9_]{20,}/gu,
   /xox[abposr]-[A-Za-z0-9-]{10,}/gu
@@ -47,6 +48,15 @@ function parseFlags(argv) {
     else flags[raw] = true;
   }
   return flags;
+}
+
+function boundedInteger(value, fallback, minimum, maximum, label) {
+  if (value === undefined || value === null || value === '') return fallback;
+  const raw = String(value).trim();
+  if (!/^-?\d+$/u.test(raw)) throw new Error(`Invalid ${label}: ${value}. Expected a finite safe integer.`);
+  const parsed = Number(raw);
+  if (!Number.isSafeInteger(parsed)) throw new Error(`Invalid ${label}: ${value}. Expected a finite safe integer.`);
+  return Math.max(minimum, Math.min(parsed, maximum));
 }
 
 function invalidUri(value, reason) {
@@ -153,7 +163,7 @@ function episodeRecords() {
 function sessionRecords() {
   const dir = path.join(kernelHome(), 'runtime', 'sessions');
   if (!exists(dir)) return [];
-  return fs.readdirSync(dir).sort().filter((name) => name.endsWith('.json') && !name.endsWith('.context-commit.json')).flatMap((name) => {
+  return fs.readdirSync(dir).sort().filter((name) => name.endsWith('.json') && !name.endsWith('.context-commit.json') && !name.endsWith('.context-commit.in-progress.json')).flatMap((name) => {
     const item = readJson(path.join(dir, name), null);
     return item ? [projectRecord('session', `runtime/sessions/${name}`, item)] : [];
   });
@@ -262,36 +272,18 @@ function recordEntry(scope, collection, record) {
   };
 }
 
-function treeFor(parsed, depth) {
+function baseTreeFor(parsed) {
   const segments = parsed.segments;
   if (segments.length === 0) {
-    return {
-      uri: 'ak://',
-      kind: 'directory',
-      depth,
-      entries: ROOT_COLLECTIONS.map((name) => directoryEntry(name, `ak://${name}/`))
-    };
+    return { uri: 'ak://', kind: 'directory', entries: ROOT_COLLECTIONS.map((name) => directoryEntry(name, `ak://${name}/`)) };
   }
-
   if (segments.length === 1 && segments[0] === 'global') {
-    return {
-      uri: 'ak://global/',
-      kind: 'directory',
-      depth,
-      entries: GLOBAL_COLLECTIONS.map((name) => directoryEntry(name, `ak://global/${name}/`))
-    };
+    return { uri: 'ak://global/', kind: 'directory', entries: GLOBAL_COLLECTIONS.map((name) => directoryEntry(name, `ak://global/${name}/`)) };
   }
-
   if (segments.length === 1 && ['agents', 'skills', 'policies'].includes(segments[0])) {
     const scope = segments[0];
-    return {
-      uri: `ak://${scope}/`,
-      kind: 'directory',
-      depth,
-      entries: collectionRecords(scope, null).map((record) => recordEntry(scope, null, record))
-    };
+    return { uri: `ak://${scope}/`, kind: 'directory', entries: collectionRecords(scope, null).map((record) => recordEntry(scope, null, record)) };
   }
-
   if (segments.length === 1 && segments[0] === 'projects') {
     const projects = new Set();
     for (const record of [...memoryRecords(), ...failureRecords(), ...episodeRecords(), ...sessionRecords()]) {
@@ -302,22 +294,34 @@ function treeFor(parsed, depth) {
     return {
       uri: 'ak://projects/',
       kind: 'directory',
-      depth,
       entries: [...projects].sort().map((name) => directoryEntry(name, `ak://projects/${encodeURIComponent(name)}/`))
     };
   }
-
   if (segments.length === 2 && segments[0] === 'global' && GLOBAL_COLLECTIONS.includes(segments[1])) {
     const collection = segments[1];
     return {
       uri: `ak://global/${collection}/`,
       kind: 'directory',
-      depth,
       entries: collectionRecords('global', collection).map((record) => recordEntry('global', collection, record))
     };
   }
-
   throw invalidUri(parsed.uri, 'unknown ContextFS directory');
+}
+
+function treeFor(parsed, depth) {
+  const base = baseTreeFor(parsed);
+  if (depth <= 1) return { ...base, depth };
+  const entries = base.entries.map((entry) => {
+    if (entry.kind !== 'directory') return entry;
+    try {
+      const child = treeFor(parseContextUri(entry.uri), depth - 1);
+      return { ...entry, entries: child.entries };
+    } catch (error) {
+      if (error?.code === 'AK_CONTEXTFS_INVALID_URI') return entry;
+      throw error;
+    }
+  });
+  return { ...base, depth, entries };
 }
 
 function readRecord(parsed, level) {
@@ -443,8 +447,8 @@ function findContext(flags) {
   const collections = eligibleGlobalCollections(under);
   const projectId = String(flags['project-id'] || flags.projectId || '').trim();
   const requestedFiles = stringList(flags.file || flags.files, 20);
-  const limit = Math.max(1, Math.min(Number(flags.limit || 8), 50));
-  const budget = Math.max(200, Math.min(Number(flags.budget || 1200), 12000));
+  const limit = boundedInteger(flags.limit, 8, 1, 50, 'limit');
+  const budget = boundedInteger(flags.budget, 1200, 200, 12000, 'budget');
   const trace = [];
   const candidates = [];
 
@@ -532,7 +536,7 @@ function usage() {
 
 function commandTree(flags) {
   const parsed = parseContextUri(flags._[1] || 'ak://');
-  const depth = Math.max(1, Math.min(Number(flags.depth || 1), 5));
+  const depth = boundedInteger(flags.depth, 1, 1, 5, 'depth');
   const tree = treeFor(parsed, depth);
   if (flags.json) printJson(tree); else printTree(tree);
 }
