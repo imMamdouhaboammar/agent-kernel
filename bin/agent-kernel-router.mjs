@@ -28,6 +28,16 @@ const updatePath = path.join(here, 'agent-kernel-update.mjs');
 const updateRunnerPath = path.join(here, 'agent-kernel-update-runner.mjs');
 const routedUpdatePath = process.platform === 'win32' ? updateRunnerPath : updatePath;
 const updateGuidancePath = path.join(here, 'agent-kernel-update-guidance.mjs');
+const CONTEXT_URI_SECRET_PATTERNS = [
+  /OPENAI_API_KEY\s*=\s*["']?[^\s"']+/iu,
+  /ANTHROPIC_API_KEY\s*=\s*["']?[^\s"']+/iu,
+  /SUPABASE_SERVICE_ROLE_KEY\s*=\s*["']?[^\s"']+/iu,
+  /AIza[0-9A-Za-z\-_]{35}/u,
+  /sk-(?:proj-)?[A-Za-z0-9_-]{20,}/u,
+  /ghp_[A-Za-z0-9]{20,}/u,
+  /github_pat_[A-Za-z0-9_]{20,}/u,
+  /xox[abposr]-[A-Za-z0-9-]{10,}/u
+];
 const args = process.argv.slice(2);
 const command = args[0];
 const jsonRequested = args.some((arg) => arg === '--json' || arg.startsWith('--json='));
@@ -66,6 +76,25 @@ const registryCommand = command === 'agent' || (command === 'project' && !broker
 
 function kernelHome() {
   return process.env.AGENT_KERNEL_HOME || path.join(os.homedir(), '.agent-kernel');
+}
+
+function hasRecognizedContextUriSecret(value) {
+  const text = String(value || '');
+  return CONTEXT_URI_SECRET_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+function rejectSecretBearingContextUriArgs() {
+  if (!(contextFsCommand || contextUsedCommand)) return;
+  for (const arg of args) {
+    const raw = String(arg || '');
+    const marker = raw.indexOf('ak://');
+    if (marker < 0) continue;
+    let decoded = raw.slice(marker);
+    try { decoded = decodeURIComponent(decoded); } catch {}
+    if (!hasRecognizedContextUriSecret(decoded)) continue;
+    process.stderr.write('Invalid ContextFS URI: secret-bearing values are not allowed\n');
+    process.exit(1);
+  }
 }
 
 function linkProjectArg() {
@@ -141,6 +170,7 @@ function refreshUpdateGuidance() {
   });
 }
 
+rejectSecretBearingContextUriArgs();
 refreshUpdateCheckIfDue();
 const notice = cachedUpdateNotice();
 if (notice) process.stderr.write(notice);
