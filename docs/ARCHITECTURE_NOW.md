@@ -24,9 +24,10 @@ The router delegates core commands to the built CLI and delegates independent co
 |---|---|---|
 | Core CLI | `src/cli.mjs` and `dist/cli.mjs` | Memory, proposals, compile, sync, link, episodes, guard, MCP, hooks, and core diagnostics |
 | Public router | `bin/agent-kernel-router.mjs` | Top-level dispatch, runtime shim PATH, update notices, and post-command guidance |
-| ContextFS projection | `bin/agent-kernel-contextfs.mjs` | Virtual `ak://` tree, L0/L1/L2 projections, deterministic hierarchical retrieval, budget accounting, and retrieval traces |
+| ContextFS global projection | `bin/agent-kernel-contextfs.mjs` | Global virtual `ak://` tree, L0/L1/L2 projections, deterministic retrieval, budget accounting, and retrieval traces |
+| ContextFS project projection | `bin/agent-kernel-context-projects.mjs` | Project-scoped virtual tree, project identity resolution, derived file nodes, typed relations, and bounded same-file relation expansion |
 | ContextFS session evidence | `bin/agent-kernel-context-used.mjs` | Append-only `context_used` observations with safe session and URI validation |
-| ContextFS session commit | `bin/agent-kernel-context-commit.mjs` | Deterministic candidate extraction, approved/pending deduplication, commit metadata, and pending-only proposal creation |
+| ContextFS session commit | `bin/agent-kernel-context-commit.mjs` | Secret-redacted deterministic candidate extraction, approved/pending deduplication, commit metadata, and pending-only proposal creation |
 | Environment Vault command | `bin/agent-kernel-env-vault.mjs` | Public `agent-kernel env` parsing, human output, JSON output, watcher lifecycle, and exit codes |
 | Environment Vault modules | `src/env-vault.mjs` and `src/env-vault/*.mjs` | Identity, discovery, manifests, atomic local storage, revisions, restore conflicts, migration, doctor, and watcher operations |
 | Focused helper commands | `bin/*.mjs` | Safe linking, runtime sessions, Failure Lessons, registries, portability, dashboard, trusted updates, Architecture Guardian, and hooks |
@@ -83,6 +84,7 @@ agent-kernel / ak
   +--> memory:             ~/.agent-kernel/source/memories/*.json
   +--> failure lessons:    ~/.agent-kernel/source/failures/failure-lessons.json
   +--> policies:           ~/.agent-kernel/source/policies/policies.json
+  +--> project identities: ~/.agent-kernel/source/projects/projects.json
   +--> proposals:          ~/.agent-kernel/inbox/{pending,approved,rejected}/
   +--> episodes:           ~/.agent-kernel/episodes/{archive,index.json,sources.json}
   +--> sessions:           ~/.agent-kernel/runtime/sessions/{*.json,*.jsonl}
@@ -113,12 +115,23 @@ ContextFS is a virtual projection over those stores. `ak://` URIs are not physic
 ## ContextFS boundary
 
 ```text
-agent-kernel context tree|read|find ...
+agent-kernel context tree|read|find ak://global/... or global scope
   -> bin/agent-kernel-router.mjs
   -> bin/agent-kernel-contextfs.mjs
        -> read existing memory/failure/episode/session/commit stores
-       -> project virtual ak:// nodes
+       -> project global virtual ak:// nodes
        -> return L0/L1/L2 or budgeted retrieval trace
+
+agent-kernel context tree|read|find ak://projects/<project-id>/...
+agent-kernel context find ... --project <registered-path>
+  -> bin/agent-kernel-router.mjs
+  -> bin/agent-kernel-context-projects.mjs
+       -> resolve an existing project identity without mutation
+       -> filter authoritative records to the exact project
+       -> derive virtual file nodes from stored file references
+       -> expose owned-by-project/references-file/referenced-by relations
+       -> expand a bounded number of same-file related records
+       -> enforce project-only result URIs and budgeted L0/L1 output
 
 agent-kernel context used ...
   -> bin/agent-kernel-context-used.mjs
@@ -128,6 +141,7 @@ agent-kernel context used ...
 agent-kernel context commit ...
   -> bin/agent-kernel-context-commit.mjs
        -> read session + observations
+       -> redact known credential patterns
        -> extract deterministic candidates
        -> deduplicate approved + pending text hashes
        -> call core propose flow for novel candidates
@@ -141,12 +155,18 @@ ContextFS invariants
 - Hierarchical find never loads L2 automatically
 - Retrieval remains local and deterministic in phase 1
 - No vector database, embeddings, LLM, cloud service, daemon, or runtime dependency is required
-- `ak://` identifiers reject foreign schemes, traversal, encoded traversal, backslashes, NULs, query strings, fragments, credentials, and encoded separators before lookup
+- `ak://` identifiers reject foreign schemes, traversal, encoded traversal, backslashes, NULs, control characters, query strings, fragments, credentials, and encoded separators before lookup
+- Project-scoped tree/read/find only returns records matching the selected project identity
+- `--project` resolves an existing local identity and does not register a new project
+- Contradictory project selectors fail closed with a project-scope mismatch
+- Project file nodes are derived from stored references and do not authorize arbitrary file reads
+- Relation expansion stays in the project, follows stored file evidence, and has bounded fan-out
 - Session IDs are validated before filesystem access
 - Used-context evidence is append-only session evidence, not durable memory
+- Session commit redacts known secrets before dry-run output, metadata persistence, or proposal creation
 - Session commit can create pending proposals only and never approves or publishes memory
 - Repeated session commit is idempotent and does not duplicate pending proposals
-- ContextFS can be removed without migrating approved memory, Failure Lessons, episodes, sessions, or commit links
+- ContextFS can be removed without migrating approved memory, Failure Lessons, episodes, sessions, project identities, or commit links
 
 The implementation is clean-room. Public architectural ideas informed the feature, but OpenViking source code, schemas, tests, constants, and implementation-specific algorithms are not copied. Agent Kernel remains MIT licensed
 
@@ -265,7 +285,7 @@ General shell execution and arbitrary batch names are rejected
 |---|---|---|
 | Memory | `remember`, `memory list/search/show`, `validate` | `source/memories/*.json` |
 | Approval workflow | `propose`, `inbox`, `approve`, `reject`, `publish` | `inbox/*`, then reviewed memory stores |
-| ContextFS | `context tree/read/find/used/commit` | virtual projection over existing stores; used evidence in session JSONL; commit metadata in session runtime; durable candidates in pending inbox only |
+| ContextFS | `context tree/read/find/used/commit` | virtual projection over existing stores; project identity from `source/projects/projects.json`; used evidence in session JSONL; commit metadata in session runtime; durable candidates in pending inbox only |
 | Episodes | `episode add/sync/search/show/stats/reindex` | `episodes/archive/*.json`, `episodes/index.json` |
 | Failure Lessons | `failure capture/learn/list/search/show/propose/promote/validate` | `source/failures/failure-lessons.json` |
 | Environment Vault | `env link/status/push/pull/watch/doctor/history/restore/list/unlink/purge` | `vault/env/<sha256>/manifest.json`, current files, revisions, and project backups |
@@ -289,9 +309,10 @@ General shell execution and arbitrary batch names are rejected
 | `src/env-vault/*.mjs` | Vault identity, discovery, storage, manifest, engine, and watcher modules |
 | `dist/env-vault.mjs` and `dist/env-vault/*.mjs` | Generated Vault runtime copied by the build |
 | `bin/agent-kernel-router.mjs` | Public command dispatcher and runtime environment preparation |
-| `bin/agent-kernel-contextfs.mjs` | ContextFS URI parser, projection, progressive reads, hierarchical find, and trace output |
+| `bin/agent-kernel-contextfs.mjs` | Global ContextFS URI parser, projection, progressive reads, hierarchical find, and trace output |
+| `bin/agent-kernel-context-projects.mjs` | Project ContextFS projection, derived file nodes, project resolution, typed relations, and bounded relation retrieval |
 | `bin/agent-kernel-context-used.mjs` | ContextFS used-record session evidence writer |
-| `bin/agent-kernel-context-commit.mjs` | ContextFS deterministic review-first session commit worker |
+| `bin/agent-kernel-context-commit.mjs` | ContextFS deterministic review-first session commit worker with candidate secret redaction |
 | `bin/agent-kernel-env-vault.mjs` | Public Environment Vault command |
 | `bin/agent-kernel-dashboard.mjs` | Dashboard command orchestrator |
 | `bin/dashboard/*.mjs` | Dashboard safety, state, and rendering |
@@ -306,6 +327,8 @@ General shell execution and arbitrary batch names are rejected
 | `scripts/lint*.mjs` | Repository consistency, mode, documentation, and secret checks |
 | `test/smoke.mjs` | Focused test orchestrator |
 | `test/public-cli-context.mjs` | ContextFS routing, URI safety, progressive reads, retrieval trace, session evidence, commit governance, and legacy context compatibility |
+| `test/contextfs-security.mjs` | ContextFS session-commit secret-redaction regression coverage |
+| `test/contextfs-projects.mjs` | Project tree/read/find, derived file records, project resolution, scope mismatch, and relation-expansion coverage |
 | `test/env-vault.mjs` | Cross-platform Vault identity, permissions, conflict, symlink, and routing coverage |
 | `docs/CONTEXTFS.md` | ContextFS operator, security, licensing, and rollback guide |
 | `docs/ENVIRONMENT_VAULT.md` | Operator command and security guide |
@@ -318,13 +341,17 @@ Environment Vault coverage uses isolated homes and temporary Git repositories
 
 ContextFS coverage uses an isolated Agent Kernel home and verifies
 
-- canonical `ak://` tree and record URIs
-- traversal, encoded traversal, foreign scheme, backslash, and unsafe session-ID rejection
+- canonical `ak://` global and project tree/record URIs
+- traversal, encoded traversal, foreign scheme, backslash, control-character, and unsafe session-ID rejection
 - L0/L1/L2 progressive read contracts
 - project/file-aware deterministic ranking
+- exact project-scope isolation and contradictory selector rejection
+- derived project file records without arbitrary repository-file reads
+- bounded same-file relation expansion with explicit trace evidence
 - context budget enforcement and trace explainability
 - append-only used-context evidence
 - review-first dry-run and pending-only session commit
+- session candidate secret redaction across output, metadata, and pending proposals
 - approved-memory immutability and repeated-commit idempotency
 
 Environment Vault coverage verifies
