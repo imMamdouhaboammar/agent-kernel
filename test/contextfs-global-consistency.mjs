@@ -16,6 +16,25 @@ function runRouter(env, ...args) {
   });
 }
 
+function runRouterFailure(env, ...args) {
+  try {
+    return { status: 0, stdout: runRouter(env, ...args), stderr: '' };
+  } catch (error) {
+    return {
+      status: error.status ?? 1,
+      stdout: error.stdout?.toString() ?? '',
+      stderr: error.stderr?.toString() ?? ''
+    };
+  }
+}
+
+function assertRejectedOption(result, label) {
+  const output = `${result.stdout}\n${result.stderr}`;
+  if (result.status === 0 || !output.includes(`Invalid ${label}`)) {
+    throw new Error(`ContextFS accepted invalid ${label}: ${JSON.stringify(result)}`);
+  }
+}
+
 export async function run() {
   const { env, kernelHome } = makeEnv();
   runCli(env, 'init', '--sync');
@@ -44,6 +63,58 @@ export async function run() {
   ));
   if (metadataOnly.results.length !== 0) {
     throw new Error(`Global ContextFS treated project metadata as lexical query text: ${JSON.stringify(metadataOnly.results)}`);
+  }
+
+  assertRejectedOption(
+    runRouterFailure(
+      env,
+      'context', 'find', 'No matching lexical content here',
+      '--under', 'ak://global/failures/',
+      '--budget', 'not-a-number',
+      '--json'
+    ),
+    'budget'
+  );
+  assertRejectedOption(
+    runRouterFailure(
+      env,
+      'context', 'find', 'No matching lexical content here',
+      '--under', 'ak://global/failures/',
+      '--limit', '1.5',
+      '--json'
+    ),
+    'limit'
+  );
+  assertRejectedOption(
+    runRouterFailure(env, 'context', 'tree', 'ak://global/', '--depth', 'NaN', '--json'),
+    'depth'
+  );
+
+  const depthTwo = JSON.parse(runRouter(env, 'context', 'tree', 'ak://global/', '--depth', '2', '--json'));
+  const nestedFailures = depthTwo.entries?.find((entry) => entry.name === 'failures');
+  if (!Array.isArray(nestedFailures?.entries) || !nestedFailures.entries.some((entry) => entry.name === 'metadata-only-record')) {
+    throw new Error(`Global ContextFS depth=2 did not expand nested entries: ${JSON.stringify(depthTwo)}`);
+  }
+
+  const secretKey = ['OPENAI', 'API', 'KEY'].join('_');
+  const opaqueSecret = ['opaque', 'provider', 'credential', 'value', '123456'].join('-');
+  const memoryDir = join(kernelHome, 'source', 'memories');
+  mkdirSync(memoryDir, { recursive: true });
+  writeFileSync(join(memoryDir, 'contextfs-l2-secret.json'), JSON.stringify([
+    {
+      id: 'contextfs-l2-secret',
+      type: 'project-note',
+      scope: 'global',
+      level: 'standard',
+      status: 'approved',
+      text: 'ContextFS L2 secret-key regression record.',
+      [secretKey]: opaqueSecret,
+      createdAt: '2026-08-07T07:00:00.000Z'
+    }
+  ], null, 2) + '\n');
+  const l2 = JSON.parse(runRouter(env, 'context', 'read', 'ak://global/memory/contextfs-l2-secret', '--level', '2', '--json'));
+  if (l2.details?.[secretKey] !== '[REDACTED_SECRET]' || JSON.stringify(l2).includes(opaqueSecret)) {
+    throw new Error(`Global ContextFS L2 exposed a provider-key secret: ${JSON.stringify(l2)}`);
   }
 
   const started = JSON.parse(runRouter(env, 'session', 'start', '--agent', 'contextfs-global-consistency', '--project', repo.root, '--json'));
