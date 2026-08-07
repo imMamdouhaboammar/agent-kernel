@@ -76,6 +76,7 @@ function canonicalContextUri(value) {
     try { decoded = decodeURIComponent(segment); } catch { invalidContextUri(raw, 'malformed percent encoding'); }
     if (!decoded || decoded === '.' || decoded === '..') invalidContextUri(raw, 'dot segments are not allowed');
     if (decoded.includes('/') || decoded.includes('\\') || decoded.includes('\0')) invalidContextUri(raw, 'path separators are not allowed inside segments');
+    if (/[\u0000-\u001f\u007f]/u.test(decoded)) invalidContextUri(raw, 'control characters are not allowed');
     return encodeURIComponent(decoded);
   });
   return `ak://${segments.join('/')}${trailing ? '/' : ''}`;
