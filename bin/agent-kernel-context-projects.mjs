@@ -8,18 +8,19 @@ import { findProject, loadProjectRegistry } from './agent-kernel-project-model.m
 const VERSION = '1.20.1';
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/u;
 const PROJECT_COLLECTIONS = ['memory', 'failures', 'episodes', 'sessions', 'files', 'architecture', 'commits'];
-const SECRET_KEY = /^(token|password|secret|credential|authorization|cookie|api.?key|private.?key)$/iu;
+const SECRET_KEY = /(?:^|[_-])(token|password|secret|credential|authorization|cookie|api.?key|private.?key|service.?role.?key|access.?key)(?:$|[_-])/iu;
 const SECRET_PATTERNS = [
   /OPENAI_API_KEY\s*=\s*["'][^"']+["']/giu,
   /ANTHROPIC_API_KEY\s*=\s*["'][^"']+["']/giu,
   /SUPABASE_SERVICE_ROLE_KEY\s*=\s*["'][^"']+["']/giu,
   /(OPENAI_API_KEY|ANTHROPIC_API_KEY|SUPABASE_SERVICE_ROLE_KEY)\s*=\s*[^\s\n]+/giu,
   /AIza[0-9A-Za-z\-_]{35}/gu,
-  /sk-[A-Za-z0-9]{20,}/gu,
+  /sk-(?:proj-)?[A-Za-z0-9_-]{20,}/gu,
   /ghp_[A-Za-z0-9]{20,}/gu,
   /github_pat_[A-Za-z0-9_]{20,}/gu,
   /xox[abposr]-[A-Za-z0-9-]{10,}/gu
 ];
+const FILE_RECORD_CACHE = new Map();
 
 function kernelHome() {
   return process.env.AGENT_KERNEL_HOME || path.join(os.homedir(), '.agent-kernel');
@@ -48,6 +49,15 @@ function parseFlags(argv) {
     else flags[raw] = true;
   }
   return flags;
+}
+
+function boundedInteger(value, fallback, minimum, maximum, label) {
+  if (value === undefined || value === null || value === '') return fallback;
+  const raw = String(value).trim();
+  if (!/^-?\d+$/u.test(raw)) throw new Error(`Invalid ${label}: ${value}. Expected a finite safe integer.`);
+  const parsed = Number(raw);
+  if (!Number.isSafeInteger(parsed)) throw new Error(`Invalid ${label}: ${value}. Expected a finite safe integer.`);
+  return Math.max(minimum, Math.min(parsed, maximum));
 }
 
 function invalidUri(value, reason) {
@@ -130,8 +140,12 @@ function stringList(value, limit = 20) {
   return [...new Set(list.map((item) => compact(item, 240)).filter(Boolean))].slice(0, limit);
 }
 
+function canonicalProjectId(value) {
+  return String(value || '').trim().toLowerCase().replace(/[^a-z0-9._-]+/gu, '-').replace(/^-+|-+$/gu, '');
+}
+
 function projectForItem(item) {
-  return String(item?.projectId || item?.project || item?.metadata?.projectId || item?.source?.projectId || '').trim();
+  return canonicalProjectId(item?.projectId || item?.project || item?.metadata?.projectId || item?.source?.projectId || '');
 }
 
 function baseRecord(type, source, item) {
@@ -169,7 +183,7 @@ function episodeRecords() {
 function sessionRecords() {
   const dir = path.join(kernelHome(), 'runtime', 'sessions');
   if (!exists(dir)) return [];
-  return fs.readdirSync(dir).sort().filter((name) => name.endsWith('.json') && !name.endsWith('.context-commit.json')).flatMap((name) => {
+  return fs.readdirSync(dir).sort().filter((name) => name.endsWith('.json') && !name.endsWith('.context-commit.json') && !name.endsWith('.context-commit.in-progress.json')).flatMap((name) => {
     const item = readJson(path.join(dir, name), null);
     return item ? [baseRecord('session', `runtime/sessions/${name}`, item)] : [];
   });
@@ -190,15 +204,18 @@ function sourceRecords(collection) {
 }
 
 function projectRecords(projectId, collection) {
-  return sourceRecords(collection).filter((record) => projectForItem(record.item) === projectId && record.item?.status !== 'rejected');
+  const canonical = canonicalProjectId(projectId);
+  return sourceRecords(collection).filter((record) => projectForItem(record.item) === canonical && record.item?.status !== 'rejected');
 }
 
 function projectRecordUri(projectId, collection, recordId) {
-  return `ak://projects/${encodeURIComponent(projectId)}/${collection}/${encodeURIComponent(recordId)}`;
+  const canonical = canonicalProjectId(projectId);
+  return `ak://projects/${encodeURIComponent(canonical)}/${collection}/${encodeURIComponent(recordId)}`;
 }
 
 function fileId(projectId, filePath) {
-  return `file_${crypto.createHash('sha256').update(`${projectId}\n${filePath}`).digest('hex').slice(0, 16)}`;
+  const canonical = canonicalProjectId(projectId);
+  return `file_${crypto.createHash('sha256').update(`${canonical}\n${filePath}`).digest('hex').slice(0, 16)}`;
 }
 
 function allProjectSourceRecords(projectId) {
@@ -208,22 +225,26 @@ function allProjectSourceRecords(projectId) {
 }
 
 function fileRecords(projectId) {
+  const canonical = canonicalProjectId(projectId);
+  if (FILE_RECORD_CACHE.has(canonical)) return FILE_RECORD_CACHE.get(canonical);
   const files = new Map();
-  for (const { collection, record } of allProjectSourceRecords(projectId)) {
+  for (const { collection, record } of allProjectSourceRecords(canonical)) {
     for (const filePath of stringList(record.item?.files || record.item?.evidence?.filesTouched, 100)) {
       const normalized = String(filePath).replace(/\\/gu, '/').replace(/^\.\//u, '').trim();
       if (!normalized || normalized.includes('\0') || normalized.split('/').includes('..')) continue;
       const current = files.get(normalized) || {
-        id: fileId(projectId, normalized),
+        id: fileId(canonical, normalized),
         type: 'file',
         source: 'derived:file-references',
-        item: { projectId, path: normalized, references: [] }
+        item: { projectId: canonical, path: normalized, references: [] }
       };
       current.item.references.push({ collection, recordId: record.id });
       files.set(normalized, current);
     }
   }
-  return [...files.values()].sort((a, b) => a.item.path.localeCompare(b.item.path));
+  const result = [...files.values()].sort((a, b) => a.item.path.localeCompare(b.item.path));
+  FILE_RECORD_CACHE.set(canonical, result);
+  return result;
 }
 
 function architectureRecords() {
@@ -277,22 +298,20 @@ function fileRecordForPath(projectId, filePath) {
 }
 
 function relationsFor(projectId, collection, record) {
-  const relations = [{ type: 'owned-by-project', target: `ak://projects/${encodeURIComponent(projectId)}/` }];
+  const canonical = canonicalProjectId(projectId);
+  const relations = [{ type: 'owned-by-project', target: `ak://projects/${encodeURIComponent(canonical)}/` }];
   if (record.type === 'file') {
     for (const reference of record.item?.references || []) {
-      relations.push({
-        type: 'referenced-by',
-        target: projectRecordUri(projectId, reference.collection, reference.recordId)
-      });
+      relations.push({ type: 'referenced-by', target: projectRecordUri(canonical, reference.collection, reference.recordId) });
     }
     return relations.slice(0, 12);
   }
   for (const filePath of stringList(record.item?.files || record.item?.evidence?.filesTouched, 10)) {
-    const fileRecord = fileRecordForPath(projectId, String(filePath).replace(/\\/gu, '/').replace(/^\.\//u, ''));
+    const fileRecord = fileRecordForPath(canonical, String(filePath).replace(/\\/gu, '/').replace(/^\.\//u, ''));
     if (!fileRecord) continue;
     relations.push({
       type: 'references-file',
-      target: projectRecordUri(projectId, 'files', fileRecord.id),
+      target: projectRecordUri(canonical, 'files', fileRecord.id),
       path: fileRecord.item.path
     });
   }
@@ -300,18 +319,19 @@ function relationsFor(projectId, collection, record) {
 }
 
 function recordProjection(projectId, collection, record, level) {
+  const canonical = canonicalProjectId(projectId);
   const result = {
-    uri: projectRecordUri(projectId, collection, record.id),
+    uri: projectRecordUri(canonical, collection, record.id),
     kind: 'record',
     type: record.type,
     id: record.id,
-    projectId,
+    projectId: canonical,
     level,
     abstract: abstractFor(record),
-    relations: relationsFor(projectId, collection, record),
+    relations: relationsFor(canonical, collection, record),
     provenance: { source: record.source }
   };
-  if (level >= 1) result.overview = overviewFor(projectId, record);
+  if (level >= 1) result.overview = overviewFor(canonical, record);
   if (level >= 2) result.details = sanitize(record.item);
   return result;
 }
@@ -333,7 +353,11 @@ function recordEntry(projectId, collection, record) {
 }
 
 function knownProjectIds() {
-  const ids = new Set(loadProjectRegistry().projects.map((project) => String(project.projectId || '').trim()).filter(Boolean));
+  const ids = new Set();
+  for (const project of loadProjectRegistry().projects) {
+    const projectId = canonicalProjectId(project.projectId);
+    if (projectId) ids.add(projectId);
+  }
   for (const collection of ['memory', 'failures', 'episodes', 'sessions', 'commits']) {
     for (const record of sourceRecords(collection)) {
       const projectId = projectForItem(record.item);
@@ -344,17 +368,17 @@ function knownProjectIds() {
 }
 
 function requireKnownProject(projectId) {
-  if (!projectId || !knownProjectIds().includes(projectId)) throw new Error(`ContextFS project not found: ${projectId || '(empty)'}`);
-  return projectId;
+  const canonical = canonicalProjectId(projectId);
+  if (!canonical || !knownProjectIds().includes(canonical)) throw new Error(`ContextFS project not found: ${projectId || '(empty)'}`);
+  return canonical;
 }
 
-function treeFor(parsed, depth) {
+function baseTreeFor(parsed) {
   const segments = parsed.segments;
   if (segments.length === 1 && segments[0] === 'projects') {
     return {
       uri: 'ak://projects/',
       kind: 'directory',
-      depth,
       entries: knownProjectIds().map((projectId) => directoryEntry(projectId, `ak://projects/${encodeURIComponent(projectId)}/`))
     };
   }
@@ -364,7 +388,6 @@ function treeFor(parsed, depth) {
       uri: `ak://projects/${encodeURIComponent(projectId)}/`,
       kind: 'directory',
       projectId,
-      depth,
       entries: PROJECT_COLLECTIONS.map((collection) => directoryEntry(collection, `ak://projects/${encodeURIComponent(projectId)}/${collection}/`))
     };
   }
@@ -376,11 +399,21 @@ function treeFor(parsed, depth) {
       kind: 'directory',
       projectId,
       collection,
-      depth,
       entries: collectionRecords(projectId, collection).map((record) => recordEntry(projectId, collection, record))
     };
   }
   throw invalidUri(parsed.uri, 'unknown project ContextFS directory');
+}
+
+function treeFor(parsed, depth) {
+  const base = baseTreeFor(parsed);
+  if (depth <= 1) return { ...base, depth };
+  const entries = base.entries.map((entry) => {
+    if (entry.kind !== 'directory') return entry;
+    const child = treeFor(parseContextUri(entry.uri), depth - 1);
+    return { ...entry, entries: child.entries };
+  });
+  return { ...base, depth, entries };
 }
 
 function readRecord(parsed, level) {
@@ -477,18 +510,22 @@ function projectFromUnder(rawUnder) {
   if (under.segments.length === 3 && !PROJECT_COLLECTIONS.includes(under.segments[2])) {
     throw invalidUri(under.uri, 'unknown project collection');
   }
-  return { projectId: requireKnownProject(under.segments[1]), under };
+  const projectId = requireKnownProject(under.segments[1]);
+  const canonicalUnder = under.segments.length === 3
+    ? parseContextUri(`ak://projects/${encodeURIComponent(projectId)}/${under.segments[2]}/`)
+    : parseContextUri(`ak://projects/${encodeURIComponent(projectId)}/`);
+  return { projectId, under: canonicalUnder };
 }
 
 function resolveProjectScope(flags) {
   const underScope = projectFromUnder(flags.under ? String(flags.under) : null);
-  const explicitId = String(flags['project-id'] || flags.projectId || '').trim();
+  const explicitId = canonicalProjectId(flags['project-id'] || flags.projectId || '');
   let pathProject = null;
   if (flags.project) {
     pathProject = findProject(String(flags.project));
     if (!pathProject) throw new Error(`ContextFS project not found for --project: ${flags.project}`);
   }
-  const values = [underScope?.projectId, explicitId || null, pathProject?.projectId || null].filter(Boolean);
+  const values = [underScope?.projectId, explicitId || null, canonicalProjectId(pathProject?.projectId || '') || null].filter(Boolean);
   const uniqueIds = [...new Set(values)];
   if (uniqueIds.length > 1) throw new Error(`Project scope mismatch: ${uniqueIds.join(' != ')}`);
   const projectId = requireKnownProject(uniqueIds[0]);
@@ -531,8 +568,8 @@ function findContext(flags) {
   const { projectId, under } = resolveProjectScope(flags);
   const collections = eligibleCollections(under);
   const requestedFiles = stringList(flags.file || flags.files, 20).map((file) => String(file).replace(/\\/gu, '/').replace(/^\.\//u, ''));
-  const limit = Math.max(1, Math.min(Number(flags.limit || 8), 50));
-  const budget = Math.max(200, Math.min(Number(flags.budget || 1200), 12000));
+  const limit = boundedInteger(flags.limit, 8, 1, 50, 'limit');
+  const budget = boundedInteger(flags.budget, 1200, 200, 12000, 'budget');
   const trace = [];
   const candidates = [];
 
@@ -633,12 +670,12 @@ function printFind(result) {
 }
 
 function usage() {
-  process.stdout.write(`agent-kernel project ContextFS ${VERSION}\n\nUsage:\n  agent-kernel context tree ak://projects/[<id>/[collection/]] [--json]\n  agent-kernel context read ak://projects/<id>/<collection>/<record> [--level 0|1|2] [--json]\n  agent-kernel context find <query> --under ak://projects/<id>/ [--project path] [--file path] [--trace] [--json]\n`);
+  process.stdout.write(`agent-kernel project ContextFS ${VERSION}\n\nUsage:\n  agent-kernel context tree ak://projects/[<id>/[collection/]] [--depth N] [--json]\n  agent-kernel context read ak://projects/<id>/<collection>/<record> [--level 0|1|2] [--json]\n  agent-kernel context find <query> --under ak://projects/<id>/ [--project path] [--file path] [--budget N] [--limit N] [--trace] [--json]\n`);
 }
 
 function commandTree(flags) {
   const parsed = parseContextUri(flags._[1] || 'ak://projects/');
-  const depth = Math.max(1, Math.min(Number(flags.depth || 1), 5));
+  const depth = boundedInteger(flags.depth, 1, 1, 5, 'depth');
   const tree = treeFor(parsed, depth);
   if (flags.json) printJson(tree); else printTree(tree);
 }
