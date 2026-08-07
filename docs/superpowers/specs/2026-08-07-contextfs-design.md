@@ -66,7 +66,7 @@ Rules:
 6. `.` and `..` segments are rejected, including encoded variants.
 7. Empty interior segments are rejected.
 8. NUL bytes and control characters are rejected.
-9. Canonical output never includes a trailing slash except the root `ak://`.
+9. Canonical directory URIs end with `/`; record URIs do not. The namespace root remains exactly `ak://`.
 10. URI parsing never resolves a host filesystem path directly.
 
 The implementation should use WHATWG `URL` only where its semantics are helpful, but the public contract is enforced by Agent Kernel's own parser. `path.posix` is used for deterministic slash semantics. Filesystem access is performed only after a context node has resolved through known Agent Kernel stores.
@@ -232,7 +232,7 @@ Phase 1 adds:
 
 ```bash
 agent-kernel context tree [ak://...] [--depth N] [--json]
-agent-kernel context read <ak://...> [--level L0|L1|L2] [--json]
+agent-kernel context read <ak://...> [--level 0|1|2] [--json]
 agent-kernel context find <query> [--project <path>] [--project-id <id>] [--file <path>] [--budget N] [--limit N] [--trace] [--json]
 ```
 
@@ -243,7 +243,7 @@ Existing broker commands under `agent-kernel context enter|current|verify|doctor
 Add:
 
 ```bash
-agent-kernel session used <session-id> --context <ak://...> [--reason <text>] [--result helpful|neutral|unhelpful]
+agent-kernel context used <session-id> <ak://...> [--reason <text>] [--result helpful|neutral|unhelpful] [--json]
 ```
 
 Usage records are append-only session observations with a dedicated `context_used` type. They contain URI, level if known, reason, result, timestamp, session ID, agent ID, and project ID.
@@ -255,7 +255,7 @@ Usage tracking does not mutate ranking in phase 1. The data is collected first s
 Add a review-first command:
 
 ```bash
-agent-kernel session commit <session-id> [--dry-run] [--json]
+agent-kernel context commit <session-id> [--dry-run] [--json]
 ```
 
 Phase 1 behavior:
@@ -303,8 +303,8 @@ Required focused tests:
 5. Rejected proposal exclusion and pending proposal labeling where applicable.
 6. Secret redaction in every output level and trace.
 7. Router compatibility with existing broker `context` subcommands.
-8. Session `used` observation capture.
-9. Session commit dry-run and pending-only mutation behavior.
+8. `context used` observation capture.
+9. `context commit` dry-run and pending-only mutation behavior.
 10. Cross-platform path behavior under Node.js 18, 20, 22, and 24 CI.
 
 ## Initial delivery scope
@@ -317,8 +317,8 @@ The first merged increment includes:
 - `context read`
 - deterministic hierarchical `context find`
 - retrieval trace
-- `session used`
-- deterministic review-first `session commit`
+- `context used`
+- deterministic review-first `context commit`
 - focused tests and docs
 
 MCP context tools, hook auto-injection, ranking based on usage history, semantic embeddings, and LLM extraction remain follow-up work unless implementation proves they are required for correctness.
