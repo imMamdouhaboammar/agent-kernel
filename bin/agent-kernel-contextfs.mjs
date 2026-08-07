@@ -342,6 +342,170 @@ function readRecord(parsed, level) {
   throw invalidUri(parsed.uri, 'record path expected');
 }
 
+function lower(value) {
+  return String(value ?? '').toLowerCase();
+}
+
+function queryTerms(query) {
+  return lower(query).match(/[\p{L}\p{N}_./:-]+/gu)?.filter((term) => term.length > 1) || [];
+}
+
+function projectFor(record) {
+  const item = record.item || {};
+  return String(item.projectId || item.project || item.metadata?.projectId || item.source?.projectId || '').trim();
+}
+
+function filesFor(record) {
+  const item = record.item || {};
+  return stringList(item.files || item.evidence?.filesTouched, 50);
+}
+
+function searchableText(record) {
+  return lower(safeText(JSON.stringify({
+    id: record.id,
+    type: record.type,
+    abstract: abstractFor(record),
+    overview: overviewFor(record),
+    rootCause: record.item?.rootCause,
+    fix: record.item?.fix,
+    reason: record.item?.reason,
+    summary: record.item?.summary,
+    text: record.item?.text,
+    title: record.item?.title,
+    errorSignature: record.item?.errorSignature
+  })));
+}
+
+function candidateScore(record, query, projectId, requestedFiles) {
+  const item = record.item || {};
+  if (item.status === 'rejected') return { score: 0, signals: ['rejected'] };
+  const project = projectFor(record);
+  if (projectId && project && lower(project) !== lower(projectId)) return { score: 0, signals: ['project-mismatch'] };
+
+  const text = searchableText(record);
+  const terms = queryTerms(query);
+  const signals = [];
+  let score = 0;
+  const phrase = lower(query).trim();
+  if (phrase && text.includes(phrase)) {
+    score += 14;
+    signals.push('phrase');
+  }
+  for (const term of terms) {
+    if (text.includes(term)) {
+      score += 3;
+      signals.push(`term:${term}`);
+    }
+  }
+  if (terms.length && !terms.some((term) => text.includes(term))) return { score: 0, signals: ['no-query-match'] };
+
+  if (projectId) {
+    if (project && lower(project) === lower(projectId)) {
+      score += 12;
+      signals.push('project-exact');
+    } else if (!project) {
+      score += 1;
+      signals.push('project-unspecified');
+    }
+  }
+
+  const recordFiles = filesFor(record).map(lower);
+  for (const requested of requestedFiles.map(lower)) {
+    if (recordFiles.includes(requested)) {
+      score += 18;
+      signals.push(`file-exact:${requested}`);
+    } else if (recordFiles.some((file) => file.endsWith(`/${requested}`) || requested.endsWith(`/${file}`))) {
+      score += 10;
+      signals.push(`file-related:${requested}`);
+    }
+  }
+
+  const occurrences = Number(item.occurrences || 0);
+  if (Number.isFinite(occurrences) && occurrences > 1) {
+    score += Math.min(occurrences, 5);
+    signals.push(`occurrences:${occurrences}`);
+  }
+  return { score, signals };
+}
+
+function eligibleGlobalCollections(under) {
+  const { segments, directory } = under;
+  if (!directory) throw invalidUri(under.uri, 'find scope must be a directory');
+  if (segments.length === 0) return GLOBAL_COLLECTIONS;
+  if (segments.length === 1 && segments[0] === 'global') return GLOBAL_COLLECTIONS;
+  if (segments.length === 2 && segments[0] === 'global' && GLOBAL_COLLECTIONS.includes(segments[1])) return [segments[1]];
+  throw invalidUri(under.uri, 'find currently supports ak://, ak://global/, or a global collection');
+}
+
+function findContext(flags) {
+  const query = flags._.slice(1).join(' ').trim();
+  if (!query) throw new Error('Usage: agent-kernel context find <query> [--under ak://...] [--project-id id] [--file path] [--budget N] [--limit N] [--trace] [--json]');
+  const under = parseContextUri(String(flags.under || 'ak://global/'));
+  const collections = eligibleGlobalCollections(under);
+  const projectId = String(flags['project-id'] || flags.projectId || '').trim();
+  const requestedFiles = stringList(flags.file || flags.files, 20);
+  const limit = Math.max(1, Math.min(Number(flags.limit || 8), 50));
+  const budget = Math.max(200, Math.min(Number(flags.budget || 1200), 12000));
+  const trace = [];
+  const candidates = [];
+
+  for (const collection of collections) {
+    const records = collectionRecords('global', collection);
+    const scored = records.map((record) => ({ record, ...candidateScore(record, query, projectId, requestedFiles) }));
+    const collectionScore = scored.reduce((max, entry) => Math.max(max, entry.score), 0);
+    trace.push({
+      stage: 'collection',
+      collection,
+      uri: `ak://global/${collection}/`,
+      score: collectionScore,
+      decision: collectionScore > 0 ? 'descend' : 'skip'
+    });
+    for (const entry of scored) {
+      const uri = recordUri('global', collection, entry.record);
+      if (entry.score <= 0) {
+        trace.push({ stage: 'candidate', collection, uri, score: 0, decision: 'skip', signals: entry.signals });
+        continue;
+      }
+      candidates.push({ collection, ...entry, uri });
+    }
+  }
+
+  candidates.sort((a, b) => b.score - a.score || a.uri.localeCompare(b.uri));
+  const selected = candidates.slice(0, limit);
+  const results = [];
+  let budgetUsed = 0;
+
+  for (let index = 0; index < selected.length; index++) {
+    const candidate = selected[index];
+    let projection = recordProjection('global', candidate.collection, candidate.record, index === 0 ? 1 : 0);
+    projection = { ...projection, score: candidate.score };
+    let size = JSON.stringify(projection).length;
+    if (budgetUsed + size > budget && projection.level === 1) {
+      projection = { ...recordProjection('global', candidate.collection, candidate.record, 0), score: candidate.score };
+      size = JSON.stringify(projection).length;
+    }
+    if (budgetUsed + size > budget) {
+      trace.push({ stage: 'candidate', collection: candidate.collection, uri: candidate.uri, score: candidate.score, decision: 'budget-skip', signals: candidate.signals });
+      continue;
+    }
+    results.push(projection);
+    budgetUsed += size;
+    trace.push({ stage: 'candidate', collection: candidate.collection, uri: candidate.uri, score: candidate.score, decision: 'include', level: projection.level, signals: candidate.signals });
+  }
+
+  return {
+    version: VERSION,
+    query,
+    under: under.uri,
+    projectId: projectId || null,
+    files: requestedFiles,
+    budget,
+    budgetUsed,
+    results,
+    ...(flags.trace ? { trace } : {})
+  };
+}
+
 function printJson(value) {
   process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
 }
@@ -357,8 +521,14 @@ function printRecord(record) {
   if (record.details) process.stdout.write(`${JSON.stringify(record.details, null, 2)}\n`);
 }
 
+function printFind(result) {
+  for (const item of result.results) {
+    process.stdout.write(`${item.score}\t${item.uri}\tL${item.level}\t${item.abstract}\n`);
+  }
+}
+
 function usage() {
-  process.stdout.write(`agent-kernel ContextFS ${VERSION}\n\nUsage:\n  agent-kernel context tree [ak://...] [--depth N] [--json]\n  agent-kernel context read <ak://...> [--level 0|1|2] [--json]\n`);
+  process.stdout.write(`agent-kernel ContextFS ${VERSION}\n\nUsage:\n  agent-kernel context tree [ak://...] [--depth N] [--json]\n  agent-kernel context read <ak://...> [--level 0|1|2] [--json]\n  agent-kernel context find <query> [--under ak://...] [--project-id id] [--file path] [--budget N] [--limit N] [--trace] [--json]\n`);
 }
 
 function commandTree(flags) {
@@ -378,12 +548,18 @@ function commandRead(flags) {
   if (flags.json) printJson(record); else printRecord(record);
 }
 
+function commandFind(flags) {
+  const result = findContext(flags);
+  if (flags.json) printJson(result); else printFind(result);
+}
+
 function main() {
   const flags = parseFlags(process.argv.slice(2));
   const command = flags._[0];
   if (!command || flags.help || flags.h) return usage();
   if (command === 'tree') return commandTree(flags);
   if (command === 'read') return commandRead(flags);
+  if (command === 'find') return commandFind(flags);
   throw new Error(`Unknown ContextFS command: ${command}`);
 }
 
