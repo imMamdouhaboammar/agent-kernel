@@ -157,7 +157,7 @@ function episodeRecords() {
 function sessionRecords() {
   const dir = path.join(kernelHome(), 'runtime', 'sessions');
   if (!exists(dir)) return [];
-  return fs.readdirSync(dir).sort().filter((name) => name.endsWith('.json') && !name.endsWith('.jsonl')).flatMap((name) => {
+  return fs.readdirSync(dir).sort().filter((name) => name.endsWith('.json') && !name.endsWith('.context-commit.json')).flatMap((name) => {
     const item = readJson(path.join(dir, name), null);
     return item ? [projectRecord('session', `runtime/sessions/${name}`, item)] : [];
   });
@@ -362,18 +362,20 @@ function filesFor(record) {
 }
 
 function searchableText(record) {
+  const item = record.item || {};
   return lower(safeText(JSON.stringify({
     id: record.id,
     type: record.type,
     abstract: abstractFor(record),
-    overview: overviewFor(record),
-    rootCause: record.item?.rootCause,
-    fix: record.item?.fix,
-    reason: record.item?.reason,
-    summary: record.item?.summary,
-    text: record.item?.text,
-    title: record.item?.title,
-    errorSignature: record.item?.errorSignature
+    rootCause: item.rootCause,
+    fix: item.fix,
+    reason: item.reason,
+    summary: item.summary,
+    text: item.text,
+    title: item.title,
+    errorSignature: item.errorSignature,
+    tags: item.tags,
+    commands: item.commands || item.command
   })));
 }
 
