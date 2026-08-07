@@ -1,11 +1,11 @@
 # ContextFS RED State
 
-The first implementation cycle intentionally lands the public ContextFS contract before production routing exists.
+This document records the historical RED state captured on 2026-08-07 before ContextFS production routing landed.
 
-Expected failure before implementation:
+At that point, the expected failure was:
 
-- `test/public-cli-context.mjs` reaches `agent-kernel context tree ak:// --json`
-- the current router does not own `context tree` as a ContextFS command
-- therefore the smoke suite must fail until `bin/agent-kernel-contextfs.mjs` and routing are implemented
+- `test/public-cli-context.mjs` reached `agent-kernel context tree ak:// --json`
+- the router did not yet own `context tree` as a ContextFS command
+- the smoke suite therefore failed until `bin/agent-kernel-contextfs.mjs` and routing were implemented
 
-This file records the intended TDD boundary for the GitHub Actions run on the draft PR.
+The current branch no longer has that missing-routing state. The file is retained only as TDD evidence for the original implementation cycle.
