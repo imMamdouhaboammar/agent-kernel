@@ -44,10 +44,13 @@ function assertControlCharacterRejected(result, label) {
   }
 }
 
-function assertSecretUriRejected(result, label) {
+function assertSecretUriRejected(result, label, forbiddenSecret) {
   const output = `${result.stdout}\n${result.stderr}`;
   if (result.status === 0 || !output.includes('Invalid ContextFS URI') || !output.toLowerCase().includes('secret')) {
     throw new Error(`${label} did not reject a secret-bearing ContextFS URI: ${JSON.stringify(result)}`);
+  }
+  if (forbiddenSecret && output.includes(forbiddenSecret)) {
+    throw new Error(`${label} echoed secret material in its rejection output: ${output}`);
   }
 }
 
@@ -60,22 +63,35 @@ export async function run() {
     'Global ContextFS parser'
   );
 
+  const secretTail = 'abcdefghijklmnopqrstuvwxyz1234567890';
+  const directSecretUri = `ak://global/memory/${['sk', 'proj', secretTail].join('-')}`;
+  const encodedSecretUri = `ak://global/memory/%73k-proj-${secretTail}`;
+  assertSecretUriRejected(
+    runRouterFailure(env, 'context', 'tree', directSecretUri, '--json'),
+    'Global ContextFS direct secret parser',
+    secretTail
+  );
+  assertSecretUriRejected(
+    runRouterFailure(env, 'context', 'tree', encodedSecretUri, '--json'),
+    'Global ContextFS encoded secret parser',
+    secretTail
+  );
+
   const started = JSON.parse(runRouter(env, 'session', 'start', '--agent', 'contextfs-security-test', '--project', repo.root, '--json'));
   assertControlCharacterRejected(
     runRouterFailure(env, 'context', 'used', started.id, 'ak://global/memory/bad%0Aid', '--json'),
     'Used-context parser'
   );
 
-  const secretTail = 'abcdefghijklmnopqrstuvwxyz1234567890';
-  const directSecretUri = `ak://global/memory/${['sk', 'proj', secretTail].join('-')}`;
-  const encodedSecretUri = `ak://global/memory/%73k-proj-${secretTail}`;
   assertSecretUriRejected(
     runRouterFailure(env, 'context', 'used', started.id, directSecretUri, '--json'),
-    'Used-context direct secret parser'
+    'Used-context direct secret parser',
+    secretTail
   );
   assertSecretUriRejected(
     runRouterFailure(env, 'context', 'used', started.id, encodedSecretUri, '--json'),
-    'Used-context encoded secret parser'
+    'Used-context encoded secret parser',
+    secretTail
   );
   const afterSecretUriRejections = JSON.parse(runRouter(env, 'session', 'show', started.id, '--json'));
   if (afterSecretUriRejections.session.observationCount !== 0 || afterSecretUriRejections.observations.length !== 0) {
