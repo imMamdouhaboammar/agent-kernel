@@ -10,9 +10,10 @@
 //   7. ContextFS rejects traversal and foreign URI schemes before lookup.
 //   8. ContextFS find is hierarchy-aware, project/file-aware, budgeted, and explainable.
 //   9. Used ContextFS records are captured as append-only session evidence.
+//  10. Session commit is deterministic, review-first, idempotent, and never mutates approved memory.
 
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { assertContains, makeEnv, repo, runCli } from './_lib/helpers.mjs';
 
@@ -54,6 +55,15 @@ function assertCollection(tree, name) {
   if (!Array.isArray(tree.entries) || !tree.entries.some((entry) => entry.name === name && entry.kind === 'directory')) {
     throw new Error(`ContextFS tree missing ${name}: ${JSON.stringify(tree)}`);
   }
+}
+
+function jsonDirectorySnapshot(dir) {
+  if (!existsSync(dir)) return '';
+  return readdirSync(dir)
+    .filter((name) => name.endsWith('.json'))
+    .sort()
+    .map((name) => `${name}\n${readFileSync(join(dir, name), 'utf8')}`)
+    .join('\n---\n');
 }
 
 export async function run() {
@@ -215,6 +225,58 @@ export async function run() {
   const badSession = runRouterFailure(env, 'context', 'used', '../config', readable.uri, '--json');
   if (badSession.status === 0 || !`${badSession.stdout}\n${badSession.stderr}`.includes('Invalid session ID')) {
     throw new Error(`ContextFS used accepted unsafe session id: ${JSON.stringify(badSession)}`);
+  }
+
+  const durableLesson = 'ContextFS session commit keeps retrieval bounded by explicit project and file scope.';
+  runRouter(env, 'session', 'observe', started.id, '--type', 'session_summary', '--text', durableLesson, '--json');
+  const memoriesDir = join(kernelHome, 'source', 'memories');
+  const pendingDir = join(kernelHome, 'inbox', 'pending');
+  const commitMetadataPath = join(kernelHome, 'runtime', 'sessions', `${started.id}.context-commit.json`);
+  const approvedBeforeCommit = jsonDirectorySnapshot(memoriesDir);
+  const pendingBeforeDryRun = jsonDirectorySnapshot(pendingDir);
+
+  const dryCommit = JSON.parse(runRouter(env, 'context', 'commit', started.id, '--dry-run', '--json'));
+  if (dryCommit.dryRun !== true || dryCommit.sessionId !== started.id) {
+    throw new Error(`ContextFS commit dry-run contract failed: ${JSON.stringify(dryCommit)}`);
+  }
+  if (!Array.isArray(dryCommit.diff?.adds) || !Array.isArray(dryCommit.diff?.updates) || !Array.isArray(dryCommit.diff?.deletes)) {
+    throw new Error(`ContextFS commit diff shape was invalid: ${JSON.stringify(dryCommit.diff)}`);
+  }
+  if (!dryCommit.diff.adds.some((candidate) => candidate.text === durableLesson)) {
+    throw new Error(`ContextFS commit did not extract stable session candidate: ${JSON.stringify(dryCommit.diff)}`);
+  }
+  if (existsSync(commitMetadataPath)) throw new Error('ContextFS commit dry-run wrote commit metadata');
+  if (jsonDirectorySnapshot(pendingDir) !== pendingBeforeDryRun) throw new Error('ContextFS commit dry-run created a pending proposal');
+  if (jsonDirectorySnapshot(memoriesDir) !== approvedBeforeCommit) throw new Error('ContextFS commit dry-run mutated approved memory');
+
+  const committed = JSON.parse(runRouter(env, 'context', 'commit', started.id, '--json'));
+  if (committed.dryRun !== false || committed.sessionId !== started.id || committed.idempotent !== false) {
+    throw new Error(`ContextFS commit write contract failed: ${JSON.stringify(committed)}`);
+  }
+  if (!existsSync(commitMetadataPath)) throw new Error('ContextFS commit did not write session commit metadata');
+  const commitMetadata = JSON.parse(readFileSync(commitMetadataPath, 'utf8'));
+  if (commitMetadata.sessionId !== started.id || !commitMetadata.diff?.adds?.some((candidate) => candidate.text === durableLesson)) {
+    throw new Error(`ContextFS commit metadata lost diff/provenance: ${JSON.stringify(commitMetadata)}`);
+  }
+  if (!Array.isArray(committed.proposals) || !committed.proposals.some((proposal) => proposal.status === 'pending' && proposal.text === durableLesson)) {
+    throw new Error(`ContextFS commit did not create pending-only proposal: ${JSON.stringify(committed.proposals)}`);
+  }
+  if (jsonDirectorySnapshot(memoriesDir) !== approvedBeforeCommit) throw new Error('ContextFS commit mutated approved memory');
+
+  const pendingAfterCommit = jsonDirectorySnapshot(pendingDir);
+  const repeated = JSON.parse(runRouter(env, 'context', 'commit', started.id, '--json'));
+  if (repeated.idempotent !== true || repeated.sessionId !== started.id) {
+    throw new Error(`ContextFS commit was not idempotent: ${JSON.stringify(repeated)}`);
+  }
+  if (jsonDirectorySnapshot(pendingDir) !== pendingAfterCommit) throw new Error('Repeated ContextFS commit duplicated pending proposals');
+  if (jsonDirectorySnapshot(memoriesDir) !== approvedBeforeCommit) throw new Error('Repeated ContextFS commit mutated approved memory');
+
+  const reviewed = JSON.parse(runPublic(env, 'context', '--query', durableLesson, '--json'));
+  if (!reviewed.sections.pendingProposals.some((proposal) => proposal.text === durableLesson && proposal.status === 'pending' && proposal.approved === false)) {
+    throw new Error(`ContextFS commit proposal was not visible as pending/unapproved: ${JSON.stringify(reviewed.sections.pendingProposals)}`);
+  }
+  if (reviewed.sections.approvedRules.some((rule) => rule.text === durableLesson)) {
+    throw new Error('ContextFS commit auto-approved durable memory');
   }
 }
 
