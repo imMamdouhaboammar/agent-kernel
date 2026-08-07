@@ -39,6 +39,11 @@ export async function run() {
   const { env, kernelHome } = makeEnv();
   runCli(env, 'init', '--sync');
 
+  const legacyContext = JSON.parse(runRouter(env, 'context', '--query', 'Memory changes', '--budget', '300', '--json'));
+  if (!Array.isArray(legacyContext.sections?.approvedRules) || legacyContext.sections.approvedRules.length === 0) {
+    throw new Error(`Router no longer preserves the legacy flat context command: ${JSON.stringify(legacyContext)}`);
+  }
+
   const failureDir = join(kernelHome, 'source', 'failures');
   mkdirSync(failureDir, { recursive: true });
   writeFileSync(join(failureDir, 'failure-lessons.json'), JSON.stringify([
