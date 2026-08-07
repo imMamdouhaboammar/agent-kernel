@@ -9,6 +9,7 @@
 //   6. ContextFS supports progressive L0/L1/L2 reads without changing source stores.
 //   7. ContextFS rejects traversal and foreign URI schemes before lookup.
 //   8. ContextFS find is hierarchy-aware, project/file-aware, budgeted, and explainable.
+//   9. Used ContextFS records are captured as append-only session evidence.
 
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -188,6 +189,32 @@ export async function run() {
   }
   if (!found.trace.some((step) => step.stage === 'candidate' && step.uri === 'ak://global/failures/contextfs-file-locality' && step.decision === 'include')) {
     throw new Error(`ContextFS trace did not expose candidate inclusion: ${JSON.stringify(found.trace)}`);
+  }
+
+  const started = JSON.parse(runRouter(env, 'session', 'start', '--agent', 'contextfs-test-agent', '--project', repo.root, '--json'));
+  const used = JSON.parse(runRouter(
+    env,
+    'context', 'used', started.id, readable.uri,
+    '--reason', 'pre-edit context check',
+    '--result', 'helpful',
+    '--json'
+  ));
+  if (used.observation?.type !== 'context_used' || used.observation?.contextUri !== readable.uri) {
+    throw new Error(`ContextFS used-context observation was invalid: ${JSON.stringify(used)}`);
+  }
+  if (used.observation?.metadata?.reason !== 'pre-edit context check' || used.observation?.metadata?.result !== 'helpful') {
+    throw new Error(`ContextFS used-context metadata was invalid: ${JSON.stringify(used)}`);
+  }
+  const shown = JSON.parse(runRouter(env, 'session', 'show', started.id, '--json'));
+  const captured = shown.observations.find((observation) => observation.type === 'context_used' && observation.contextUri === readable.uri);
+  if (!captured) throw new Error(`Session did not retain ContextFS usage evidence: ${JSON.stringify(shown)}`);
+  if (shown.session.observationCount !== shown.observations.length || shown.session.observationCount < 1) {
+    throw new Error(`ContextFS usage did not update session observation count: ${JSON.stringify(shown.session)}`);
+  }
+
+  const badSession = runRouterFailure(env, 'context', 'used', '../config', readable.uri, '--json');
+  if (badSession.status === 0 || !`${badSession.stdout}\n${badSession.stderr}`.includes('Invalid session ID')) {
+    throw new Error(`ContextFS used accepted unsafe session id: ${JSON.stringify(badSession)}`);
   }
 }
 
