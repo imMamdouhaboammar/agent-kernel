@@ -10,6 +10,17 @@ const VERSION = '1.20.1';
 const SESSION_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
 const SAFE_PROPOSAL_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,199}$/u;
 const FAILURE_TYPES = new Set(['tool_failure', 'command_failure', 'test_failure', 'guard_block']);
+const SECRET_PATTERNS = [
+  /OPENAI_API_KEY\s*=\s*["'][^"']+["']/giu,
+  /ANTHROPIC_API_KEY\s*=\s*["'][^"']+["']/giu,
+  /SUPABASE_SERVICE_ROLE_KEY\s*=\s*["'][^"']+["']/giu,
+  /(OPENAI_API_KEY|ANTHROPIC_API_KEY|SUPABASE_SERVICE_ROLE_KEY)\s*=\s*[^\s\n]+/giu,
+  /AIza[0-9A-Za-z\-_]{35}/gu,
+  /sk-[A-Za-z0-9]{20,}/gu,
+  /ghp_[A-Za-z0-9]{20,}/gu,
+  /github_pat_[A-Za-z0-9_]{20,}/gu,
+  /xox[abposr]-[A-Za-z0-9-]{10,}/gu
+];
 
 function kernelHome() {
   return process.env.AGENT_KERNEL_HOME || path.join(os.homedir(), '.agent-kernel');
@@ -59,8 +70,17 @@ function arrayValue(value) {
   return [];
 }
 
+function safeText(value) {
+  let text = String(value ?? '');
+  for (const pattern of SECRET_PATTERNS) {
+    pattern.lastIndex = 0;
+    text = text.replace(pattern, '[REDACTED_SECRET]');
+  }
+  return text;
+}
+
 function normalizeText(value) {
-  return String(value || '').replace(/\s+/gu, ' ').trim();
+  return safeText(value).replace(/\s+/gu, ' ').trim();
 }
 
 function normalizedHash(value) {
@@ -113,7 +133,7 @@ function extractCandidates(session, observations) {
 
   const add = (text, sourceType, observationId = null) => {
     const normalized = normalizeText(text);
-    if (normalized.length < 16 || normalized.length > 4000) return;
+    if (normalized.length < 16 || normalized.length > 2000) return;
     const hash = normalizedHash(normalized);
     const current = byHash.get(hash) || {
       id: `candidate_${hash.slice(0, 16)}`,
