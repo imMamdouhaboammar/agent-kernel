@@ -28,10 +28,6 @@ function exists(filePath) {
   try { fs.accessSync(filePath); return true; } catch { return false; }
 }
 
-function readText(filePath, fallback = '') {
-  try { return fs.readFileSync(filePath, 'utf8'); } catch { return fallback; }
-}
-
 function readJson(filePath, fallback) {
   try { return JSON.parse(fs.readFileSync(filePath, 'utf8')); } catch { return fallback; }
 }
