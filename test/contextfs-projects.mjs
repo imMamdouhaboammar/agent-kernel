@@ -34,6 +34,13 @@ function assertDirectory(tree, name) {
   }
 }
 
+function assertRejectedOption(result, label) {
+  const output = `${result.stdout}\n${result.stderr}`;
+  if (result.status === 0 || !output.includes(`Invalid ${label}`)) {
+    throw new Error(`Project ContextFS accepted invalid ${label}: ${JSON.stringify(result)}`);
+  }
+}
+
 export async function run() {
   const { env, kernelHome, homeDir } = makeEnv();
   runCli(env, 'init', '--sync');
@@ -63,6 +70,16 @@ export async function run() {
       files: ['src/project-a.mjs']
     },
     {
+      id: 'project-a-mixed-case',
+      type: 'failure',
+      status: 'approved',
+      projectId: 'PROJECT-A',
+      title: 'Case normalized project evidence',
+      rootCause: 'Legacy metadata used different project-id casing.',
+      fix: 'Normalize project identity at the ContextFS boundary.',
+      files: ['src/project-a.mjs']
+    },
+    {
       id: 'project-b-copy',
       type: 'failure',
       status: 'approved',
@@ -83,23 +100,33 @@ export async function run() {
   }, null, 2) + '\n');
 
   const projects = JSON.parse(runRouter(env, 'context', 'tree', 'ak://projects/', '--json'));
-  if (!projects.entries?.some((entry) => entry.uri === 'ak://projects/project-a/')) {
-    throw new Error(`ContextFS did not materialize project-a: ${JSON.stringify(projects)}`);
+  const projectAEntries = projects.entries?.filter((entry) => String(entry.name).toLowerCase() === 'project-a') || [];
+  if (projectAEntries.length !== 1 || projectAEntries[0].uri !== 'ak://projects/project-a/') {
+    throw new Error(`ContextFS did not canonicalize project-a identity: ${JSON.stringify(projects)}`);
   }
 
-  const projectTree = JSON.parse(runRouter(env, 'context', 'tree', 'ak://projects/project-a/', '--json'));
+  const projectTree = JSON.parse(runRouter(env, 'context', 'tree', 'ak://projects/project-a/', '--depth', '2', '--json'));
   if (projectTree.projectId !== 'project-a') throw new Error(`Project tree lost project identity: ${JSON.stringify(projectTree)}`);
   for (const collection of ['memory', 'failures', 'episodes', 'sessions', 'files', 'architecture', 'commits']) {
     assertDirectory(projectTree, collection);
   }
+  const nestedFailures = projectTree.entries?.find((entry) => entry.name === 'failures');
+  if (!Array.isArray(nestedFailures?.entries) || !nestedFailures.entries.some((entry) => entry.name === 'project-a-primary')) {
+    throw new Error(`Project ContextFS depth=2 did not expand nested entries: ${JSON.stringify(projectTree)}`);
+  }
 
   const failures = JSON.parse(runRouter(env, 'context', 'tree', 'ak://projects/project-a/failures/', '--json'));
-  if (failures.entries?.length !== 2 || failures.entries.some((entry) => entry.uri.includes('project-b-copy'))) {
-    throw new Error(`Project-scoped failures leaked cross-project records: ${JSON.stringify(failures)}`);
+  if (failures.entries?.length !== 3 || failures.entries.some((entry) => entry.uri.includes('project-b-copy'))) {
+    throw new Error(`Project-scoped failures leaked or dropped project records: ${JSON.stringify(failures)}`);
   }
   const primary = failures.entries.find((entry) => entry.name === 'project-a-primary');
   if (primary?.uri !== 'ak://projects/project-a/failures/project-a-primary') {
     throw new Error(`Project record URI was not canonical: ${JSON.stringify(primary)}`);
+  }
+
+  const mixedCaseTree = JSON.parse(runRouter(env, 'context', 'tree', 'ak://projects/PROJECT-A/failures/', '--json'));
+  if (mixedCaseTree.projectId !== 'project-a' || mixedCaseTree.uri !== 'ak://projects/project-a/failures/' || mixedCaseTree.entries?.length !== 3) {
+    throw new Error(`Project ContextFS did not normalize mixed-case project input: ${JSON.stringify(mixedCaseTree)}`);
   }
 
   const record = JSON.parse(runRouter(env, 'context', 'read', primary.uri, '--level', '1', '--json'));
@@ -153,6 +180,31 @@ export async function run() {
     '--json'
   ));
   if (byPath.projectId !== 'project-a') throw new Error(`--project did not resolve existing project identity: ${JSON.stringify(byPath)}`);
+
+  assertRejectedOption(
+    runRouterFailure(
+      env,
+      'context', 'find', 'Project alpha restore conflict',
+      '--under', 'ak://projects/project-a/',
+      '--budget', 'not-a-number',
+      '--json'
+    ),
+    'budget'
+  );
+  assertRejectedOption(
+    runRouterFailure(
+      env,
+      'context', 'find', 'Project alpha restore conflict',
+      '--under', 'ak://projects/project-a/',
+      '--limit', '1.5',
+      '--json'
+    ),
+    'limit'
+  );
+  assertRejectedOption(
+    runRouterFailure(env, 'context', 'tree', 'ak://projects/project-a/', '--depth', 'NaN', '--json'),
+    'depth'
+  );
 
   const mismatch = runRouterFailure(
     env,
