@@ -65,6 +65,7 @@ function canonicalSegment(segment, raw) {
   try { decoded = decodeURIComponent(segment); } catch { throw invalidUri(raw, 'malformed percent encoding'); }
   if (!decoded || decoded === '.' || decoded === '..') throw invalidUri(raw, 'dot segments are not allowed');
   if (decoded.includes('/') || decoded.includes('\\') || decoded.includes('\0')) throw invalidUri(raw, 'path separators are not allowed inside segments');
+  if (/[\u0000-\u001f\u007f]/u.test(decoded)) throw invalidUri(raw, 'control characters are not allowed');
   return encodeURIComponent(decoded);
 }
 
