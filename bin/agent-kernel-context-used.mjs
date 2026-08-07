@@ -61,15 +61,15 @@ function requireSafeSessionId(value) {
   return id;
 }
 
-function invalidContextUri(value, reason) {
-  throw new Error(`Invalid ContextFS URI: ${String(value || '(empty)')}${reason ? ` (${reason})` : ''}`);
+function invalidContextUri(reason) {
+  throw new Error(`Invalid ContextFS URI${reason ? `: ${reason}` : ''}`);
 }
 
 function canonicalContextUri(value) {
   const raw = String(value || '').trim();
-  if (!raw.startsWith('ak://')) invalidContextUri(raw, 'scheme must be ak://');
+  if (!raw.startsWith('ak://')) invalidContextUri('scheme must be ak://');
   if (raw.includes('\\') || raw.includes('\0') || raw.includes('?') || raw.includes('#') || raw.includes('@')) {
-    invalidContextUri(raw, 'unsafe URI syntax');
+    invalidContextUri('unsafe URI syntax');
   }
   const remainder = raw.slice(5);
   if (!remainder) return 'ak://';
@@ -77,16 +77,16 @@ function canonicalContextUri(value) {
   const body = trailing ? remainder.slice(0, -1) : remainder;
   if (!body) return 'ak://';
   const decodedSegments = body.split('/').map((segment) => {
-    if (!segment) invalidContextUri(raw, 'empty path segment');
+    if (!segment) invalidContextUri('empty path segment');
     let decoded;
-    try { decoded = decodeURIComponent(segment); } catch { invalidContextUri(raw, 'malformed percent encoding'); }
-    if (!decoded || decoded === '.' || decoded === '..') invalidContextUri(raw, 'dot segments are not allowed');
-    if (decoded.includes('/') || decoded.includes('\\') || decoded.includes('\0')) invalidContextUri(raw, 'path separators are not allowed inside segments');
-    if (/[\u0000-\u001f\u007f]/u.test(decoded)) invalidContextUri(raw, 'control characters are not allowed');
+    try { decoded = decodeURIComponent(segment); } catch { invalidContextUri('malformed percent encoding'); }
+    if (!decoded || decoded === '.' || decoded === '..') invalidContextUri('dot segments are not allowed');
+    if (decoded.includes('/') || decoded.includes('\\') || decoded.includes('\0')) invalidContextUri('path separators are not allowed inside segments');
+    if (/[\u0000-\u001f\u007f]/u.test(decoded)) invalidContextUri('control characters are not allowed');
     return decoded;
   });
   if (containsRecognizedSecret(decodedSegments.join('/'))) {
-    invalidContextUri(raw, 'secret-bearing values are not allowed');
+    invalidContextUri('secret-bearing values are not allowed');
   }
   return `ak://${decodedSegments.map((segment) => encodeURIComponent(segment)).join('/')}${trailing ? '/' : ''}`;
 }
