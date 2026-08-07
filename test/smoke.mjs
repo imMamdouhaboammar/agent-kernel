@@ -33,6 +33,7 @@ import { run as runPublicCliObservation } from './public-cli-observation.mjs';
 import { run as runPublicCliContext } from './public-cli-context.mjs';
 import { run as runContextFsSecurity } from './contextfs-security.mjs';
 import { run as runContextFsProjects } from './contextfs-projects.mjs';
+import { run as runContextFsGlobalConsistency } from './contextfs-global-consistency.mjs';
 import { run as runPublicCliArchitecture } from './public-cli-architecture.mjs';
 import { run as runPublicCliPortability } from './public-cli-portability.mjs';
 import { run as runPublicCliDashboard } from './public-cli-dashboard.mjs';
@@ -179,6 +180,7 @@ const tests = [
   ['public-cli-context', runPublicCliContext, 'public-cli-context.mjs'],
   ['contextfs-security', runContextFsSecurity, 'contextfs-security.mjs'],
   ['contextfs-projects', runContextFsProjects, 'contextfs-projects.mjs'],
+  ['contextfs-global-consistency', runContextFsGlobalConsistency, 'contextfs-global-consistency.mjs'],
   ['public-cli-architecture', runPublicCliArchitecture, 'public-cli-architecture.mjs'],
   ['public-cli-portability', runPublicCliPortability, 'public-cli-portability.mjs'],
   ['public-cli-dashboard', runPublicCliDashboard, 'public-cli-dashboard.mjs'],
