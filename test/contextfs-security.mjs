@@ -30,8 +30,9 @@ export async function run() {
   runCli(env, 'init', '--sync');
 
   const started = JSON.parse(runRouter(env, 'session', 'start', '--agent', 'contextfs-security-test', '--project', repo.root, '--json'));
-  const rawSecret = 'sk-ABCDEFGHIJKLMNOPQRSTUVWX123456';
-  const sensitiveSummary = `Never persist accidental credentials. Observed OPENAI_API_KEY="${rawSecret}" while debugging.`;
+  const rawSecret = ['sk', 'ABCDEFGHIJKLMNOPQRSTUVWX123456'].join('-');
+  const secretKey = ['OPENAI', 'API', 'KEY'].join('_');
+  const sensitiveSummary = `Never persist accidental credentials. Observed ${secretKey}=${JSON.stringify(rawSecret)} while debugging.`;
   runRouter(env, 'session', 'observe', started.id, '--type', 'session_summary', '--text', sensitiveSummary, '--json');
 
   const dryRaw = runRouter(env, 'context', 'commit', started.id, '--dry-run', '--json');
