@@ -96,7 +96,7 @@ function readCommandReferenceVersion(path) {
   }
 
   const text = readFileSync(path, 'utf8');
-  const matches = [...text.matchAll(/canonical user-facing command map for Agent Kernel `([^`]+)`/g)];
+  const matches = [...text.matchAll(/^This is the canonical user-facing command map for Agent Kernel `([^`\r\n]+)`\.[ \t]*\r?$/gm)];
   if (matches.length !== 1) {
     err(`docs/COMMAND_REFERENCE.md must contain exactly one canonical Agent Kernel version marker (found ${matches.length})`);
     return false;
