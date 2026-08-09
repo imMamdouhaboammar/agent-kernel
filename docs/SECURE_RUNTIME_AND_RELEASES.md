@@ -59,8 +59,8 @@ After one successful OIDC release, remove the fallback block and revoke the auto
 
 ## Release procedure
 
-1. Update `CHANGELOG.md` and all version surfaces.
-2. Run `npm ci` and `npm run verify:release`.
+1. Update `CHANGELOG.md` and all version surfaces. This includes the `package.json` version, README stable-release marker, canonical version marker in `docs/COMMAND_REFERENCE.md`, CLI/helper version constants, and Claude plugin metadata validated by `npm run check-version`.
+2. Run `npm ci` and `npm run verify:release`. Treat any missing, duplicated, malformed, or stale canonical command-reference version marker as a release blocker rather than bypassing the check.
 3. Run `npm run publish:dry` and install the generated tarball in a clean temporary project.
 4. Review `git diff --check`, privacy checks, secret checks, and the complete working-tree diff.
 5. Merge the reviewed branch into `master`.
