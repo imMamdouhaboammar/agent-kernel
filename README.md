@@ -53,11 +53,9 @@ Install once and give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigrav
   </table>
   <p><strong>Daily build pulse</strong></p>
   <ul>
-      <li>Published v1.20.1: v1.20.1 — Quick-start Prompt Block &amp; Skills Update.</li>
-      <li>16 commits landed: feat(context): add ContextFS hierarchical retrieval (#129); chore(release): bump to v1.20.1.</li>
-      <li>13 pull requests updated, led by #130: test(release): guard command reference version.</li>
-      <li>7 issues changed, including #128: docs(release): enforce command-reference version consistency.</li>
-      <li>Daily summary covers 38 public activity items from the last 7 days.</li>
+      <li>2 pull requests updated, led by #132: chore(deps): bump github/codeql-action/init from 4.37.4 to 4.37.6.</li>
+      <li>Daily summary covers 2 public activity items from the last 1 day.</li>
+      <li>Documentation and project status remain aligned with the repository’s current public state.</li>
   </ul>
 </details>
 <!-- project-story:end -->
