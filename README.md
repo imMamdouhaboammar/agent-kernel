@@ -53,10 +53,9 @@ Install once and give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigrav
   </table>
   <p><strong>Daily build pulse</strong></p>
   <ul>
-      <li>1 commit landed: feat(context): add ContextFS hierarchical retrieval (#129).</li>
-      <li>4 pull requests updated, led by #132: chore(deps): bump github/codeql-action/init from 4.37.4 to 4.37.6.</li>
-      <li>1 issue changed, including #128: docs(release): enforce command-reference version consistency.</li>
-      <li>Daily summary covers 6 public activity items from the last 7 days.</li>
+      <li>3 pull requests updated, led by #132: chore(deps): bump github/codeql-action/init from 4.37.4 to 4.37.6.</li>
+      <li>Daily summary covers 3 public activity items from the last 7 days.</li>
+      <li>Documentation and project status remain aligned with the repository’s current public state.</li>
   </ul>
 </details>
 <!-- project-story:end -->
