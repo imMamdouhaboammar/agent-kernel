@@ -53,8 +53,8 @@ Install once and give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigrav
   </table>
   <p><strong>Daily build pulse</strong></p>
   <ul>
-      <li>2 pull requests updated, led by #132: chore(deps): bump github/codeql-action/init from 4.37.4 to 4.37.6.</li>
-      <li>Daily summary covers 2 public activity items from the last 7 days.</li>
+      <li>4 pull requests updated, led by #131: chore(deps): bump github/codeql-action/analyze from 4.37.4 to 4.37.6.</li>
+      <li>Daily summary covers 4 public activity items from the last 1 day.</li>
       <li>Documentation and project status remain aligned with the repository’s current public state.</li>
   </ul>
 </details>

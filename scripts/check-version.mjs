@@ -21,6 +21,7 @@ const binPath = join(root, 'bin');
 const pluginPath = join(root, '.claude-plugin', 'plugin.json');
 const marketplacePath = join(root, '.claude-plugin', 'marketplace.json');
 const readmePath = join(root, 'README.md');
+const commandReferencePath = join(root, 'docs', 'COMMAND_REFERENCE.md');
 const exactSemverPattern = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
 
 let failed = false;
@@ -88,6 +89,22 @@ function readReadmeVersion(path) {
   return matches[0][1];
 }
 
+function readCommandReferenceVersion(path) {
+  if (!existsSync(path)) {
+    console.error(`docs/COMMAND_REFERENCE.md not found at ${path}`);
+    process.exit(2);
+  }
+
+  const text = readFileSync(path, 'utf8');
+  const matches = [...text.matchAll(/^This is the canonical user-facing command map for Agent Kernel `([^`\r\n]+)`\.[ \t]*\r?$/gm)];
+  if (matches.length !== 1) {
+    err(`docs/COMMAND_REFERENCE.md must contain exactly one canonical Agent Kernel version marker (found ${matches.length})`);
+    return false;
+  }
+
+  return matches[0][1];
+}
+
 function walkMjsFiles(directory) {
   const files = [];
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -111,6 +128,10 @@ checkVersion('package.json version', expected, expected);
 const readmeVersion = readReadmeVersion(readmePath);
 if (readmeVersion !== false) {
   checkVersion('README.md stable release', readmeVersion, expected);
+}
+const commandReferenceVersion = readCommandReferenceVersion(commandReferencePath);
+if (commandReferenceVersion !== false) {
+  checkVersion('docs/COMMAND_REFERENCE.md canonical version', commandReferenceVersion, expected);
 }
 readCliVersion('src/cli.mjs', srcPath, expected);
 readCliVersion('dist/cli.mjs', distPath, expected);
