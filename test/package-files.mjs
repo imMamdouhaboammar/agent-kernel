@@ -21,7 +21,10 @@ function resolveNpmCli() {
   const candidates = [
     process.env.npm_execpath,
     join(nodeDir, 'node_modules', 'npm', 'bin', 'npm-cli.js'),
-    resolve(nodeDir, '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js')
+    resolve(nodeDir, '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js'),
+    '/opt/homebrew/lib/node_modules/npm/bin/npm-cli.js',
+    '/usr/local/lib/node_modules/npm/bin/npm-cli.js',
+    '/usr/lib/node_modules/npm/bin/npm-cli.js'
   ].filter(Boolean);
 
   const npmCli = candidates.find((candidate) => existsSync(candidate));
