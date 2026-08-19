@@ -18,8 +18,12 @@ import { repo } from './_lib/helpers.mjs';
 
 function resolveNpmCli() {
   const nodeDir = dirname(process.execPath);
+  const npmExecPath =
+    process.env.npm_execpath && /\.[c]?js$/i.test(process.env.npm_execpath)
+      ? process.env.npm_execpath
+      : null;
   const candidates = [
-    process.env.npm_execpath,
+    npmExecPath,
     join(nodeDir, 'node_modules', 'npm', 'bin', 'npm-cli.js'),
     resolve(nodeDir, '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js'),
     '/opt/homebrew/lib/node_modules/npm/bin/npm-cli.js',
