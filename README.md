@@ -53,10 +53,9 @@ Install once and give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigrav
   </table>
   <p><strong>Daily build pulse</strong></p>
   <ul>
-      <li>2 commits landed: test: add global npm fallback paths to package-files test; test(release): guard command reference version (#130).</li>
-      <li>4 pull requests updated, led by #135: chore(deps): bump the github-actions group with 2 updates.</li>
-      <li>1 issue changed, including #128: docs(release): enforce command-reference version consistency.</li>
-      <li>Daily summary covers 7 public activity items from the last 1 day.</li>
+      <li>1 commit landed: test: filter npm_execpath to JavaScript CLI files in package-files test.</li>
+      <li>Daily summary covers 1 public activity item from the last 1 day.</li>
+      <li>Documentation and project status remain aligned with the repository’s current public state.</li>
   </ul>
 </details>
 <!-- project-story:end -->
