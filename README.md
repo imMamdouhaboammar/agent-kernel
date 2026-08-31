@@ -53,8 +53,8 @@ Install once and give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigrav
   </table>
   <p><strong>Daily build pulse</strong></p>
   <ul>
-      <li>1 pull request updated, led by #136: chore(deps): bump the github-actions group with 2 updates.</li>
-      <li>Daily summary covers 1 public activity item from the last 7 days.</li>
+      <li>1 pull request updated, led by #136: chore(deps): bump the github-actions group across 1 directory with 2 updates.</li>
+      <li>Daily summary covers 1 public activity item from the last 1 day.</li>
       <li>Documentation and project status remain aligned with the repository’s current public state.</li>
   </ul>
 </details>
