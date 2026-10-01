@@ -55,7 +55,7 @@ Install once and give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigrav
   <ul>
       <li>1 pull request updated, led by #144: chore(deps): bump the github-actions group with 2 updates.</li>
       <li>6 issues changed, including #143: ♿ Insight Code: Accessibility overview — 95/100 (A).</li>
-      <li>Daily summary covers 7 public activity items from the last 1 day.</li>
+      <li>Daily summary covers 7 public activity items from the last 7 days.</li>
   </ul>
 </details>
 <!-- project-story:end -->
