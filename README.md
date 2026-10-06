@@ -53,8 +53,8 @@ Install once and give Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigrav
   </table>
   <p><strong>Daily build pulse</strong></p>
   <ul>
-      <li>1 issue changed, including #145: Proposal: source-rights evidence gate before content-related agent/tool actions.</li>
-      <li>Daily summary covers 1 public activity item from the last 1 day.</li>
+      <li>6 issues changed, including #143: ♿ Insight Code: Accessibility overview — 95/100 (A).</li>
+      <li>Daily summary covers 6 public activity items from the last 1 day.</li>
       <li>Documentation and project status remain aligned with the repository’s current public state.</li>
   </ul>
 </details>
