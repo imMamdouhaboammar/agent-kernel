@@ -21,3 +21,5 @@ coverage/
 *.pfx
 *service-account*.json
 local_cache/
+target/
+crates/**/target/

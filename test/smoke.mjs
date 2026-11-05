@@ -69,6 +69,7 @@ import { run as runDocLinks } from './doc-links.mjs';
 import { run as runCliStatusJson } from './cli-status-json.mjs';
 import { run as runProjectContextBroker } from './project-context-broker.test.mjs';
 import { run as runProjectConnect } from './project-connect.test.mjs';
+import { run as runAkNative } from './ak-native.mjs';
 import { installChildProcessCompatibility } from '../bin/agent-kernel-command-runner.mjs';
 import { assertSmokeRegistration } from './_lib/smoke-registration.mjs';
 
@@ -215,7 +216,8 @@ const tests = [
   ['doc-links', runDocLinks, 'doc-links.mjs'],
   ['cli-status-json', runCliStatusJson, 'cli-status-json.mjs'],
   ['project-context-broker', runProjectContextBrokerCompat, 'project-context-broker.test.mjs'],
-  ['project-connect', runProjectConnect, 'project-connect.test.mjs']
+  ['project-connect', runProjectConnect, 'project-connect.test.mjs'],
+  ['ak-native', runAkNative, 'ak-native.mjs']
 ];
 
 const candidateFiles = fs
